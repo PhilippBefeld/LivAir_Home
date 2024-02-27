@@ -2379,6 +2379,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               radonCurrent = bluetoothAdvertisementData.elementAt(1);
               radonWeekly = bluetoothAdvertisementData.elementAt(5);
               radonEver = bluetoothAdvertisementData.elementAt(9);
+              deviceFound = true;
               FlutterBluePlus.stopScan();
               subscription!.cancel();
               setState(() {
