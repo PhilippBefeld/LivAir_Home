@@ -851,7 +851,7 @@ class DevicePageState extends State<DevicePage> {
     FlutterBluePlus.scanResults.timeout( const Duration(seconds: 2));
     var subscription = FlutterBluePlus.scanResults.listen((results) async{
       for(ScanResult r in results){
-        if(r.advertisementData.manufacturerData.keys.first != null){
+        if(!r.advertisementData.manufacturerData.keys.isEmpty){
           if(r.advertisementData.manufacturerData.keys.first == 3503){
             List<int> data = r.advertisementData.manufacturerData.values.elementAt(0).sublist(15,23);
             Iterable<int> dataIter = data;

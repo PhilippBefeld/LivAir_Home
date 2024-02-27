@@ -2252,7 +2252,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         if (!deviceFound) {
           List<int> bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
           String bluetoothDeviceName = "";
-          if(r.advertisementData.manufacturerData.keys.first != null){
+          if(!r.advertisementData.manufacturerData.keys.isEmpty){
             if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
           }
           if(bluetoothDeviceName == device.values.first.name) {
@@ -2373,7 +2373,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         if (!deviceFound) {
           List<int> bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
           String bluetoothDeviceName = "";
-          if(r.advertisementData.manufacturerData.keys.first != null){
+          if(!r.advertisementData.manufacturerData.keys.isEmpty){
             if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
             if(bluetoothDeviceName == device.values.first.name){
               radonCurrent = bluetoothAdvertisementData.elementAt(1);
