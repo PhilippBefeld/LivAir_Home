@@ -104,7 +104,7 @@ class ProfilePageState extends State<ProfilePage>{
     responseData["email"] = emailController.text;
 
     try{
-      var response = await dio.post("https://dashboard.livair.io/api/user?sendActivationMail=false",
+      await dio.post("https://dashboard.livair.io/api/user?sendActivationMail=false",
         data: responseData
       );
     }catch(e){

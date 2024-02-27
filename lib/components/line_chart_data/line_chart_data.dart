@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 class MyLineChartData {
 
   String convertMsToDateString(int ms,int days){
-    String date = "";
     DateTime dateTime = DateTime.fromMillisecondsSinceEpoch(ms);
     if(days == 1){
       return "${dateTime.hour.toString().padLeft(2,"0")}:${dateTime.minute.toString().padLeft(2,"0")}";

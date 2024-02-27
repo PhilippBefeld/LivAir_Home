@@ -327,14 +327,14 @@ class NotificationsPageState extends State<NotificationsPage>{
     try{
       Response userInfoResponse = await dio.get('https://dashboard.livair.io/api/auth/user');
       userId = userInfoResponse.data["id"]["id"];
-      var result = await dio.delete('https://dashboard.livair.io/api/plugins/telemetry/USER/$userId/timeseries/delete',
+      await dio.delete('https://dashboard.livair.io/api/plugins/telemetry/USER/$userId/timeseries/delete',
         queryParameters: {
           "keys": "notifications",
           "startTs": 0,
           "endTs": DateTime.now().millisecondsSinceEpoch,
         },
       );
-    }on DioError catch(e){
+    }on DioException catch(e){
       print(e.response);
     }on Error catch(e){
       print(e);

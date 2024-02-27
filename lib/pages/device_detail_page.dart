@@ -476,7 +476,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
     try{
-      var result = dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
+      dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
         data: jsonEncode(
             {
               "u_led_fb": d_led_fb.toInt(),
@@ -523,7 +523,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
     try{
-      var result = dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
+      dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
         data: jsonEncode(
             {
               "u_range_u": 0,
@@ -544,7 +544,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
     try{
-      var result = dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
+      dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
         data: jsonEncode(
             {
               "u_led_f": intValue,
@@ -564,7 +564,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
     try{
-      var result = await dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
+      await dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
         data: jsonEncode(
             {
               "u_led_t": intValue,
@@ -582,7 +582,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
     try{
-      var result = dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
+      dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
         data: jsonEncode(
             {
               "u_view_switch": value,
@@ -661,17 +661,14 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   List<BarChartGroupData> getCurrentBars(){
     List<BarChartGroupData> bars = [];
     int startTimeseries = requestMsSinceEpoch - (Duration(days: selectedNumberOfDays).inMilliseconds * stepsIntoPast);
-    int sum = 0;
     radonValuesTimeseries = [];
     List<FlSpot> spots = [];
     for (var element in radonHistoryTimestamps) {
       if(element.item1 >= startTimeseries && element.item1 <= startTimeseries + Duration(days: selectedNumberOfDays).inMilliseconds){
-        sum+=element.item2;
         radonValuesTimeseries.add(element.item2);
         spots.add(FlSpot(Duration(milliseconds: (element.item1-startTimeseries)).inMinutes.toDouble(),element.item2.toDouble()));
       }
     }
-    List<FlSpot> newSpots = [];
     int barCount = 30;
     int combinationArea = (Duration(days: selectedNumberOfDays).inMinutes~/30);
     if(selectedNumberOfDays == 7){
@@ -1459,12 +1456,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           ),
         )
     );
-    try{
-
-    }
-    catch(e){
-      logger.e(e);
-    }
   }
 
 
@@ -3574,6 +3565,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       dio.options.headers['Authorization'] = "Bearer $token";
                       await dio.delete("https://dashboard.livair.io/api/livAir/unclaim/$id");
                       await Future<void>.delayed( const Duration(milliseconds: 100));
+                      Navigator.pop(context);
                       Navigator.pop(context);
                     },
                     style: OutlinedButton.styleFrom(backgroundColor: const Color(0xff0099f0),minimumSize: const Size(100, 50),side: const BorderSide(color: Color(0xff0099f0))),

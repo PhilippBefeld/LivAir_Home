@@ -308,7 +308,7 @@ class DevicePageState extends State<DevicePage> {
                                 "",
                                 "",
                                 bool.parse(attributes["isOnline"]["value"]),
-                                newestRadonValue != null ? int.parse(newestRadonValue) : null,
+                                int.parse(newestRadonValue),
                                 label ?? "",
                                 deviceInfo["name"]["value"]
                             );
