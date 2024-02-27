@@ -2252,8 +2252,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         if (!deviceFound) {
           List<int> bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
           String bluetoothDeviceName = "";
-          if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
-          if(bluetoothDeviceName==device.values.first.name) {
+          if(r.advertisementData.manufacturerData.keys.first != null){
+            if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
+          }
+          if(bluetoothDeviceName == device.values.first.name) {
             deviceFound = true;
             btDevice = r.device;
             await r.device.connect();
@@ -2371,17 +2373,19 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         if (!deviceFound) {
           List<int> bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
           String bluetoothDeviceName = "";
-          if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
-          if(bluetoothDeviceName == device.values.first.name){
-            radonCurrent = bluetoothAdvertisementData.elementAt(1);
-            radonWeekly = bluetoothAdvertisementData.elementAt(5);
-            radonEver = bluetoothAdvertisementData.elementAt(9);
-            FlutterBluePlus.stopScan();
-            subscription!.cancel();
-            setState(() {
-              Navigator.pop(context);
-              screenIndex = 23;
-            });
+          if(r.advertisementData.manufacturerData.keys.first != null){
+            if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
+            if(bluetoothDeviceName == device.values.first.name){
+              radonCurrent = bluetoothAdvertisementData.elementAt(1);
+              radonWeekly = bluetoothAdvertisementData.elementAt(5);
+              radonEver = bluetoothAdvertisementData.elementAt(9);
+              FlutterBluePlus.stopScan();
+              subscription!.cancel();
+              setState(() {
+                Navigator.pop(context);
+                screenIndex = 23;
+              });
+            }
           }
         }
       }
