@@ -8,7 +8,6 @@ import 'package:livair_home/components/my_button.dart';
 import 'package:livair_home/components/my_textfield.dart';
 import 'package:livair_home/pages/root_page.dart';
 import 'package:livair_home/pages/sign_up_page.dart';
-import 'package:thingsboard_pe_client/thingsboard_client.dart';
 import 'package:logger/logger.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:dio/dio.dart';
@@ -33,7 +32,6 @@ class SignInPageState extends State<SignInPage> {
   final emailController = TextEditingController();
   final emailResetController = TextEditingController();
   final passwordController = TextEditingController();
-  final tbClient = ThingsboardClient('https://dashboard.livair.io');
   final storage = new FlutterSecureStorage();
 
   String currentScreen = '';
@@ -44,6 +42,8 @@ class SignInPageState extends State<SignInPage> {
   bool emailIsCorrect = false;
 
   //signIn variables
+  String token = '';
+  String refreshToken = '';
   bool firstBuild = true;
   bool savePasswordChecked = false;
   bool autoSignIn = false;
@@ -68,7 +68,6 @@ class SignInPageState extends State<SignInPage> {
       return const Center(child:CircularProgressIndicator());
     },
     );
-    String token = '';
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json, text/plain, */*";
     try {
@@ -112,13 +111,14 @@ class SignInPageState extends State<SignInPage> {
       }on DioError catch(e){
         logger.e(e);
       }
-
-      await tbClient.login(
-          LoginRequest(
-              emailController.text,
-              passwordController.text
-          )
-      );
+      Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/login',
+          data: {
+            "username": emailController.text,
+            "password": passwordController.text
+          });
+      token = loginResponse.data["token"];
+      refreshToken = loginResponse.data["refreshToken"];
+      print(loginResponse);
       if(savePasswordChecked){
         await storage.write(key: 'email', value: emailController.text);
         await storage.write(key: 'password', value: passwordController.text);
@@ -135,10 +135,10 @@ class SignInPageState extends State<SignInPage> {
       Navigator.pop(context);
       Navigator.of(context).push(
           MaterialPageRoute(
-              builder: (context) => DestinationView(tbClient: tbClient),
+              builder: (context) => DestinationView(token: token, refreshToken: refreshToken,),
           )
       ).then(onGoBack);
-    } on ThingsboardError catch (e) {
+    } on DioError catch (e) {
 
       if(e.message == 'Authentication failed'){
         Navigator.pop(context);
@@ -172,8 +172,6 @@ class SignInPageState extends State<SignInPage> {
   }
 
   forgotPassword() async{
-    final token = tbClient.getJwtToken();
-
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
@@ -282,7 +280,7 @@ class SignInPageState extends State<SignInPage> {
     );
     Navigator.of(context).push(
         MaterialPageRoute(
-            builder: (context) => DestinationView(tbClient: tbClient)
+            builder: (context) => DestinationView(token: token, refreshToken: refreshToken,)
         )
     );
     try {
@@ -632,7 +630,7 @@ class SignInPageState extends State<SignInPage> {
                                   }
                                   Navigator.of(context).push(
                                       MaterialPageRoute(
-                                          builder: (context) => SignUpPage(tbClient: tbClient)
+                                          builder: (context) => SignUpPage(token: token, refreshToken: refreshToken,)
                                       )
                                   );
                                 },

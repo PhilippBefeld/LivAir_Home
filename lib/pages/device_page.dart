@@ -11,7 +11,6 @@ import 'package:google_places_flutter/model/prediction.dart';
 import 'package:livair_home/components/my_device_widget.dart';
 import 'package:livair_home/pages/device_detail_page.dart';
 import 'package:livair_home/components/data/device.dart';
-import 'package:thingsboard_pe_client/thingsboard_client.dart';
 import 'package:logger/logger.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'dart:convert';
@@ -21,24 +20,26 @@ import 'package:location/location.dart';
 
 class DevicePage extends StatefulWidget {
 
-  final ThingsboardClient tbClient;
+  final String token;
+  final String refreshToken;
 
-  const DevicePage({super.key, required this.tbClient});
+  const DevicePage({super.key, required this.token, required this.refreshToken});
 
   @override
-  State<DevicePage> createState() => DevicePageState(tbClient);
+  State<DevicePage> createState() => DevicePageState(token, refreshToken);
 }
 
 class DevicePageState extends State<DevicePage> {
 
-  final ThingsboardClient tbClient;
+  final String token;
+  final String refreshToken;
   final logger = Logger();
   final Dio dio = Dio();
   final location = Location();
   final storage = FlutterSecureStorage();
   String? unit;
 
-  DevicePageState( this.tbClient);
+  DevicePageState(this.token, this.refreshToken);
   DeviceResponse pagingInfo = DeviceResponse(0,0);
   List<Map<String,dynamic>> currentDevices = [];
   List<Map<String,Device2>> currentDevices2 = [];
@@ -73,7 +74,6 @@ class DevicePageState extends State<DevicePage> {
 
   Future<dynamic> getAllDevices() async{
     if(channel != null) return;
-    final token = tbClient.getJwtToken();
     searchedAdditionalDevices = false;
     var firstTry = true;
     unit = await storage.read(key: 'unit');
@@ -398,7 +398,7 @@ class DevicePageState extends State<DevicePage> {
   void showDeviceDetails(Map<String,Device2> device){
     Navigator.of(context).push(
         MaterialPageRoute(
-            builder: (context) => DeviceDetailPage(tbClient: tbClient, device: device)
+            builder: (context) => DeviceDetailPage(token: token, refreshToken: refreshToken,device: device,)
         )
     );
   }
@@ -489,7 +489,6 @@ class DevicePageState extends State<DevicePage> {
   }
 
   sendDeviceClaimRequest() async{
-    final token = tbClient.getJwtToken();
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";

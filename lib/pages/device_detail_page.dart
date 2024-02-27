@@ -13,7 +13,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:tuple/tuple.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:thingsboard_pe_client/thingsboard_client.dart';
 import 'package:logger/logger.dart';
 import 'package:dio/dio.dart';
 import 'dart:convert';
@@ -27,19 +26,21 @@ import 'package:google_places_flutter/google_places_flutter.dart';
 
 class DeviceDetailPage extends StatefulWidget {
 
-  final ThingsboardClient tbClient;
+  final String token;
+  final String refreshToken;
   final Map<String,Device2> device;
 
 
-  const DeviceDetailPage({super.key, required this.tbClient, required this.device});
+  const DeviceDetailPage({super.key, required this.token, required this.refreshToken, required this.device});
 
   @override
-  State<DeviceDetailPage> createState() => DeviceDetailPageState(tbClient, device);
+  State<DeviceDetailPage> createState() => DeviceDetailPageState(token, refreshToken, device);
 }
 
 class DeviceDetailPageState extends State<DeviceDetailPage>{
 
-  final ThingsboardClient tbClient;
+  final String token;
+  final String refreshToken;
 
   final Dio dio = Dio();
   final logger = Logger();
@@ -49,7 +50,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
 
 
 
-  DeviceDetailPageState(this.tbClient,this.device);
+  DeviceDetailPageState(this.token, this.refreshToken, this.device);
 
   int screenIndex = 0;
 
@@ -136,7 +137,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     futureFuncRunning = true;
     unit = await storage.read(key: 'unit');
     radonValue = AppLocalizations.of(context)!.noRadonValues;
-    final token = tbClient.getJwtToken();
     String id = device.keys.elementAt(0);
     try{
       channel = WebSocketChannel.connect(
@@ -469,7 +469,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   changeDisplayBrightness(){
     if(telemetryRunning)return;
     telemetryRunning = true;
-    var token = tbClient.getJwtToken();
     String id = device.keys.elementAt(0);
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
@@ -491,7 +490,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   changeLEDBrightness(){
     if(telemetryRunning)return;
     telemetryRunning = true;
-    var token = tbClient.getJwtToken();
     String id = device.keys.elementAt(0);
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
@@ -518,7 +516,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       );
       return;
     }
-    var token = tbClient.getJwtToken();
     String id = device.keys.elementAt(0);
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
@@ -540,7 +537,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   displayOnOff(bool value) {
     int intValue = 0;
     if(value) intValue = 1;
-    var token = tbClient.getJwtToken();
     String id = device.keys.elementAt(0);
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
@@ -561,7 +557,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   ledOnOff(bool value) async {
     int intValue = 0;
     if(value) intValue = 1;
-    var token = tbClient.getJwtToken();
     String id = device.keys.elementAt(0);
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
@@ -580,7 +575,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   }
 
   void displayType(int value) {
-    var token = tbClient.getJwtToken();
     String id = device.keys.elementAt(0);
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
@@ -2551,7 +2545,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   }
 
   changeLocation() async{
-    var token = tbClient.getJwtToken();
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
@@ -2808,7 +2801,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   }
 
   renameDevice () async{
-    var token = tbClient.getJwtToken();
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
@@ -3153,7 +3145,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
 
   sendShareInvite() async {
     if(!isValidEmail())return;
-    var token = tbClient.getJwtToken();
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
@@ -3176,7 +3167,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   }
 
   getViewers() async {
-    var token = tbClient.getJwtToken();
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
@@ -3252,7 +3242,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   }
 
   removeViewer() async{
-    var token = tbClient.getJwtToken();
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
@@ -3425,7 +3414,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   }
 
   updateWarning() async{
-    final token = tbClient.getJwtToken();
     final dio = Dio();
 
     dio.options.headers['content-Type'] = 'application/json';
@@ -3517,7 +3505,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         return alert;
       },
     );
-    var token = tbClient.getJwtToken();
     String id = device.keys.elementAt(0);
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
@@ -3569,7 +3556,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         );
                         return;
                       }
-                      var token = tbClient.getJwtToken();
                       String id = device.keys.elementAt(0);
                       dio.options.headers['content-Type'] = 'application/json';
                       dio.options.headers['Accept'] = "application/json";
@@ -3634,7 +3620,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       return;
                     }
                     try{
-                      var token = tbClient.getJwtToken();
                       dio.options.headers['content-Type'] = 'application/json';
                       dio.options.headers['Accept'] = "application/json";
                       dio.options.headers['Authorization'] = "Bearer $token";

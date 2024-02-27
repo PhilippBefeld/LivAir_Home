@@ -5,7 +5,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:logger/logger.dart';
-import 'package:thingsboard_pe_client/thingsboard_client.dart';
 import 'package:dio/dio.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -13,21 +12,23 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class NotificationsPage extends StatefulWidget {
 
-  final ThingsboardClient tbClient;
+  final String token;
+  final String refreshToken;
 
-  const NotificationsPage({super.key, required this.tbClient});
+  const NotificationsPage({super.key, required this.token, required this.refreshToken});
 
   @override
-  State<NotificationsPage> createState() => NotificationsPageState(tbClient);
+  State<NotificationsPage> createState() => NotificationsPageState(token, refreshToken);
 }
 
 class NotificationsPageState extends State<NotificationsPage>{
 
-  final ThingsboardClient tbClient;
+  final String token;
+  final String refreshToken;
   final Logger logger = Logger();
   final Dio dio = Dio();
 
-  NotificationsPageState(this.tbClient);
+  NotificationsPageState(this.token, this.refreshToken);
   //page variables
   int index = 0;
 
@@ -44,12 +45,14 @@ class NotificationsPageState extends State<NotificationsPage>{
     if(notificationsLoaded || noReloading)return;
     notificationsLoaded = true;
     notifications = [];
-    var token = tbClient.getJwtToken();
-    var userId = tbClient.getAuthUser()?.userId;
+    String? userId;
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
+
     try{
+      Response userInfoResponse = await dio.get('https://dashboard.livair.io/api/auth/user');
+      userId = userInfoResponse.data["id"]["id"];
       var result = await dio.get('https://dashboard.livair.io/api/plugins/telemetry/USER/$userId/values/timeseries',
         queryParameters: {
           "keys": "notifications",
@@ -58,7 +61,9 @@ class NotificationsPageState extends State<NotificationsPage>{
         },
       );
       try{
-        notifications = result.data["notifications"];
+        if(result.data["notifications"] != null){
+          notifications = result.data["notifications"];
+        }
         await getAllDevices();
       }catch(e){
         print(e);
@@ -74,7 +79,6 @@ class NotificationsPageState extends State<NotificationsPage>{
     deviceIds = [];
     labels = [];
     WebSocketChannel? channel;
-    final token = tbClient.getJwtToken();
     try {
       channel = WebSocketChannel.connect(
         Uri.parse(
@@ -316,12 +320,13 @@ class NotificationsPageState extends State<NotificationsPage>{
   }
 
   deleteNotifications() async {
-    var token = tbClient.getJwtToken();
-    var userId = tbClient.getAuthUser()?.userId;
+    String? userId;
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
     try{
+      Response userInfoResponse = await dio.get('https://dashboard.livair.io/api/auth/user');
+      userId = userInfoResponse.data["id"]["id"];
       var result = await dio.delete('https://dashboard.livair.io/api/plugins/telemetry/USER/$userId/timeseries/delete',
         queryParameters: {
           "keys": "notifications",
@@ -337,7 +342,6 @@ class NotificationsPageState extends State<NotificationsPage>{
   }
 
   markNotificationsAsRead() async{
-    final token = tbClient.getJwtToken();
     List<String> readNotifications = [];
     for (var element in selectedNotifications) {
       readNotifications.add(notifications.elementAt(element)["id"]["id"]);

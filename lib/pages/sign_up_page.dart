@@ -7,7 +7,6 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:logger/logger.dart';
 import 'package:livair_home/pages/root_page.dart';
-import 'package:thingsboard_pe_client/thingsboard_client.dart';
 import '../components/my_button.dart';
 import '../components/my_textfield.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -15,21 +14,26 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SignUpPage extends StatefulWidget{
 
-  final ThingsboardClient tbClient;
+  final String token;
+  final String refreshToken;
 
-  SignUpPage({super.key, required this.tbClient});
+  SignUpPage({super.key, required this.token, required this.refreshToken});
 
   @override
-  State<SignUpPage> createState() => SignUpPageState(tbClient);
+  State<SignUpPage> createState() => SignUpPageState(token, refreshToken);
 
 }
 
 class SignUpPageState extends State<SignUpPage>{
 
-  final ThingsboardClient tbClient;
+  String token;
+  String refreshToken;
+
   final Dio dio = Dio();
   final Logger logger = Logger();
-  SignUpPageState(this.tbClient);
+
+  SignUpPageState(this.token, this.refreshToken);
+
   final storage = FlutterSecureStorage();
 
   TextEditingController nameController = TextEditingController();
@@ -55,7 +59,7 @@ class SignUpPageState extends State<SignUpPage>{
     );
     Navigator.of(context).push(
         MaterialPageRoute(
-            builder: (context) => DestinationView(tbClient: tbClient)
+            builder: (context) => DestinationView(token: token, refreshToken: refreshToken,)
         )
     );
     try {
@@ -89,19 +93,20 @@ class SignUpPageState extends State<SignUpPage>{
       );
       if(response.statusCode == 200){
         try{
-          await tbClient.login(
-              LoginRequest(
-                  emailController.text,
-                  passwordController.text
-              )
-          );
+          Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/login',
+              data: {
+                "username": emailController.text,
+                "password": passwordController.text
+              });
+          token = loginResponse.data["token"];
+          refreshToken = loginResponse.data["refreshToken"];
           await storage.write(key: 'password', value: passwordController.text);
           await storage.write(key: 'email', value: emailController.text);
           await storage.write(key: 'unit', value: 'Bq/m³');
           Navigator.pop(context);
           Navigator.of(context).push(
               MaterialPageRoute(
-                  builder: (context) => DestinationView(tbClient: tbClient)
+                  builder: (context) => DestinationView(token: token, refreshToken: refreshToken,)
               )
           );
         }catch(e){

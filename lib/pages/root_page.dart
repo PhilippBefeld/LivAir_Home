@@ -7,7 +7,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:livair_home/pages/warnings_page.dart';
 import 'package:livair_home/pages/profile_page.dart';
 import 'package:flutter/material.dart';
-import 'package:thingsboard_pe_client/thingsboard_client.dart';
 import 'package:livair_home/pages/device_page.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -20,23 +19,26 @@ import 'notifications_page.dart';
 class DestinationView extends StatefulWidget {
 
 
-  final ThingsboardClient tbClient;
+  final String token;
+  final String refreshToken;
 
   const DestinationView({
     super.key,
-    required this.tbClient
+    required this.token,
+    required this.refreshToken
   });
 
 
   @override
-  State<DestinationView> createState() => _DestinationViewState(tbClient);
+  State<DestinationView> createState() => _DestinationViewState(token,refreshToken);
 }
 
 class _DestinationViewState extends State<DestinationView> {
 
-  final ThingsboardClient tbClient;
+  final String token;
+  final String refreshToken;
 
-  _DestinationViewState(this.tbClient);
+  _DestinationViewState(this.token, this.refreshToken);
 
   final Dio dio = Dio();
   final location = Location();
@@ -63,15 +65,15 @@ class _DestinationViewState extends State<DestinationView> {
   Widget setPage(int index) {
     switch (index) {
       case 0:
-        return DevicePage(tbClient: tbClient);
+        return DevicePage(token: token, refreshToken: refreshToken,);
       case 1:
-        return WarningsPage(tbClient: tbClient);
+        return WarningsPage(token: token, refreshToken: refreshToken,);
       case 2:
-        return NotificationsPage(tbClient: tbClient);
+        return NotificationsPage(token: token, refreshToken: refreshToken,);
       case 3:
-        return ProfilePage(tbClient: tbClient);
+        return ProfilePage(token: token, refreshToken: refreshToken,);
       default:
-        return DevicePage(tbClient: tbClient);
+        return DevicePage(token: token, refreshToken: refreshToken,);
     }
   }
 

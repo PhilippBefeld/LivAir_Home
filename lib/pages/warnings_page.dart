@@ -7,7 +7,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:logger/logger.dart';
-import 'package:thingsboard_pe_client/thingsboard_client.dart';
 import 'package:dio/dio.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -16,23 +15,25 @@ import '../components/my_device_widget.dart';
 
 class WarningsPage extends StatefulWidget {
 
-  final ThingsboardClient tbClient;
+  final String token;
+  final String refreshToken;
 
-  const WarningsPage({super.key, required this.tbClient});
+  const WarningsPage({super.key, required this.token, required this.refreshToken});
 
   @override
-  State<WarningsPage> createState() => WarningsPageState(tbClient);
+  State<WarningsPage> createState() => WarningsPageState(token, refreshToken);
 }
 
 class WarningsPageState extends State<WarningsPage>{
 
-  final ThingsboardClient tbClient;
+  final String token;
+  final String refreshToken;
   final Logger logger = Logger();
 
   final storage = FlutterSecureStorage();
   String? unit;
 
-  WarningsPageState(this.tbClient);
+  WarningsPageState(this.token, this.refreshToken);
   //page variables
   int index = 0;
 
@@ -66,7 +67,6 @@ class WarningsPageState extends State<WarningsPage>{
     }
     warnings.clear();
     unit = await storage.read(key: 'unit');
-    final token = tbClient.getJwtToken();
     final dio = Dio();
 
     dio.options.headers['content-Type'] = 'application/json';
@@ -260,7 +260,6 @@ class WarningsPageState extends State<WarningsPage>{
     areOnline = [];
     lastSyncs = [];
     WebSocketChannel? channel;
-    final token = tbClient.getJwtToken();
     try {
       channel = WebSocketChannel.connect(
         Uri.parse(
@@ -559,7 +558,6 @@ class WarningsPageState extends State<WarningsPage>{
   }
 
   updateWarning() async{
-    final token = tbClient.getJwtToken();
     final dio = Dio();
 
     dio.options.headers['content-Type'] = 'application/json';
@@ -648,7 +646,6 @@ class WarningsPageState extends State<WarningsPage>{
   }
 
   deleteWarning() async{
-    final token = tbClient.getJwtToken();
     final dio = Dio();
 
     dio.options.headers['content-Type'] = 'application/json';

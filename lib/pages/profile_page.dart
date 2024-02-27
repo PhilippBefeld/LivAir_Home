@@ -10,24 +10,25 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:logger/logger.dart';
 import 'package:livair_home/components/long_Strings/policy.dart';
 import 'package:livair_home/components/long_Strings/imprint.dart';
-import 'package:thingsboard_pe_client/thingsboard_client.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../main.dart';
 
 class ProfilePage extends StatefulWidget {
 
-  final ThingsboardClient tbClient;
+  final String token;
+  final String refreshToken;
 
-  ProfilePage({super.key,required this.tbClient});
+  ProfilePage({super.key,required this.token, required this.refreshToken});
 
   @override
-  State<ProfilePage> createState() => ProfilePageState(tbClient);
+  State<ProfilePage> createState() => ProfilePageState(token, refreshToken);
 }
 
 class ProfilePageState extends State<ProfilePage>{
 
-  final ThingsboardClient tbClient;
+  final String token;
+  final String refreshToken;
   final Dio dio = Dio();
   final logger = Logger();
 
@@ -52,7 +53,7 @@ class ProfilePageState extends State<ProfilePage>{
   TextEditingController oldPasswordController = TextEditingController();
   TextEditingController newPasswordController = TextEditingController();
 
-  ProfilePageState(this.tbClient);
+  ProfilePageState(this.token, this.refreshToken);
 
   //shareDeviceScreen values
   TextEditingController emailController2 = TextEditingController();
@@ -74,16 +75,17 @@ class ProfilePageState extends State<ProfilePage>{
   getProfileData() async{
     if(!gotProfileData){
       gotProfileData = true;
+      String? userId;
       unit = await storage.read(key: 'unit');
       language = await storage.read(key: "language");
-      final token = tbClient.getJwtToken();
       dio.options.headers['content-Type'] = 'application/json';
       dio.options.headers['Accept'] = "application/json";
       dio.options.headers['Authorization'] = "Bearer $token";
-
       var response;
       try{
-        response = await dio.get("https://dashboard.livair.io/api/user/${tbClient.getAuthUser()!.userId}");
+        Response userInfoResponse = await dio.get('https://dashboard.livair.io/api/auth/user');
+        userId = userInfoResponse.data["id"]["id"];
+        response = await dio.get("https://dashboard.livair.io/api/user/$userId");
         print(response);
       }catch(e){
         logger.e(e);
@@ -221,9 +223,6 @@ class ProfilePageState extends State<ProfilePage>{
   }
 
   updatePassword() async{
-
-    final token = tbClient.getJwtToken();
-
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
@@ -747,7 +746,6 @@ class ProfilePageState extends State<ProfilePage>{
                     child: OutlinedButton(
                         onPressed: () async{
                           if(await canDeleteAccount()){
-                            final token = tbClient.getJwtToken();
                             dio.options.headers['content-Type'] = 'application/json';
                             dio.options.headers['Accept'] = "application/json, text/plain, */*";
                             dio.options.headers['Authorization'] = "Bearer $token";
@@ -779,7 +777,6 @@ class ProfilePageState extends State<ProfilePage>{
   }
 
    Future<bool> canDeleteAccount() async{
-    final token = tbClient.getJwtToken();
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json, text/plain, */*";
     dio.options.headers['Authorization'] = "Bearer $token";
@@ -904,7 +901,6 @@ class ProfilePageState extends State<ProfilePage>{
       children: [
         GestureDetector(
           onTap: () {
-            final token = tbClient.getJwtToken();
             dio.options.headers['content-Type'] = 'application/json';
             dio.options.headers['Accept'] = "application/json, text/plain, */*";
             dio.options.headers['Authorization'] = "Bearer $token";
@@ -943,7 +939,6 @@ class ProfilePageState extends State<ProfilePage>{
         ),
         GestureDetector(
           onTap: (){
-            final token = tbClient.getJwtToken();
             dio.options.headers['content-Type'] = 'application/json';
             dio.options.headers['Accept'] = "application/json, text/plain, */*";
             dio.options.headers['Authorization'] = "Bearer $token";
@@ -990,7 +985,6 @@ class ProfilePageState extends State<ProfilePage>{
       children: [
         GestureDetector(
           onTap: (){
-            final token = tbClient.getJwtToken();
             dio.options.headers['content-Type'] = 'application/json';
             dio.options.headers['Accept'] = "application/json, text/plain, */*";
             dio.options.headers['Authorization'] = "Bearer $token";
@@ -1029,7 +1023,6 @@ class ProfilePageState extends State<ProfilePage>{
         ),
         GestureDetector(
           onTap: (){
-            final token = tbClient.getJwtToken();
             dio.options.headers['content-Type'] = 'application/json';
             dio.options.headers['Accept'] = "application/json, text/plain, */*";
             dio.options.headers['Authorization'] = "Bearer $token";
@@ -1427,7 +1420,6 @@ class ProfilePageState extends State<ProfilePage>{
   }
 
   sendShareInvite() async {
-    var token = tbClient.getJwtToken();
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
@@ -1455,7 +1447,6 @@ class ProfilePageState extends State<ProfilePage>{
   }
 
   sendShareInvite2() async {
-    var token = tbClient.getJwtToken();
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
@@ -1483,7 +1474,6 @@ class ProfilePageState extends State<ProfilePage>{
   }
 
   sendShareInvite3() async {
-    var token = tbClient.getJwtToken();
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
@@ -1512,7 +1502,6 @@ class ProfilePageState extends State<ProfilePage>{
   }
 
   getViewers() async {
-    var token = tbClient.getJwtToken();
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
@@ -1528,7 +1517,6 @@ class ProfilePageState extends State<ProfilePage>{
   }
 
   removeViewer() async{
-    var token = tbClient.getJwtToken();
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
@@ -1557,7 +1545,6 @@ class ProfilePageState extends State<ProfilePage>{
     devicesToShare = [];
 
     WebSocketChannel channel;
-    final token = tbClient.getJwtToken();
     try {
       channel = WebSocketChannel.connect(
         Uri.parse(
