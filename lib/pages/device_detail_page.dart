@@ -368,6 +368,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 if(radonData!=null)radonValue = radonData[0][1];
               }catch(e){
               }
+
               try{
                 var dLedFBdata = telData["d_firmware"];
                 if(dLedFBdata!=null)firmwareVersion = dLedFBdata[0][1];
@@ -429,6 +430,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 for (var element in updateData) {
                   try {
                     List<dynamic> radonValues = element["timeseries"]["radon"];
+                    device.values.first.isOnline = bool.parse(updateData.first["latest"]["ATTRIBUTE"]["isOnline"]["value"]);
                     if (radonValues.isNotEmpty && radonValues.length > 1) {
                       radonHistory = radonValues;
                       radonHistoryTimestamps = [];
@@ -1899,6 +1901,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
             const SizedBox(height: 30),
             Text(AppLocalizations.of(context)!.displayType,style: const TextStyle(fontSize: 12),),
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 SizedBox(
                   width: 100,
@@ -1926,7 +1929,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       )
                   ),
                 ),
-                const SizedBox(width: 10,),
                 SizedBox(
                   width: 100,
                   child: OutlinedButton(
@@ -1953,9 +1955,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       )
                   ),
                 ),
-                const SizedBox(width: 10,),
                 SizedBox(
-                  width: 100,
                   child: OutlinedButton(
                       onPressed: () async{
                         try {
@@ -3572,7 +3572,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       dio.options.headers['content-Type'] = 'application/json';
                       dio.options.headers['Accept'] = "application/json";
                       dio.options.headers['Authorization'] = "Bearer $token";
-                      await dio.post("https://dashboard.livair.io/api/livAir/unclaim/$id");
+                      await dio.delete("https://dashboard.livair.io/api/livAir/unclaim/$id");
                       await Future<void>.delayed( const Duration(milliseconds: 100));
                       Navigator.pop(context);
                     },
