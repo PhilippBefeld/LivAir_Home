@@ -831,7 +831,9 @@ class DevicePageState extends State<DevicePage> {
     foundDevices = [];
     foundDevicesIds = [];
 
-    await FlutterBluePlus.turnOn();
+    if (Platform.isAndroid) {
+      await FlutterBluePlus.turnOn();
+    }
     var locationEnabled = await location.serviceEnabled();
     if(!locationEnabled){
       var locationEnabled2 = await location.requestService();
