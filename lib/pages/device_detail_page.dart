@@ -2321,8 +2321,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         }
       }
     });
-    FlutterBluePlus.startScan(timeout: const Duration(seconds: 2));
-    await Future<void>.delayed( const Duration(seconds: 2));
+    FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
+    await Future<void>.delayed( const Duration(seconds: 4));
     if(!deviceFound){
       Navigator.pop(context);
       Fluttertoast.showToast(
@@ -2386,8 +2386,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         }
       }
     });
-    FlutterBluePlus.startScan(timeout: const Duration(seconds: 2));
-    await Future<void>.delayed( const Duration(seconds: 2));
+    FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
+    await Future<void>.delayed( const Duration(seconds: 4));
     if(!deviceFound){
       Navigator.pop(context);
       Fluttertoast.showToast(

@@ -851,18 +851,20 @@ class DevicePageState extends State<DevicePage> {
     FlutterBluePlus.scanResults.timeout( const Duration(seconds: 2));
     var subscription = FlutterBluePlus.scanResults.listen((results) async{
       for(ScanResult r in results){
-        if(r.advertisementData.manufacturerData.keys.first == 3503){
-          List<int> data = r.advertisementData.manufacturerData.values.elementAt(0).sublist(15,23);
-          Iterable<int> dataIter = data;
+        if(r.advertisementData.manufacturerData.keys.first != null){
+          if(r.advertisementData.manufacturerData.keys.first == 3503){
+            List<int> data = r.advertisementData.manufacturerData.values.elementAt(0).sublist(15,23);
+            Iterable<int> dataIter = data;
 
-          if(!foundDevicesIds!.contains(String.fromCharCodes(dataIter))){
-            foundDevicesIds!.add(String.fromCharCodes(dataIter));
-            foundDevices!.add(r.device);
+            if(!foundDevicesIds!.contains(String.fromCharCodes(dataIter))){
+              foundDevicesIds!.add(String.fromCharCodes(dataIter));
+              foundDevices!.add(r.device);
+            }
           }
         }
       }
     });
-    await FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
+    await FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
     await Future<void>.delayed( const Duration(seconds: 4));
     subscription.cancel();
     if(foundDevices!.isEmpty){
