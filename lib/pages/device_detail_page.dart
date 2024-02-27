@@ -2250,9 +2250,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     subscription = FlutterBluePlus.scanResults.listen((results) async {
       for (ScanResult r in results) {
         if (!deviceFound) {
-          List<int> bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
+          List<int> bluetoothAdvertisementData = [];
           String bluetoothDeviceName = "";
-          if(!r.advertisementData.manufacturerData.keys.isEmpty){
+          if(r.advertisementData.manufacturerData.keys.isNotEmpty){
+            if(r.advertisementData.manufacturerData.values.isNotEmpty){
+              bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
+            }
             if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
           }
           if(bluetoothDeviceName == device.values.first.name) {
@@ -2815,7 +2818,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     dio.options.headers['Authorization'] = "Bearer $token";
     try{
       await dio.post('https://dashboard.livair.io/api/livAir/renameDevice/${device.keys.first}/${renameController.text}',);
-    }catch(e){
+    }on DioException catch(e){
       setState(() {
         Navigator.pop(context);
       });
