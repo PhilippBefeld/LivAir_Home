@@ -2257,7 +2257,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
             deviceFound = true;
             btDevice = r.device;
             await r.device.connect();
-            await r.device.requestMtu(100);
+            if (Platform.isAndroid) {
+              await r.device.requestMtu(100);
+            }
             List<BluetoothService> services = await r.device.discoverServices();
             for (var service in services){
               for(var characteristic in service.characteristics){

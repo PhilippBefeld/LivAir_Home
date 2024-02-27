@@ -759,7 +759,9 @@ class DevicePageState extends State<DevicePage> {
     foundAccessPoints = {};
 
     await deviceToAdd!.connect();
-    await deviceToAdd!.requestMtu(100);
+    if (Platform.isAndroid) {
+      await deviceToAdd!.requestMtu(100);
+    }
     List<BluetoothService> services = await deviceToAdd!.discoverServices();
     for (var service in services){
       for(var characteristic in service.characteristics){
