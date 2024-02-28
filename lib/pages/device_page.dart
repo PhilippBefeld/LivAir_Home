@@ -53,6 +53,7 @@ class DevicePageState extends State<DevicePage> {
 
   //Screen control variables
   int screenIndex = 0;
+  bool firstTry = true;
 
   //addDevice variables
   StreamSubscription<List<ScanResult>>? subscription;
@@ -75,7 +76,6 @@ class DevicePageState extends State<DevicePage> {
   Future<dynamic> getAllDevices() async{
     if(channel != null) return;
     searchedAdditionalDevices = false;
-    var firstTry = true;
     unit = await storage.read(key: 'unit');
     try{
       try {
@@ -365,7 +365,6 @@ class DevicePageState extends State<DevicePage> {
                               "keys": "radon"
                             }
                         );
-                        print(result2);
                         currentDevices2.add({
                           element["id"]["id"].toString() : Device2(
                             lastSync : 0,
@@ -396,11 +395,15 @@ class DevicePageState extends State<DevicePage> {
   }
 
   void showDeviceDetails(Map<String,Device2> device){
+
     Navigator.of(context).push(
         MaterialPageRoute(
             builder: (context) => DeviceDetailPage(token: token, refreshToken: refreshToken,device: device,)
         )
-    );
+    ).then((_) => setState(() {
+      channel = null;
+      firstTry = true;
+    }));
   }
 
 
@@ -540,9 +543,10 @@ class DevicePageState extends State<DevicePage> {
             const SizedBox(height: 30,),
             Text(AppLocalizations.of(context)!.deviceLocation),
             const SizedBox(height: 5,),
-            TextField(
-              controller: deviceLocationController,
-              decoration: InputDecoration(
+            GooglePlaceAutoCompleteTextField(
+              textEditingController: deviceLocationController,
+              googleAPIKey: "AIzaSyAxry8f1YCKcXgQh6LOgCESzckFyryAgXE",
+              inputDecoration: InputDecoration(
                 enabledBorder: const OutlineInputBorder(
                   borderSide: BorderSide(width: 2,color: Colors.black),
                 ),
@@ -554,12 +558,6 @@ class DevicePageState extends State<DevicePage> {
                 hintText: AppLocalizations.of(context)!.locationHint,
                 hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
               ),
-            ),
-
-            GooglePlaceAutoCompleteTextField(
-              textEditingController: deviceLocationController,
-              googleAPIKey: "AIzaSyAxry8f1YCKcXgQh6LOgCESzckFyryAgXE",
-              inputDecoration: InputDecoration(),
               debounceTime: 800, // default 600 ms,
               //countries: ["in","fr"],// optional by default null is set
               isLatLngRequired:true,// if you required coordinates from place detail
@@ -1074,6 +1072,25 @@ class DevicePageState extends State<DevicePage> {
                         );
                         return;
                       }
+                      setState(() {
+                        channel = null;
+                        firstTry = true;
+                      });
+                    },
+                    icon: const Icon(MaterialSymbols.refresh,color: Color(0xff0099f0),)
+                ),
+                IconButton(
+                    onPressed: () async{
+                      try {
+                        final result = await InternetAddress.lookup('example.com');
+                        if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                        }
+                      } on SocketException catch (_) {
+                        Fluttertoast.showToast(
+                            msg: AppLocalizations.of(context)!.noInternetT
+                        );
+                        return;
+                      }
                       searchAvailableDevices();
                     },
                     icon: const Icon(MaterialSymbols.add,color: Color(0xff0099f0),)
@@ -1088,31 +1105,39 @@ class DevicePageState extends State<DevicePage> {
                   child: Column(
                     children: [
                       Expanded(
-                        child: ListView.separated(
-                          separatorBuilder: (context, index) => const SizedBox(height: 10,),
-                          padding: const EdgeInsets.only(bottom: 10),
-                          itemCount: currentDevices2.length,
-                          itemBuilder: (BuildContext context, int index) {
-                            return MyDeviceWidget(
-                              onTap: () async{
-                                  try {
-                                    final result = await InternetAddress.lookup('example.com');
-                                    if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                                    }
-                                  } on SocketException catch (_) {
-                                    Fluttertoast.showToast(
-                                        msg: AppLocalizations.of(context)!.noInternetT
-                                    );
-                                    return;
-                                  }
-                                showDeviceDetails(currentDevices2[index]);
-                              },
-                              name: currentDevices2[index].values.elementAt(0).floor == "viewer" ?  "${currentDevices2[index].values.elementAt(0).label} (as Viewer)" : currentDevices2[index].values.elementAt(0).label!,
-                              isOnline: currentDevices2[index].values.elementAt(0).isOnline,
-                              radonValue: currentDevices2[index].values.elementAt(0).radon.toString(),
-                              unit: unit == "Bq/m³" ? "Bq/m³": "pCi/L",
-                            );
+                        child: RefreshIndicator(
+                          onRefresh: () async{
+                            setState(() {
+                              channel = null;
+                              firstTry = true;
+                            });
                           },
+                          child: ListView.separated(
+                            separatorBuilder: (context, index) => const SizedBox(height: 10,),
+                            padding: const EdgeInsets.only(bottom: 10),
+                            itemCount: currentDevices2.length,
+                            itemBuilder: (BuildContext context, int index) {
+                              return MyDeviceWidget(
+                                onTap: () async{
+                                    try {
+                                      final result = await InternetAddress.lookup('example.com');
+                                      if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                                      }
+                                    } on SocketException catch (_) {
+                                      Fluttertoast.showToast(
+                                          msg: AppLocalizations.of(context)!.noInternetT
+                                      );
+                                      return;
+                                    }
+                                  showDeviceDetails(currentDevices2[index]);
+                                },
+                                name: currentDevices2[index].values.elementAt(0).floor == "viewer" ?  "${currentDevices2[index].values.elementAt(0).label} (as Viewer)" : currentDevices2[index].values.elementAt(0).label!,
+                                isOnline: currentDevices2[index].values.elementAt(0).isOnline,
+                                radonValue: currentDevices2[index].values.elementAt(0).radon.toString(),
+                                unit: unit == "Bq/m³" ? "Bq/m³": "pCi/L",
+                              );
+                            },
+                          ),
                         ),
                       ),
                     ],

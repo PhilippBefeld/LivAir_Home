@@ -341,42 +341,6 @@ class NotificationsPageState extends State<NotificationsPage>{
     }
   }
 
-  markNotificationsAsRead() async{
-    List<String> readNotifications = [];
-    for (var element in selectedNotifications) {
-      readNotifications.add(notifications.elementAt(element)["id"]["id"]);
-    }
-    try{
-      final channel = WebSocketChannel.connect(
-        Uri.parse('wss://dashboard.livair.io/api/ws'),
-      );
-      channel.sink.add(
-          jsonEncode({
-            "cmds": [
-              {
-                "type": "MARK_NOTIFICATIONS_AS_READ",
-                "notifications": readNotifications,
-                "cmdId": 1
-              }
-            ],"authCmd": {
-              "cmdId": 0,
-              "token": "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJsaXZhaXJob21lQGxpdmFpci5pbyIsInVzZXJJZCI6IjFlMDgxMzcwLThkMDYtMTFlZS05OTg0LWM3NWJhYzQ2YTcwOSIsInNjb3BlcyI6WyJURU5BTlRfQURNSU4iXSwic2Vzc2lvbklkIjoiYzhmMzBiNTAtZTVjNC00NjU0LTk5ZjctMzk2NTQyMjZmOGI2IiwiaXNzIjoidGhpbmdzYm9hcmQuaW8iLCJpYXQiOjE3MDUzMjg2MDQsImV4cCI6MTcwNTMzNzYwNCwiZW5hYmxlZCI6dHJ1ZSwiaXNQdWJsaWMiOmZhbHNlLCJ0ZW5hbnRJZCI6ImZmMGI3ZDQwLThkMDUtMTFlZS05OTg0LWM3NWJhYzQ2YTcwOSIsImN1c3RvbWVySWQiOiIxMzgxNDAwMC0xZGQyLTExYjItODA4MC04MDgwODA4MDgwODAifQ.PRzt3oZqNSgl9vFhXxHLGwZ0VZscmUQGn26HQZFucdJHJBmguIw3JcQEiMIrsqVk-9APXXt7p1YMTMJirETSZw"
-            }
-          })
-      );
-      channel.sink.close();
-      await Future<void>.delayed( const Duration(milliseconds: 100));
-      notificationsLoaded = true;
-      setState(() {
-        selectedNotifications.clear();
-      });
-      await Future<void>.delayed( const Duration(seconds: 1));
-      notificationsLoaded = false;
-    }catch(e){
-      print(e);
-    }
-  }
-
   Widget setScreen() {
     switch (index) {
       case 0: return const Center();

@@ -102,7 +102,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   TextEditingController renameController = TextEditingController();
 
   //locationScreen values
-  TextEditingController locationController = TextEditingController();
   TextEditingController deviceLocationController = TextEditingController();
 
   //shareDeviceScreen values
@@ -2466,25 +2465,21 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 children: [
                   Text(AppLocalizations.of(context)!.deviceLocation),
                   const SizedBox(height: 5,),
-                  TextField(
-                    controller: locationController,
-                    decoration: InputDecoration(
-                      enabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      focusedBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      fillColor: Colors.white,
-                      filled: true,
-                      hintText: device.values.first.location,
-                      hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
-                    ),
-                  ),
                   GooglePlaceAutoCompleteTextField(
                     textEditingController: deviceLocationController,
                     googleAPIKey: "AIzaSyDbedbD3jc34d-eYRUw1PC-vT4sPFeBdMQ",
-                    inputDecoration: InputDecoration(),
+                    inputDecoration: InputDecoration(
+                      enabledBorder: const OutlineInputBorder(
+                        borderSide: BorderSide(width: 2,color: Colors.black),
+                      ),
+                      focusedBorder: const OutlineInputBorder(
+                        borderSide: BorderSide(width: 2,color: Colors.black),
+                      ),
+                      fillColor: Colors.white,
+                      filled: true,
+                      hintText: AppLocalizations.of(context)!.locationHint,
+                      hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                    ),
                     debounceTime: 800, // default 600 ms,
                     //countries: ["in","fr"],// optional by default null is set
                     isLatLngRequired:true,// if you required coordinates from place detail
@@ -2517,7 +2512,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   ),
                 ],
               ),
-
               Row(
                 children: [
                   Expanded(
