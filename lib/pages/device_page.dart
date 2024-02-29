@@ -36,7 +36,7 @@ class DevicePageState extends State<DevicePage> {
   final logger = Logger();
   final Dio dio = Dio();
   final location = Location();
-  final storage = FlutterSecureStorage();
+  final storage = const FlutterSecureStorage();
   String? unit;
 
   DevicePageState(this.token, this.refreshToken);
@@ -390,7 +390,9 @@ class DevicePageState extends State<DevicePage> {
               }
       );
     }catch(e){
-
+      Fluttertoast.showToast(
+          msg: "Failed to receive data"
+      );
     }
   }
 
@@ -428,7 +430,7 @@ class DevicePageState extends State<DevicePage> {
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: (){
             setState(() {
-              screenIndex = 12;
+              screenIndex = 0;
             });
           },
         ),
@@ -495,7 +497,6 @@ class DevicePageState extends State<DevicePage> {
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
-
     try{
       await dio.post('https://dashboard.livair.io/api/livAir/claim',
           data:
@@ -505,14 +506,18 @@ class DevicePageState extends State<DevicePage> {
             "location": newDeviceLocation
           }
       );
+      deviceLocationController.text = "";
+      deviceNameController.text = "";
       setState(() {
         screenIndex = 0;
       });
-    }on DioError catch(e){
-      print(e);
+    }on DioException catch(e){
       setState(() {
         screenIndex = 0;
       });
+      Fluttertoast.showToast(
+          msg: e.error.toString().split("\n").elementAt(1)
+      );
     }
   }
 
@@ -563,7 +568,7 @@ class DevicePageState extends State<DevicePage> {
               isLatLngRequired:true,// if you required coordinates from place detail
               getPlaceDetailWithLatLng: (Prediction prediction) {
                 // this method will return latlng with place detail
-                print("placeDetails" + prediction.lng.toString());
+                print("placeDetails${prediction.lng}");
               }, // this callback is called when isLatLngRequired is true
               itemClick: (Prediction prediction) {
                 deviceLocationController.text = prediction.description!;
@@ -579,13 +584,13 @@ class DevicePageState extends State<DevicePage> {
                       const SizedBox(
                         width: 7,
                       ),
-                      Expanded(child: Text("${prediction.description??""}"))
+                      Expanded(child: Text(prediction.description??""))
                     ],
                   ),
                 );
               },
                   // if you want to add seperator between list items
-            seperatedBuilder: Divider(),
+            seperatedBuilder: const Divider(),
               // want to show close icon
             isCrossBtnShown: true,
             ),
@@ -632,9 +637,10 @@ class DevicePageState extends State<DevicePage> {
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: (){
             deviceToAdd!.disconnect(timeout: 1);
+            deviceToAdd!.removeBond();
             btChat!.cancel();
             setState(() {
-              screenIndex = 11;
+              screenIndex = 0;
             });
           },
         ),
@@ -707,6 +713,7 @@ class DevicePageState extends State<DevicePage> {
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: (){
             deviceToAdd!.disconnect(timeout: 1);
+            deviceToAdd!.removeBond();
             btChat!.cancel();
             setState(() {
               screenIndex = 1;
@@ -755,11 +762,30 @@ class DevicePageState extends State<DevicePage> {
     int foundAccesspointCount = 0;
     int counter = 0;
     foundAccessPoints = {};
+    showDialog(context: context, builder: (context){
+      return PopScope(
+        canPop: false,
+        child: Scaffold(
+            body: Center(
+                child:Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text("Searching for Wifi access points"),
+                    const SizedBox(height: 36,),
+                    const CircularProgressIndicator(color: Colors.black,),
+                  ],
+                )
+            )
+        ),
+      );
+    });
 
     await deviceToAdd!.connect();
     if (Platform.isAndroid) {
       await deviceToAdd!.requestMtu(100);
     }
+    bool loginSuccessful = false;
     List<BluetoothService> services = await deviceToAdd!.discoverServices();
     for (var service in services){
       for(var characteristic in service.characteristics){
@@ -770,10 +796,9 @@ class DevicePageState extends State<DevicePage> {
             String message = utf8.decode(data).trim();
             print(utf8.decode(data));
             if(message == ""){
-              await Future<void>.delayed( const Duration(seconds: 1));
-              await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
             }
             if(message == 'LOGIN OK'){
+              loginSuccessful = true;
               await writeCharacteristic!.write(utf8.encode('SCAN'));
             }
             if(message.length >=7){
@@ -786,6 +811,7 @@ class DevicePageState extends State<DevicePage> {
               counter++;
               if(counter==foundAccesspointCount){
                 if(foundAccesspointCount ==0){
+                  Navigator.pop(context);
                   setState(() {
                     screenIndex = 0;
                   });
@@ -793,6 +819,7 @@ class DevicePageState extends State<DevicePage> {
                       msg: "No access points found"
                   );
                 }
+                Navigator.pop(context);
                 setState(() {
                   screenIndex = 11;
                 });
@@ -800,15 +827,25 @@ class DevicePageState extends State<DevicePage> {
             }
             if(message == "Connect Success"){
               deviceToAdd!.disconnect(timeout: 1);
+              deviceToAdd!.removeBond();
               setState(() {
                 screenIndex = 13;
               });
+              Fluttertoast.showToast(
+                  msg: "Device successfully connected"
+              );
             }
           });
         }
         if(characteristic.properties.write){
           writeCharacteristic = characteristic;
-          await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+          if(!loginSuccessful){
+            try{
+              await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+              loginSuccessful = true;
+            }catch(e){
+            }
+          }
         }
       }
     }
@@ -817,6 +854,24 @@ class DevicePageState extends State<DevicePage> {
 
 
   searchAvailableDevices() async{
+    showDialog(context: context, builder: (context){
+      return PopScope(
+        canPop: false,
+        child: Scaffold(
+            body: Center(
+                child:Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text("Searching for devices in area"),
+                    const SizedBox(height: 36,),
+                    const CircularProgressIndicator(color: Colors.black,),
+                  ],
+                )
+            )
+        ),
+      );
+    });
     try {
       final result = await InternetAddress.lookup('example.com');
       if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
@@ -825,6 +880,7 @@ class DevicePageState extends State<DevicePage> {
       Fluttertoast.showToast(
           msg: AppLocalizations.of(context)!.noInternetT
       );
+      Navigator.pop(context);
       return;
     }
     foundDevices = [];
@@ -849,7 +905,7 @@ class DevicePageState extends State<DevicePage> {
     FlutterBluePlus.scanResults.timeout( const Duration(seconds: 2));
     var subscription = FlutterBluePlus.scanResults.listen((results) async{
       for(ScanResult r in results){
-        if(!r.advertisementData.manufacturerData.keys.isEmpty){
+        if(r.advertisementData.manufacturerData.keys.isNotEmpty){
           if(r.advertisementData.manufacturerData.keys.first == 3503){
             List<int> data = r.advertisementData.manufacturerData.values.elementAt(0).sublist(15,23);
             Iterable<int> dataIter = data;
@@ -866,12 +922,14 @@ class DevicePageState extends State<DevicePage> {
     await Future<void>.delayed( const Duration(seconds: 4));
     subscription.cancel();
     if(foundDevices!.isEmpty){
+      Navigator.pop(context);
       screenIndex = 0;
       Fluttertoast.showToast(
           msg: "No devices found"
       );
       return;
     }
+    Navigator.pop(context);
     setState(() {
       screenIndex = 1;
     });
@@ -1151,10 +1209,8 @@ class DevicePageState extends State<DevicePage> {
 
   @override
   Widget build(BuildContext context) {
-   return WillPopScope(
-       onWillPop: () async{
-         return false;
-       },
+   return PopScope(
+       canPop: false,
        child: setPage()
    );
   }

@@ -112,7 +112,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   //wifiScreen values
   StreamSubscription<List<ScanResult>>? subscription;
   StreamSubscription<List<int>>? subscriptionToDevice;
-  StreamSubscription<dynamic>? btChat;
   Map<String, int> foundAccessPoints = {};
   String selectedWifiAccesspoint = "";
   BluetoothDevice? btDevice;
@@ -463,6 +462,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       );
     }catch (e) {
       logger.d(e);
+      Fluttertoast.showToast(
+          msg: "Failed to load data"
+      );
     }
   }
 
@@ -484,6 +486,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       );
     }catch(e){
       logger.e(e);
+      Fluttertoast.showToast(
+          msg: "Failed to send data"
+      );
     }
     telemetryRunning = false;
   }
@@ -505,6 +510,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       );
     }catch(e){
       logger.e(e);
+      Fluttertoast.showToast(
+          msg: "Failed to send data"
+      );
     }
     telemetryRunning = false;
   }
@@ -533,6 +541,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       );
     }catch(e){
       logger.e(e);
+      Fluttertoast.showToast(
+          msg: "Failed to send data"
+      );
     }
   }
   displayOnOff(bool value) {
@@ -552,6 +563,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       );
     }catch(e){
       logger.e(e);
+      Fluttertoast.showToast(
+          msg: "Failed to send data"
+      );
     }
   }
 
@@ -571,7 +585,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         ),
       );
     }catch(e){
-      print(e);
+      logger.e(e);
+      Fluttertoast.showToast(
+          msg: "Failed to send data"
+      );
     }
   }
 
@@ -590,6 +607,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       );
     }catch(e){
       logger.e(e);
+      Fluttertoast.showToast(
+          msg: "Failed to send data"
+      );
     }
   }
 
@@ -720,7 +740,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       }
       k+=1;
     }
-    print(bars.length);
     return bars.reversed.toList();
   }
 
@@ -2057,9 +2076,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               icon: const Icon(Icons.arrow_back, color: Colors.black),
               onPressed: (){
                 try{
-                  subscriptionToDevice?.cancel();
-                  btChat!.cancel();
+                  subscriptionToDevice!.cancel();
                   btDevice!.disconnect(timeout: 1);
+                  btDevice!.removeBond();
                 }catch(e){
                   print(e);
                 }
@@ -2132,9 +2151,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               icon: const Icon(Icons.arrow_back, color: Colors.black),
               onPressed: (){
                 try{
-                  subscriptionToDevice?.cancel();
-                  btChat!.cancel();
+                  subscriptionToDevice!.cancel();
                   btDevice!.disconnect(timeout: 1);
+                  btDevice!.removeBond();
                 }catch(e){
                 }
                 setState(() {
@@ -2237,6 +2256,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     }
     FlutterBluePlus.stopScan();
     bool deviceFound = false;
+    bool loginSuccessful = false;
     subscription = FlutterBluePlus.scanResults.listen((results) async {
       for (ScanResult r in results) {
         if (!deviceFound) {
@@ -2264,10 +2284,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
                     String message = utf8.decode(data).trim();
                     print(utf8.decode(data));
-                    if(message == ""){
-                      await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+                    if(message == "" && !loginSuccessful){
                     }
                     if(message == 'LOGIN OK'){
+                      loginSuccessful = true;
                       await writeCharacteristic!.write(utf8.encode('SCAN'));
                     }
                     if(message.length >=7){
@@ -2280,6 +2300,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       counter++;
                       if(counter==foundAccesspointCount){
                         if(foundAccesspointCount ==0){
+                          Navigator.pop(context);
                           setState(() {
                             screenIndex = 1;
                           });
@@ -2294,20 +2315,27 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       }
                     }
                     if(message == 'Connect Success'){
-                      btDevice!.disconnect(timeout: 1);
+                      await btDevice!.disconnect(timeout: 1);
+                      btDevice!.removeBond();
                       subscriptionToDevice?.cancel();
                       setState(() {
                         screenIndex = 1;
                       });
+                      Navigator.pop(context);
+                      Fluttertoast.showToast(
+                          msg: "Device successfully connected"
+                      );
                     }
                   });
                 }
                 if(characteristic.properties.write){
                   writeCharacteristic = characteristic;
-                  try{
-                    await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
-                  }catch(e){
-                    print(e);
+                  if(!loginSuccessful){
+                    try{
+                      await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+                      loginSuccessful = true;
+                    }catch(e){
+                    }
                   }
                 }
               }
@@ -2364,9 +2392,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     subscription = FlutterBluePlus.scanResults.listen((results) async {
       for (ScanResult r in results) {
         if (!deviceFound) {
-          List<int> bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
+          List<int> bluetoothAdvertisementData = [];
           String bluetoothDeviceName = "";
-          if(!r.advertisementData.manufacturerData.keys.isEmpty){
+          if(r.advertisementData.manufacturerData.keys.isNotEmpty){
+            if(r.advertisementData.manufacturerData.values.isNotEmpty){
+              bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
+            }
             if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
             if(bluetoothDeviceName == device.values.first.name){
               radonCurrent = bluetoothAdvertisementData.elementAt(1);
@@ -2545,6 +2576,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
+    dio.post('https://dashboard.livair.io/api/plugins/telemetry/${device.keys.first}/SHARED_SCOPE',data: {
+      "location": deviceLocationController.text
+    });
     try{
     }catch(e){
       setState(() {
@@ -2553,6 +2587,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       Fluttertoast.showToast(
           msg: AppLocalizations.of(context)!.failedNewLocationM
       );
+      return;
     }
     Navigator.pop(context);
     setState(() {
@@ -3155,8 +3190,11 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
             }
         )
       );
-    }on DioError catch (e){
+    }on DioException catch (e){
       logger.e(e.message);
+      Fluttertoast.showToast(
+          msg: "Failed to send data"
+      );
     }
     setState(() {
       screenIndex = 6;
@@ -3174,7 +3212,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       );
       viewerData = response.data;
     }catch(e){
-      print(e);
+      Fluttertoast.showToast(
+          msg: "Failed to receive data"
+      );
     }
   }
 
@@ -3253,7 +3293,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       );
       viewerData = response.data;
     }on DioError catch(e){
-      print(e.response);
+      Fluttertoast.showToast(
+          msg: "Failed to receive data"
+      );
     }
     emailToRemove = "";
     setState(() {
@@ -3429,7 +3471,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         ),
       );
     }catch(e){
-      print(e);
+      Fluttertoast.showToast(
+          msg: "Failed to send data"
+      );
     }
     selectedMinutes = 0;
     selectedHours = 0;
@@ -3524,7 +3568,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       );
       Navigator.pop(context);
     }catch(e){
-      logger.e(e);
+      Fluttertoast.showToast(
+          msg: "Failed to send data"
+      );
     }
     telemetryRunning = false;
   }
@@ -3627,8 +3673,11 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             "deviceIds": [device.keys.first]
                           }
                       );
-                    }on DioError catch(e){
+                    }on DioException catch(e){
                       logger.d(e.response);
+                      Fluttertoast.showToast(
+                          msg: "Failed"
+                      );
                     }
                     Navigator.pop(context);
                     Navigator.pop(context);
@@ -3636,8 +3685,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
 
                     });
                   },
-                  style: OutlinedButton.styleFrom(backgroundColor: const Color(0xff0099f0),minimumSize: const Size(100, 50),side: BorderSide(color: Color(0xff0099f0))),
-                  child: Text("Stop viewing",style: const TextStyle(color: Colors.white)),
+                  style: OutlinedButton.styleFrom(backgroundColor: const Color(0xff0099f0),minimumSize: const Size(100, 50),side: const BorderSide(color: Color(0xff0099f0))),
+                  child: Text("Stop viewing",style: TextStyle(color: Colors.white)),
                 ),
               ),
             ],
@@ -3650,7 +3699,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   onPressed: (){
                     Navigator.pop(context);
                   },
-                  style: OutlinedButton.styleFrom(backgroundColor: Colors.white,minimumSize: const Size(100, 50),side: BorderSide(color: Color(0xff0099f0))),
+                  style: OutlinedButton.styleFrom(backgroundColor: Colors.white,minimumSize: const Size(100, 50),side: const BorderSide(color: Color(0xff0099f0))),
                   child: Text(AppLocalizations.of(context)!.cancel,style: const TextStyle(color: Color(0xff0099f0))),
                 ),
               ),

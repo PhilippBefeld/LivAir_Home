@@ -119,7 +119,10 @@ class SignUpPageState extends State<SignUpPage>{
             msg: AppLocalizations.of(context)!.wrongCode
         );
       }
-    }on DioError catch(e){
+    }on DioException catch(e){
+      Fluttertoast.showToast(
+          msg: "Failed to request code"
+      );
     }
   }
 
@@ -212,7 +215,6 @@ class SignUpPageState extends State<SignUpPage>{
                   ),
                   MyButton(
                     padding: const EdgeInsets.all(10),
-                    heigth: 60,
                     textInhalt: AppLocalizations.of(context)!.newVerificationCode,
                     onTap: () async{
                       try {

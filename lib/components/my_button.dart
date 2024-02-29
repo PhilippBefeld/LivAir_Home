@@ -27,7 +27,7 @@ class MyButton extends StatelessWidget {
         alignment: alignment ?? Alignment.center,
         child: Container(
           width: width ?? 270,
-          height: heigth ?? 70,
+          height: heigth,
           padding: padding ?? const EdgeInsets.all(25),
           margin: const EdgeInsets.symmetric(horizontal: 25),
           decoration: BoxDecoration(

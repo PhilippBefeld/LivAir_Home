@@ -100,7 +100,6 @@ class SignInPageState extends State<SignInPage> {
           }
         }
         var unitData = await dio.get('https://dashboard.livair.io/api/livAir/units',options: Options(responseType: ResponseType.plain));
-        print(languageData);
         if(!await storage.containsKey(key: 'unit')){
           storage.write(key: 'unit', value: unitData.data);
         }else{
@@ -118,7 +117,6 @@ class SignInPageState extends State<SignInPage> {
           });
       token = loginResponse.data["token"];
       refreshToken = loginResponse.data["refreshToken"];
-      print(loginResponse);
       if(savePasswordChecked){
         await storage.write(key: 'email', value: emailController.text);
         await storage.write(key: 'password', value: passwordController.text);
@@ -138,7 +136,7 @@ class SignInPageState extends State<SignInPage> {
               builder: (context) => DestinationView(token: token, refreshToken: refreshToken,),
           )
       ).then(onGoBack);
-    } on DioError catch (e) {
+    } on DioException catch (e) {
 
       if(e.message == 'Authentication failed'){
         Navigator.pop(context);
@@ -188,7 +186,6 @@ class SignInPageState extends State<SignInPage> {
         var response = dio.post(
           'https://dashboard.livair.io/api/noauth/livAir/resetPassword/${emailResetController.text}',
         );
-        print(response);
         Navigator.pop(context);
         Fluttertoast.showToast(
             msg: AppLocalizations.of(context)!.emailSent_toast
@@ -253,6 +250,7 @@ class SignInPageState extends State<SignInPage> {
       }
       if(await storage.containsKey(key: "autoSignIn")){
         logIn();
+        firstBuild = false;
         return;
       }
       if(await storage.containsKey(key: "language")){
@@ -302,7 +300,6 @@ class SignInPageState extends State<SignInPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Confirmation code"),
                   Row(
                     children: [
                       Expanded(
@@ -349,38 +346,35 @@ class SignInPageState extends State<SignInPage> {
                     children: [
                       Expanded(
                         child:
-                        Container(
-                          height: 50,
-                          child: OutlinedButton(
-                            onPressed: () async{
-                              try {
-                                final result = await InternetAddress.lookup('example.com');
-                                if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                                }
-                              } on SocketException catch (_) {
-                                Fluttertoast.showToast(
-                                    msg: AppLocalizations.of(context)!.noInternetT
-                                );
-                                return;
+                        OutlinedButton(
+                          onPressed: () async{
+                            try {
+                              final result = await InternetAddress.lookup('example.com');
+                              if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
                               }
-                              dio.post('https://dashboard.livair.io/api/livAir/verifyCode',
-                                data: jsonEncode(
-                                    {
-                                      "email": emailController.text,
-                                      "verificationCode": confirmationCodeController.text
-                                    }
-                                ),
+                            } on SocketException catch (_) {
+                              Fluttertoast.showToast(
+                                  msg: AppLocalizations.of(context)!.noInternetT
                               );
-                              Navigator.pop(context);
-                            },
-                            style: OutlinedButton.styleFrom(
-                                side: const BorderSide(width: 0),
-                                foregroundColor: const Color(0xff0099F0),
-                                backgroundColor: const Color(0xff0099F0),
-                                minimumSize: const Size(60,20)
-                            ),
-                            child: Text(AppLocalizations.of(context)!.confirm,style: const TextStyle(color: Colors.white),),
+                              return;
+                            }
+                            dio.post('https://dashboard.livair.io/api/livAir/verifyCode',
+                              data: jsonEncode(
+                                  {
+                                    "email": emailController.text,
+                                    "verificationCode": confirmationCodeController.text
+                                  }
+                              ),
+                            );
+                            Navigator.pop(context);
+                          },
+                          style: OutlinedButton.styleFrom(
+                              side: const BorderSide(width: 0),
+                              foregroundColor: const Color(0xff0099F0),
+                              backgroundColor: const Color(0xff0099F0),
+                              minimumSize: const Size(60,20)
                           ),
+                          child: Text(AppLocalizations.of(context)!.confirm,style: const TextStyle(color: Colors.white), maxLines: 10,),
                         ),
                       ),
                     ],

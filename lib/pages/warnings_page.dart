@@ -86,6 +86,7 @@ class WarningsPageState extends State<WarningsPage>{
     setState(() {
 
     });
+    await Future<void>.delayed( const Duration(seconds: 1));
     gettingWarnings = false;
   }
 
@@ -235,6 +236,7 @@ class WarningsPageState extends State<WarningsPage>{
                                       );
                                       return;
                                     }
+                                    print(warnings);
                                     selectedDevice = warnings.elementAt(index).values.elementAt(0);
                                     deleteWarningDialog();
                                   },
@@ -520,7 +522,7 @@ class WarningsPageState extends State<WarningsPage>{
                     });
                   },
                 ),
-                SizedBox(width: 20,),
+                const SizedBox(width: 20,),
               ],
             ),
             const SizedBox(height: 20),
@@ -544,7 +546,7 @@ class WarningsPageState extends State<WarningsPage>{
                           index = 0;
                         });
                       } ,
-                      style: OutlinedButton.styleFrom(backgroundColor: Color(0xff0099f0),minimumSize: Size(100, 50)),
+                      style: OutlinedButton.styleFrom(backgroundColor: const Color(0xff0099f0),minimumSize: const Size(100, 50)),
                       child: Text(AppLocalizations.of(context)!.createWarning,style: const TextStyle(color: Colors.white),)
                   ),
                 ),
@@ -559,12 +561,9 @@ class WarningsPageState extends State<WarningsPage>{
 
   updateWarning() async{
     final dio = Dio();
-
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
-
-    print(selectedDevice);
     try{
       dio.post(
           "https://dashboard.livair.io/api/livAir/warning",
