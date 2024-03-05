@@ -2257,6 +2257,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     FlutterBluePlus.stopScan();
     bool deviceFound = false;
     bool loginSuccessful = false;
+    bool hasScanned = false;
     subscription = FlutterBluePlus.scanResults.listen((results) async {
       for (ScanResult r in results) {
         if (!deviceFound) {
@@ -2286,8 +2287,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     print(utf8.decode(data));
                     if(message == "" && !loginSuccessful){
                     }
-                    if(message == 'LOGIN OK'){
+                    if(message == 'LOGIN OK' && !hasScanned){
                       loginSuccessful = true;
+                      hasScanned = true;
+                      await Future<void>.delayed( const Duration(milliseconds: 300))
                       await writeCharacteristic!.write(utf8.encode('SCAN'));
                     }
                     if(message.length >=7){
@@ -2330,10 +2333,11 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 }
                 if(characteristic.properties.write){
                   writeCharacteristic = characteristic;
+                  await Future<void>.delayed( const Duration(milliseconds: 300));
                   if(!loginSuccessful){
                     try{
-                      await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
                       loginSuccessful = true;
+                      await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
                     }catch(e){
                     }
                   }

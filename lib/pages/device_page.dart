@@ -786,6 +786,7 @@ class DevicePageState extends State<DevicePage> {
       await deviceToAdd!.requestMtu(100);
     }
     bool loginSuccessful = false;
+    bool hasScanned = false;
     List<BluetoothService> services = await deviceToAdd!.discoverServices();
     for (var service in services){
       for(var characteristic in service.characteristics){
@@ -797,8 +798,10 @@ class DevicePageState extends State<DevicePage> {
             print(utf8.decode(data));
             if(message == ""){
             }
-            if(message == 'LOGIN OK'){
+            if(message == 'LOGIN OK' && !hasScanned){
               loginSuccessful = true;
+              hasScanned = true;
+              await Future<void>.delayed( const Duration(milliseconds: 300))
               await writeCharacteristic!.write(utf8.encode('SCAN'));
             }
             if(message.length >=7){
@@ -839,10 +842,11 @@ class DevicePageState extends State<DevicePage> {
         }
         if(characteristic.properties.write){
           writeCharacteristic = characteristic;
+          await Future<void>.delayed( const Duration(milliseconds: 300));
           if(!loginSuccessful){
             try{
-              await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
               loginSuccessful = true;
+              await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
             }catch(e){
             }
           }
