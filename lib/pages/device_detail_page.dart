@@ -2290,7 +2290,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     if(message == 'LOGIN OK' && !hasScanned){
                       loginSuccessful = true;
                       hasScanned = true;
-                      await Future<void>.delayed( const Duration(milliseconds: 300))
+                      await Future<void>.delayed( const Duration(milliseconds: 300));
                       await writeCharacteristic!.write(utf8.encode('SCAN'));
                     }
                     if(message.length >=7){
