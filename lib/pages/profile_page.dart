@@ -85,6 +85,7 @@ class ProfilePageState extends State<ProfilePage>{
       try{
         Response userInfoResponse = await dio.get('https://dashboard.livair.io/api/auth/user');
         userId = userInfoResponse.data["id"]["id"];
+
         response = await dio.get("https://dashboard.livair.io/api/user/$userId");
         print(response);
       }catch(e){
@@ -751,7 +752,7 @@ class ProfilePageState extends State<ProfilePage>{
                             dio.options.headers['Authorization'] = "Bearer $token";
                             try{
                               await dio.delete('https://dashboard.livair.io/api/livAir/deleteAccount');
-                            }on DioError catch(e){
+                            }on DioException catch(e){
                               return;
                             }
                             const storage = FlutterSecureStorage();

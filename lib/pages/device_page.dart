@@ -74,9 +74,11 @@ class DevicePageState extends State<DevicePage> {
   String newDeviceLocation = "";
 
   Future<dynamic> getAllDevices() async{
-    if(channel != null) return;
+    if(!firstTry)return;
     searchedAdditionalDevices = false;
     unit = await storage.read(key: 'unit');
+    currentDevices2 = [];
+    firstTry = false;
     try{
       try {
         final result = await InternetAddress.lookup('example.com');
@@ -88,307 +90,101 @@ class DevicePageState extends State<DevicePage> {
         );
         return;
       }
-      channel = WebSocketChannel.connect(
-        Uri.parse('wss://dashboard.livair.io/api/ws/plugins/telemetry?token=$token'),
-      );
-      channel!.sink.add(
-          jsonEncode(
-            {
-              "attrSubCmds": [],
-              "tsSubCmds": [],
-              "historyCmds": [],
-              "entityDataCmds": [
-                {
-                  "query": {
-                    "entityFilter": {
-                      "type": "entitiesByGroupName",
-                      "resolveMultiple": true,
-                      "groupStateEntity": true,
-                      "stateEntityParamName": null,
-                      "groupType": "DEVICE",
-                      "entityGroupNameFilter": "All"
-                    },
-                    "pageLink": {
-                      "pageSize": 1024,
-                      "page": 0,
-                      "sortOrder": {
-                        "key": {
-                          "type": "ENTITY_FIELD",
-                          "key": "createdTime"
-                        },
-                        "direction": "DESC"
-                      }
-                    },
-                    "entityFields": [
-                      {
-                        "type": "ENTITY_FIELD",
-                        "key": "name"
-                      },
-                      {
-                        "type": "ENTITY_FIELD",
-                        "key": "label"
-                      },
-                      {
-                        "type": "ENTITY_FIELD",
-                        "key": "additionalInfo"
-                      }
-                    ],
-                    "latestValues": [
-                      {
-                        "type": "ATTRIBUTE",
-                        "key": "lastSync"
-                      },
-                      {
-                        "type": "ATTRIBUTE",
-                        "key": "location"
-                      },
-                      {
-                        "type": "ATTRIBUTE",
-                        "key": "floor"
-                      },
-                      {
-                        "type": "ATTRIBUTE",
-                        "key": "deviceAdded"
-                      },
-                      {
-                        "type": "ATTRIBUTE",
-                        "key": "locationId"
-                      },
-                      {
-                        "type": "ATTRIBUTE",
-                        "key": "lastActivityTime"
-                      },
-                      {
-                        "type": "ATTRIBUTE",
-                        "key": "availableKeys"
-                      },
-                      {
-                        "type": "ATTRIBUTE",
-                        "key": "isOnline"
-                      }
-                    ]
-                  },
-                  "cmdId": 1
-                },
 
-              ],
-              "entityDataUnsubscribeCmds": [],
-              "alarmDataCmds": [],
-              "alarmDataUnsubscribeCmds": [],
-              "entityCountCmds": [],
-              "entityCountUnsubscribeCmds": [],
-              "alarmCountCmds": [],
-              "alarmCountUnsubscribeCmds": []
-            }
-          )
-      );
-      channel!.stream.listen(
-              (data) async{
-                if(firstTry){
-                  logger.d(data);
-                  firstTry = false;
-                  channel!.sink.add(
-                    jsonEncode(
-                      {
-                        "attrSubCmds": [],
-                        "tsSubCmds": [],
-                        "historyCmds": [],
-                        "entityDataCmds": [
-                          {
-                            "cmdId":1,
-                            "tsCmd": {
-                              "keys": [
-                                "radon",
-                              ],
-                              "startTs": DateTime.now().millisecondsSinceEpoch-901000,
-                              "timeWindow": 901000,
-                              "interval": 1000,
-                              "limit": 50000,
-                              "agg": "NONE"
-                            },
-                            "latestCmd": {
-                              "keys": [
-                                {
-                                  "type": "ATTRIBUTE",
-                                  "key": "lastSync"
-                                },
-                                {
-                                  "type": "ATTRIBUTE",
-                                  "key": "location"
-                                },
-                                {
-                                  "type": "ATTRIBUTE",
-                                  "key": "floor"
-                                },
-                                {
-                                  "type": "ATTRIBUTE",
-                                  "key": "deviceAdded"
-                                },
-                                {
-                                  "type": "ATTRIBUTE",
-                                  "key": "locationId"
-                                },
-                                {
-                                  "type": "ATTRIBUTE",
-                                  "key": "lastActivityTime"
-                                },
-                                {
-                                  "type": "ATTRIBUTE",
-                                  "key": "availableKeys"
-                                },
-                                {
-                                  "type": "ATTRIBUTE",
-                                  "key": "isOnline"
-                                }
-                              ]
-                            }
-                          },
-
-                        ],
-                        "entityDataUnsubscribeCmds": [],
-                        "alarmDataCmds": [],
-                        "alarmDataUnsubscribeCmds": [],
-                        "entityCountCmds": [],
-                        "entityCountUnsubscribeCmds": [],
-                        "alarmCountCmds": [],
-                        "alarmCountUnsubscribeCmds": []
-                      }
-                    ),
-                  );
-                }
-
-                List<dynamic> updateData = [];
-                if(jsonDecode(data)["update"]!=null)updateData = jsonDecode(data)["update"];
-                if(updateData.isNotEmpty){
-                  for (var element in updateData) {
-                    try{
-                      //check if radon values are sent
-                      var newestRadonValue = "0";
-                      try {
-                        List<dynamic> radonValues = element["timeseries"]["radon"];
-                        if (radonValues.isNotEmpty) {
-                          Map<String, dynamic> newestRadonInfo = radonValues
-                              .elementAt(0);
-                          newestRadonValue = newestRadonInfo["value"];
-                        }
-                      }catch(e){
-                      }
-                      //get the deviceId
-                      String deviceId = element["entityId"]["id"];
-                      //get requested attributes(lastSync,isOnline,floor,etc)
-                      Map<String, dynamic> attributes = element["latest"]["ATTRIBUTE"];
-                      //get requested device info(name,label,etc)
-                      Map<String, dynamic> deviceInfo = element["latest"]["ENTITY_FIELD"];
-                      //check if device has label
-                      String? label;
-                      try{
-                        label = deviceInfo["label"]["value"];
-                      }catch(e){
-                      }
-                      DateTime? deviceAdded;
-                      try{
-                        deviceAdded = DateTime.parse(attributes["deviceAdded"]["value"]);
-                      }catch(e){
-                      }
-                      //check if lastSync is transmitted
-                      String lastSync = "0";
-                      try{
-                        lastSync = attributes["lastSync"]["value"];
-                        if(lastSync == "")lastSync = "0";
-                      }catch(e){
-                      }
-                      bool elementFound = false;
-                      currentDevices2.forEach((element) {
-                        try{
-                          if(element.containsKey(deviceId)){
-                            elementFound = true;
-                            element.values.first.update(
-                                lastSync == "0" ? null : int.parse(lastSync),
-                                attributes["location"]["value"],
-                                "",
-                                "",
-                                bool.parse(attributes["isOnline"]["value"]),
-                                int.parse(newestRadonValue),
-                                label ?? "",
-                                deviceInfo["name"]["value"]
-                            );
-                          }
-                        }catch(e){
-                        }
-                      });
-                      if(!elementFound) {
-                        currentDevices2.add({
-                        deviceId.toString() : Device2(
-                            lastSync : int.parse(lastSync),
-                            location : attributes["location"]["value"],
-                            floor : "",
-                            locationId : "",
-                            isOnline : bool.parse(attributes["isOnline"]["value"]),
-                            radon : int.parse(newestRadonValue),
-                            label : label ?? "",
-                            name : deviceInfo["name"]["value"],
-                            deviceAdded: 1,
-                        )
-                      });
-                      }
-                    }catch(e){
-                    }
-                  }
-                  channel!.sink.close();
-                }
-                dio.options.headers['content-Type'] = 'application/json';
-                dio.options.headers['Accept'] = "application/json";
-                dio.options.headers['Authorization'] = "Bearer $token";
-                if(!searchedAdditionalDevices){
-                  searchedAdditionalDevices = true;
-                  try {
-                    var result = await dio.get('https://dashboard.livair.io/api/user/devices',
-                        queryParameters:
-                        {
-                          "pageSize": 1000,
-                          "page": 0
-                        }
-                    );
-                    Map<String,dynamic> map = result.data;
-                    List list = map["data"];
-                    for (var element in list) {
-                      bool found = false;
-                      for( var element2 in currentDevices2){
-                        if(element2.keys.first == element["id"]["id"]){
-                          found = true;
-                        }
-                      }
-                      if(!found){
-                        var result2 = await dio.get('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/${element["id"]["id"]}/values/timeseries',
-                            queryParameters:
-                            {
-                              "keys": "radon"
-                            }
-                        );
-                        currentDevices2.add({
-                          element["id"]["id"].toString() : Device2(
-                            lastSync : 0,
-                            location : "/",
-                            floor : "viewer",
-                            locationId : "/",
-                            isOnline : false,
-                            radon : int.parse(result2.data["radon"].elementAt(0)["value"]),
-                            label : element["label"],
-                            name : element["name"],
-                            deviceAdded: 1,
-                          )
-                        });
-                      }
-                    }
-                    setState(() {
-
-                    });
-                  }catch(e){
-                    print(e);
-                  }
-                }
+      dio.options.headers['content-Type'] = 'application/json';
+      dio.options.headers['Accept'] = "application/json";
+      dio.options.headers['Authorization'] = "Bearer $token";
+      if(!searchedAdditionalDevices){
+        searchedAdditionalDevices = true;
+        try {
+          String? customerId;
+          Response customerInfoResponse = await dio.get('https://dashboard.livair.io/api/auth/user');
+          customerId = customerInfoResponse.data["customerId"]["id"];
+          var result2 = await dio.get('https://dashboard.livair.io/api/customer/$customerId/devices',
+              queryParameters:
+              {
+                "pageSize": 1000,
+                "page": 0
               }
-      );
+          );
+          print(result2.data);
+          Map<String,dynamic> map = result2.data;
+          List list = map["data"];
+          for (var element in list) {
+            bool found = false;
+            for( var element2 in currentDevices2){
+              if(element2.keys.first == element["id"]["id"]){
+                found = true;
+              }
+            }
+            if(!found){
+              var result2 = await dio.get('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/${element["id"]["id"]}/values/timeseries',
+                  queryParameters:
+                  {
+                    "keys": "radon"
+                  }
+              );
+              currentDevices2.add({
+                element["id"]["id"].toString() : Device2(
+                  lastSync : 0,
+                  location : "/",
+                  floor : "",
+                  locationId : "/",
+                  isOnline : element["additionalInfo"]["syncStatus"] == "active" ? true : false,
+                  radon : int.parse(result2.data["radon"].elementAt(0)["value"]),
+                  label : element["label"],
+                  name : element["name"],
+                  deviceAdded: 1,
+                )
+              });
+            }
+          }
+          var result = await dio.get('https://dashboard.livair.io/api/user/devices',
+              queryParameters:
+              {
+                "pageSize": 1000,
+                "page": 0
+              }
+          );
+          map = result.data;
+          list = map["data"];
+          for (var element in list) {
+            bool found = false;
+            for( var element2 in currentDevices2){
+              if(element2.keys.first == element["id"]["id"]){
+                found = true;
+              }
+            }
+            if(!found){
+              var result = await dio.get('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/${element["id"]["id"]}/values/timeseries',
+                  queryParameters:
+                  {
+                    "keys": "radon"
+                  }
+              );
+              currentDevices2.add({
+                element["id"]["id"].toString() : Device2(
+                  lastSync : 0,
+                  location : "/",
+                  floor : "viewer",
+                  locationId : "/",
+                  isOnline : false,
+                  radon : int.parse(result.data["radon"].elementAt(0)["value"]),
+                  label : element["label"],
+                  name : element["name"],
+                  deviceAdded: 1,
+                )
+              });
+            }
+          }
+          setState(() {
+
+          });
+        }catch(e){
+          print(e);
+        }
+      }
+
     }catch(e){
       Fluttertoast.showToast(
           msg: "Failed to receive data"
@@ -403,7 +199,6 @@ class DevicePageState extends State<DevicePage> {
             builder: (context) => DeviceDetailPage(token: token, refreshToken: refreshToken,device: device,)
         )
     ).then((_) => setState(() {
-      channel = null;
       firstTry = true;
     }));
   }
@@ -926,12 +721,9 @@ class DevicePageState extends State<DevicePage> {
     await Future<void>.delayed( const Duration(seconds: 4));
     subscription.cancel();
     if(foundDevices!.isEmpty){
-      Navigator.pop(context);
-      screenIndex = 0;
       Fluttertoast.showToast(
           msg: "No devices found"
       );
-      return;
     }
     Navigator.pop(context);
     setState(() {
@@ -940,11 +732,7 @@ class DevicePageState extends State<DevicePage> {
   }
 
   claimDeviceScreen(){
-    if(foundDevicesIds!.isEmpty){
-      setState(() {
-        screenIndex = 0;
-      });
-    }
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(

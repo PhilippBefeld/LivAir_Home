@@ -190,7 +190,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       );
       channel!.stream.listen(
             (data) {
-              print(data);
+              logger.d(data);
               if(jsonDecode(data)["subscriptionId"] == 1 && firstTry){
                 firstTry = false;
                 requestMsSinceEpoch = DateTime.now().millisecondsSinceEpoch;
@@ -359,7 +359,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       }
                   ),
                 );
+                return;
               }
+              var allData = jsonDecode(data);
               var telData = jsonDecode(data)["data"];
               try{
                 var radonData = telData["radon"];
@@ -428,7 +430,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 for (var element in updateData) {
                   try {
                     List<dynamic> radonValues = element["timeseries"]["radon"];
-                    device.values.first.isOnline = bool.parse(updateData.first["latest"]["ATTRIBUTE"]["isOnline"]["value"]);
+                    device.values.first.isOnline = jsonDecode(updateData.first["latest"]["ENTITY_FIELD"]["additionalInfo"]["value"].toString())["syncStatus"] == "active" ? true : false;
                     if (radonValues.isNotEmpty && radonValues.length > 1) {
                       radonHistory = radonValues;
                       radonHistoryTimestamps = [];
