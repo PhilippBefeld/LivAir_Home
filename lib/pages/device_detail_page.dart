@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_material_symbols/flutter_material_symbols.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -10,6 +11,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_places_flutter/model/prediction.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:tuple/tuple.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -54,11 +56,18 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
 
   int screenIndex = 0;
 
+  bool loaded = false;
+
   final displayController = TextEditingController();
   final statusLEDController = TextEditingController();
   var value = 0.0;
   final storage = FlutterSecureStorage();
   String? unit;
+  bool useBluetoothData = false;
+
+  bool changeDiagram = false;
+  bool showDiagramDots = true;
+  bool showAllData = false;
 
 
   WebSocketChannel? channel;
@@ -67,9 +76,14 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   List<int> radonValuesTimeseries = [];
 
   //chart values
+  List<ChartData> chartSpots = [];
+  List<BarChartGroupData> chartBars = [];
   int selectedNumberOfDays = 1;
   int currentMaxValue = 100;
+  int currentMinValue = 0;
   int currentAvgValue = 0;
+  int currentMaxAvgValue = 100;
+  int currentMaxAvgValueSpots = 100;
   int stepsIntoPast = 1;
 
   DetailResponse? detailResponse;
@@ -92,6 +106,18 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   TextEditingController orangeMinValue = TextEditingController();
   TextEditingController redMinValue = TextEditingController();
   int d_unit = 1;
+  int clock = 0;
+  int clockType = 0;
+  int mezType = 1;
+  int displayAnimation = 1;
+
+  List<String> tzLocations = [];
+  List<String> tzCodes = [];
+  String currentTZ = "";
+  String tzServer1 = "";
+  String tzServer2 = "";
+  String tzServer3 = "";
+  TextEditingController customNTPServerController = TextEditingController();
 
   //exportDataScreen values
   bool customTimeseriesSelected = false;
@@ -123,15 +149,60 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   int radonCurrent = 0;
   int radonWeekly = 0;
   int radonEver = 0;
+  bool readGraph = false;
 
   //warningScreen values
   TextEditingController thresHoldController = TextEditingController();
   int selectedHours = 0;
   int selectedMinutes = 0;
 
+  final MaterialStateProperty<Icon?> sliderIcon =
+  MaterialStateProperty.resolveWith<Icon?>(
+        (Set<MaterialState> states) {
+      if (states.contains(MaterialState.selected)) {
+        return const Icon(Icons.chevron_left);
+      }
+      return const Icon(Icons.chevron_right);
+    },
+  );
+
+  final MaterialStateProperty<Color?> sliderColor =
+  MaterialStateProperty.resolveWith<Color?>(
+        (Set<MaterialState> states) {
+      return const Color(0xff0099F0);
+    },
+  );
+  final MaterialStateProperty<Color?> trackBorderColor =
+  MaterialStateProperty.resolveWith<Color?>(
+        (Set<MaterialState> states) {
+      return const Color(0xffCCEBFC);
+    },
+  );
+
+  final MaterialStateProperty<Color?> trackColor =
+  MaterialStateProperty.resolveWith<Color?>(
+        (Set<MaterialState> states) {
+      return const Color(0xffCCEBFC);
+    },
+  );
 
   Future<dynamic> futureFunc() async{
     if(futureFuncRunning) return;
+    try {
+      final result = await InternetAddress.lookup('example.com');
+      if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+      }
+    } on SocketException catch (_) {
+      Fluttertoast.showToast(
+          msg: AppLocalizations.of(context)!.noInternetT
+      );
+      useBluetoothData = true;
+      setState(() {
+      });
+      return;
+    }
+    currentMaxAvgValue = 100;
+    currentMaxAvgValueSpots= 100;
     futureFuncRunning = true;
     unit = await storage.read(key: 'unit');
     radonValue = AppLocalizations.of(context)!.noRadonValues;
@@ -172,10 +243,58 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               {
                 "entityType":"DEVICE",
                 "entityId":id,
-                "scope":"LATEST_TELEMETRY",
+                "scope":"CLIENT_SCOPE",
                 "cmdId":1
               }
               ],
+            "historyCmds":[],
+            "entityDataCmds":[],
+            "entityDataUnsubscribeCmds":[],
+            "alarmDataCmds":[],
+            "alarmDataUnsubscribeCmds":[],
+            "entityCountCmds":[],
+            "entityCountUnsubscribeCmds":[],
+            "alarmCountCmds":[],
+            "alarmCountUnsubscribeCmds":[]
+          },
+        ),
+      );
+      channel!.sink.add(
+        jsonEncode(
+          {
+            "attrSubCmds":[
+              {
+                "entityType":"DEVICE",
+                "entityId":id,
+                "scope":"SHARED_SCOPE",
+                "cmdId":1
+              }
+            ],
+            "tsSubCmds":[],
+            "historyCmds":[],
+            "entityDataCmds":[],
+            "entityDataUnsubscribeCmds":[],
+            "alarmDataCmds":[],
+            "alarmDataUnsubscribeCmds":[],
+            "entityCountCmds":[],
+            "entityCountUnsubscribeCmds":[],
+            "alarmCountCmds":[],
+            "alarmCountUnsubscribeCmds":[]
+          },
+        ),
+      );
+      channel!.sink.add(
+        jsonEncode(
+          {
+            "attrSubCmds":[],
+            "tsSubCmds": [
+              {
+                "entityType":"DEVICE",
+                "entityId":id,
+                "scope":"SHARED_SCOPE",
+                "cmdId":1
+              }
+            ],
             "historyCmds":[],
             "entityDataCmds":[],
             "entityDataUnsubscribeCmds":[],
@@ -359,7 +478,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       }
                   ),
                 );
-                return;
               }
               var allData = jsonDecode(data);
               var telData = jsonDecode(data)["data"];
@@ -370,7 +488,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               }
 
               try{
-                var dLedFBdata = telData["d_firmware"];
+                var dLedFBdata = telData["current_fw_version"];
                 if(dLedFBdata!=null)firmwareVersion = dLedFBdata[0][1];
               }catch(e){
               }
@@ -378,6 +496,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 var dLedFBdata = telData["Sensor_kalibriert"];
                 if(dLedFBdata!=null)calibrationDate = dLedFBdata[0][0];
               }catch(e){
+                calibrationDate = 0;
               }
               try{
                 var dLedFBdata = telData["d_led_fb"];
@@ -413,15 +532,53 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 int ledStatus;
                 if(dLedFData!=null){
                   ledStatus = int.parse(dLedFData[0][1]);
-                  setState(() {
                     ledStatus==1 ? d_led_f = true : d_led_f = false;
-                  });
                 }
               }catch(e){
               }
               try{
                 var dUnitData = telData["d_unit"];
                 if(dUnitData!=null) d_unit = dUnitData[0][1];
+              }catch(e){
+              }
+              try{
+                var dUnitData = telData["u_view_switch"];
+                if(dUnitData!=null) clock = int.parse(dUnitData[0][1]);
+              }catch(e){
+              }
+              try{
+                var dUnitData = telData["u_clock"];
+                if(dUnitData!=null) clockType = int.parse(dUnitData[0][1]);
+              }catch(e){
+              }
+              try{
+                var dUnitData = telData["u_mez_ea"];
+                if(dUnitData!=null) mezType = int.parse(dUnitData[0][1]);
+              }catch(e){
+              }
+              try{
+                var dUnitData = telData["u_led_tf"];
+                if(dUnitData!=null) displayAnimation = int.parse(dUnitData[0][1]);
+              }catch(e){
+              }
+              try{
+                var dUnitData = telData["u_timezone"];
+                if(dUnitData!=null) currentTZ = dUnitData[0][1];
+              }catch(e){
+              }
+              try{
+                var dUnitData = telData["u_ntp1"];
+                if(dUnitData!=null) tzServer1 = dUnitData[0][1];
+              }catch(e){
+              }
+              try{
+                var dUnitData = telData["u_ntp2"];
+                if(dUnitData!=null) tzServer2 = dUnitData[0][1];
+              }catch(e){
+              }
+              try{
+                var dUnitData = telData["u_ntp3"];
+                if(dUnitData!=null) tzServer3 = dUnitData[0][1];
               }catch(e){
               }
               List<dynamic> updateData = [];
@@ -431,13 +588,22 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   try {
                     List<dynamic> radonValues = element["timeseries"]["radon"];
                     device.values.first.isOnline = jsonDecode(updateData.first["latest"]["ENTITY_FIELD"]["additionalInfo"]["value"].toString())["syncStatus"] == "active" ? true : false;
-                    if (radonValues.isNotEmpty && radonValues.length > 1) {
+                    if(radonValues.isNotEmpty){
                       radonHistory = radonValues;
                       radonHistoryTimestamps = [];
                       for (var element in radonHistory) {
                         Tuple2<int,int> singleTimestamp = Tuple2<int,int> (element['ts'], int.parse(element['value']));
                         radonHistoryTimestamps.add(singleTimestamp);
                       }
+                      radonCurrent = radonHistoryTimestamps.first.item2;
+                      chartSpots = getCurrentSpots();
+                      chartBars = getCurrentBars();
+                      List<int> barSizes = [];
+                      chartBars.forEach((bar) {
+                        barSizes.add(bar.barRods.first.toY.toInt());
+                      });
+                      currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
+                      if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
                       setState(() {
                         channel!.sink.add({
                           "cmds": [
@@ -615,25 +781,139 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     }
   }
 
-  List<FlSpot> getCurrentSpots(){
+  void setClockType(int value){
+    String id = device.keys.elementAt(0);
+    dio.options.headers['content-Type'] = 'application/json';
+    dio.options.headers['Accept'] = "application/json";
+    dio.options.headers['Authorization'] = "Bearer $token";
+    try{
+       dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
+        data: jsonEncode(
+            {
+              "u_clock": value,
+            }
+        ),
+      );
+    }catch(e){
+      logger.e(e);
+      Fluttertoast.showToast(
+          msg: "Failed to send data"
+      );
+    }
+  }
+
+  void setMEZType(int value){
+    String id = device.keys.elementAt(0);
+    dio.options.headers['content-Type'] = 'application/json';
+    dio.options.headers['Accept'] = "application/json";
+    dio.options.headers['Authorization'] = "Bearer $token";
+    try{
+      dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
+        data: jsonEncode(
+            {
+              "u_mez_ea": value,
+            }
+        ),
+      );
+    }catch(e){
+      logger.e(e);
+      Fluttertoast.showToast(
+          msg: "Failed to send data"
+      );
+    }
+  }
+
+  void setTimezone(String value){
+    String id = device.keys.elementAt(0);
+    dio.options.headers['content-Type'] = 'application/json';
+    dio.options.headers['Accept'] = "application/json";
+    dio.options.headers['Authorization'] = "Bearer $token";
+    try{
+      dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
+        data: jsonEncode(
+            {
+              "u_timezone": value,
+            }
+        ),
+      );
+    }catch(e){
+      logger.e(e);
+      Fluttertoast.showToast(
+          msg: "Failed to send data"
+      );
+    }
+  }
+
+  void setNTPServer(String value){
+    String id = device.keys.elementAt(0);
+    dio.options.headers['content-Type'] = 'application/json';
+    dio.options.headers['Accept'] = "application/json";
+    dio.options.headers['Authorization'] = "Bearer $token";
+    try{
+      dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
+        data: jsonEncode(
+            {
+              "u_ntp3": value,
+            }
+        ),
+      );
+    }catch(e){
+      logger.e(e);
+      Fluttertoast.showToast(
+          msg: "Failed to send data"
+      );
+    }
+  }
+
+  void setDisplayAnimation(int value){
+    String id = device.keys.elementAt(0);
+    dio.options.headers['content-Type'] = 'application/json';
+    dio.options.headers['Accept'] = "application/json";
+    dio.options.headers['Authorization'] = "Bearer $token";
+    try{
+      dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
+        data: jsonEncode(
+            {
+              "u_led_tf": value,
+            }
+        ),
+      );
+    }catch(e){
+      logger.e(e);
+      Fluttertoast.showToast(
+          msg: "Failed to send data"
+      );
+    }
+  }
+
+  List<ChartData> getCurrentSpots(){
     int startTimeseries =  selectedNumberOfDays == 0 ? radonHistoryTimestamps.last.item1 : requestMsSinceEpoch - (Duration(days: selectedNumberOfDays).inMilliseconds * stepsIntoPast);
-    List<FlSpot> spots = [];
+    List<ChartData> spots = [];
     radonValuesTimeseries = [];
     int sum = 0;
     if(selectedNumberOfDays == 0){
       for (var element in radonHistoryTimestamps) {
         sum+=element.item2;
         radonValuesTimeseries.add(element.item2);
-        spots.add(FlSpot(Duration(milliseconds: (element.item1-startTimeseries)).inMinutes.toDouble(),element.item2.toDouble()));
-      };
+        spots.add(ChartData(DateTime.fromMillisecondsSinceEpoch(element.item1),element.item2.toDouble()));
+      }
     }else{
       for (var element in radonHistoryTimestamps) {
         if(element.item1 >= startTimeseries && element.item1 <= startTimeseries + Duration(days: selectedNumberOfDays).inMilliseconds){
           sum+=element.item2;
           radonValuesTimeseries.add(element.item2);
-          spots.add(FlSpot(Duration(milliseconds: (element.item1-startTimeseries)).inMinutes.toDouble(),element.item2.toDouble()));
+          spots.add(ChartData(DateTime.fromMillisecondsSinceEpoch(element.item1),element.item2.toDouble()));
         }
-      };
+      }
+    }
+    if(useBluetoothData){
+      int counter = 0;
+      while(counter<spots.length-2){
+        if(spots[counter].x == spots[counter+1].x){
+          spots[counter+1] = ChartData(spots[counter+1].x.add(const Duration(minutes: 30)),spots[counter+1].y);
+        }
+        counter++;
+      }
     }
     if(radonValuesTimeseries.isEmpty){
       currentAvgValue = 0;
@@ -641,42 +921,78 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     }else {
       currentAvgValue = sum~/radonValuesTimeseries.length;
       currentMaxValue = radonValuesTimeseries.reduce(max);
+      currentMinValue = radonValuesTimeseries.reduce(min);
     }
-    if(selectedNumberOfDays!=0){
-      List<FlSpot> newSpots = [];
-      int areaCount = 24;
-      int combinationArea = (Duration(days: selectedNumberOfDays).inMinutes~/24);
-      if(selectedNumberOfDays == 7){
-        areaCount = 7;
-        combinationArea = (Duration(days: selectedNumberOfDays).inMinutes~/7);
+    if(showAllData){
+      List<ChartData> newSpots = [];
+      int counter = 0;
+      int p = 0;
+      while(spots[counter].x.millisecondsSinceEpoch <= (requestMsSinceEpoch - Duration(minutes: 11).inMilliseconds - Duration(minutes: 10).inMilliseconds*p)){
+        newSpots.add(ChartData(DateTime.fromMillisecondsSinceEpoch(spots[counter].x.millisecondsSinceEpoch - Duration(minutes: 10).inMilliseconds*p), null));
+        p++;
       }
-      int j = 0;
-      int k = 0;
-      for(int i = Duration(days: selectedNumberOfDays).inMinutes; i >= 0; i-=combinationArea){
-        double avgOfArea = 0.0;
-        double sum = 0;
-        int spotsInArea = 0;
-        if(j < spots.length){
-          while(spots.elementAt(j).x >= i-combinationArea && spots.elementAt(j).x <= i){
-            spotsInArea+=1;
-            sum += spots.elementAt(j).y;
-            if(j+1 >= spots.length) {
-              j+=2;
-              break;
-            }
-            j+=1;
+      for (var spot in spots) {
+        newSpots.add(spot);
+        if(spots.length>counter+1){
+          p = 0;
+          while(spots[counter+1].x.millisecondsSinceEpoch <= (spots[counter].x.millisecondsSinceEpoch - Duration(minutes: 11).inMilliseconds - Duration(minutes: 10).inMilliseconds*p)){
+            newSpots.add(ChartData(DateTime.fromMillisecondsSinceEpoch(spots[counter].x.millisecondsSinceEpoch - Duration(minutes: 10).inMilliseconds*p), null));
+            p++;
           }
         }
-        if(spotsInArea > 0){
-          avgOfArea = sum/spotsInArea;
-          if(areaCount-k-0.5 > 0) newSpots.add(FlSpot(areaCount-k-0.5, avgOfArea));
-        }
-        k+=1;
+        counter++;
       }
-      //newSpots.add(const FlSpot(0,0));
+      while(spots[spots.length-1].x.millisecondsSinceEpoch - Duration(minutes: 10).inMilliseconds*p >= startTimeseries){
+        newSpots.add(ChartData(DateTime.fromMillisecondsSinceEpoch(spots[spots.length-1].x.millisecondsSinceEpoch - Duration(minutes: 10).inMilliseconds*p), null));
+        p++;
+      }
       return newSpots.reversed.toList();
     }
-    return spots.reversed.toList();
+    List<ChartData> newSpots = [];
+    int i = 0;
+    if(spots.isEmpty){
+      return [
+        ChartData(DateTime.fromMillisecondsSinceEpoch(requestMsSinceEpoch - (Duration(days: selectedNumberOfDays).inMilliseconds * (stepsIntoPast-1))), null),
+        ChartData(DateTime.fromMillisecondsSinceEpoch(startTimeseries), null)
+      ];
+    }
+    if(selectedNumberOfDays == -2){
+      while(i < spots.length-1){
+        newSpots.add(spots[i]);
+        for(var j = spots[i].x.millisecondsSinceEpoch; j - const Duration(minutes: 11).inMilliseconds > spots[i+1].x.millisecondsSinceEpoch; j -= const Duration(minutes: 10).inMilliseconds){
+          newSpots.add(ChartData(DateTime.fromMillisecondsSinceEpoch(j), 0));
+        }
+        i++;
+      }
+      newSpots.add(spots[i]);
+    }else{
+
+      int k = 0;
+      int step = Duration(minutes: 10).inMilliseconds * (selectedNumberOfDays == 1 ? 6 : selectedNumberOfDays == 2 ? 12 : selectedNumberOfDays == 7 ? 36 : selectedNumberOfDays == 30 ? 144 : 144);
+      double currentSum = 0;
+      int currentSpots = 0;
+      int i = 0;
+      while( requestMsSinceEpoch - (Duration(days: selectedNumberOfDays).inMilliseconds * (stepsIntoPast-1)) - k*step >= startTimeseries ){
+        while(i<spots.length && spots[i].x.millisecondsSinceEpoch <= requestMsSinceEpoch - (Duration(days: selectedNumberOfDays).inMilliseconds * (stepsIntoPast-1)) - k*step && spots[i].x.millisecondsSinceEpoch >= requestMsSinceEpoch - (Duration(days: selectedNumberOfDays).inMilliseconds * (stepsIntoPast-1)) - (k+1)*step){
+          currentSum+= spots[i].y!;
+          currentSpots +=1;
+          i++;
+        }
+        newSpots.add(ChartData(DateTime.fromMillisecondsSinceEpoch((requestMsSinceEpoch - (Duration(days: selectedNumberOfDays).inMilliseconds * (stepsIntoPast-1))-step*k-step*0.5).toInt()), currentSum/currentSpots));
+        k++;
+        currentSum = 0;
+        currentSpots = 0;
+      }
+      List<double> yWerteDurchschnitt = [];
+      newSpots.forEach((spot){
+        if(spot.y != null ){
+          if(!spot.y!.isNaN)yWerteDurchschnitt.add(spot.y!);
+        }
+      });
+      currentMaxValue = yWerteDurchschnitt.reduce(max).toInt();
+      currentMinValue = yWerteDurchschnitt.reduce(min).toInt();
+    }
+    return newSpots.reversed.toList();
   }
 
   List<BarChartGroupData> getCurrentBars(){
@@ -690,19 +1006,24 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         spots.add(FlSpot(Duration(milliseconds: (element.item1-startTimeseries)).inMinutes.toDouble(),element.item2.toDouble()));
       }
     }
-    int barCount = 30;
-    int combinationArea = (Duration(days: selectedNumberOfDays).inMinutes~/30);
+    int barCount = 24;
+    int combinationArea = (Duration(days: selectedNumberOfDays).inMinutes~/24);
     if(selectedNumberOfDays == 7){
-      barCount = 7;
-      combinationArea = (Duration(days: selectedNumberOfDays).inMinutes~/7);
+      barCount = 28;
+      combinationArea = (Duration(days: selectedNumberOfDays).inMinutes~/28);
     }
+    if(selectedNumberOfDays == 30){
+      barCount = 30;
+      combinationArea = (Duration(days: selectedNumberOfDays).inMinutes~/30);
+    }
+
     int j = 0;
     int k = 0;
     for(int i = Duration(days: selectedNumberOfDays).inMinutes; i >= 0; i-=combinationArea){
       double avgOfArea = 0.0;
       double sum = 0;
       int spotsInArea = 0;
-      if(k >= barCount)break;
+      if(k > barCount)break;
       if(j < spots.length){
         while(spots.elementAt(j).x >= i-combinationArea && spots.elementAt(j).x <= i){
           spotsInArea+=1;
@@ -722,7 +1043,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               barRods: [
                 BarChartRodData(
                   toY: avgOfArea,
-                  color: avgOfArea > 50 ? avgOfArea > 300 ? Colors.red : Colors.orange : Colors.green,
+                  color: avgOfArea > 100 ? avgOfArea > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
                 )
               ]
             )
@@ -745,8 +1066,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     return bars.reversed.toList();
   }
 
-  deviceDetailScreen(){
-    return Scaffold(
+  deviceDetailScreen(bool isWide){
+    return isWide ? Scaffold(
         resizeToAvoidBottomInset: true,
         appBar: AppBar(
           elevation: 0,
@@ -757,66 +1078,57 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           ),
           backgroundColor: Colors.white,
           title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.black),
-                onPressed: (){
-                  setState(() {
-                    Navigator.pop(context);
-                  });
-                },
+              Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.black),
+                    onPressed: (){
+                      setState(() {
+                        Navigator.pop(context);
+                      });
+                    },
+                  ),
+                  Text(device.values.elementAt(0).label!=null ? device.values.elementAt(0).label!  : device.values.elementAt(0).name, style: const TextStyle(color: Colors.black,fontSize: 20,fontWeight: FontWeight.w400),overflow: TextOverflow.fade,),
+                ],
               ),
-              Text(device.values.elementAt(0).label!=null ? device.values.elementAt(0).label!  : device.values.elementAt(0).name, style: const TextStyle(color: Colors.black,fontSize: 20,fontWeight: FontWeight.w400)),
-              const SizedBox(width: 10,),
-              SizedBox(
-                width: 45,
-                height: 20,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                      borderRadius: const BorderRadius.all(Radius.circular(4)),
-                      border: Border(
-                        bottom: BorderSide(color: device.values.elementAt(0).isOnline ? const Color(0xffA5E658)  : Colors.grey,),
-                        top: BorderSide(color: device.values.elementAt(0).isOnline ? const Color(0xffA5E658)  : Colors.grey),
-                        right: BorderSide(color: device.values.elementAt(0).isOnline ? const Color(0xffA5E658)  : Colors.grey,),
-                        left: BorderSide(color: device.values.elementAt(0).isOnline ? const Color(0xffA5E658)  : Colors.grey,),
-                      )
+              Row(
+                children: [
+                  !useBluetoothData ? const ImageIcon(AssetImage('lib/images/isOnline.png'),color: Color(0xff0099F0),) : const ImageIcon(AssetImage('lib/images/isOnline.png'),color: Color(0xffCFD8DC),),
+                  const SizedBox(width: 5,),
+                  Switch(
+                    thumbIcon: sliderIcon,
+                    trackOutlineColor: trackBorderColor,
+                    thumbColor: sliderColor,
+                    trackColor: trackColor,
+                    value: useBluetoothData,
+                    onChanged: (bool value) {
+                      loaded = false;
+                      futureFuncRunning = false;
+                      firstTry = true;
+                      useBluetoothData = value;
+                      setState(() {
+                      });
+                    },
                   ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        device.values.elementAt(0).isOnline ? "online" : "offline",
-                        style: TextStyle(
-                          color: device.values.elementAt(0).isOnline ? const Color(0xffA5E658)  : Colors.grey,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )
+                  useBluetoothData ? const ImageIcon(AssetImage('lib/images/isBluetooth.png'),color: Color(0xff0099F0),) : const ImageIcon(AssetImage('lib/images/isBluetooth.png'),color: Color(0xffCFD8DC),),
+                ],
+              ),
             ],
           ),
           titleTextStyle: const TextStyle(color: Colors.black, fontSize: 20),
           centerTitle: false,
           actions:  [
             IconButton(
+              visualDensity: const VisualDensity(horizontal: -4.0, vertical: 0),
+              constraints: BoxConstraints(maxWidth: 30),
               icon: const Icon(Icons.refresh, color: Colors.black),
               onPressed: () async{
-                try {
-                  final result = await InternetAddress.lookup('example.com');
-                  if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                  }
-                } on SocketException catch (_) {
-                  Fluttertoast.showToast(
-                      msg: AppLocalizations.of(context)!.noInternetT
-                  );
-                  return;
-                }
+                loaded = false;
+                futureFuncRunning = false;
+                firstTry = true;
                 setState(() {
-                  futureFuncRunning = false;
-                  firstTry = true;
                 });
               },
             ),
@@ -998,7 +1310,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   ),
                   PopupMenuItem(
                     value: 9,
-                    child: Text("Stop viewing"),
+                    child: Text(AppLocalizations.of(context)!.stopViewing),
                     onTap: () async{
                       try {
                         final result = await InternetAddress.lookup('example.com');
@@ -1024,93 +1336,604 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 20),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Image.asset('lib/images/radonranges_vertical.png', height: 150,),
+                        SizedBox(
+                          height: 160,
+                          child: radonCurrent <= 100 ? Column(
+
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              SizedBox(height: 148-(48*(radonCurrent/100)),),
+                              Image.asset('lib/images/indicator_green.png', height: 10,),
+                            ],
+                          ) : radonCurrent <= 300 ? Column(
+
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              SizedBox(height: 97-(48*((radonCurrent-100)/200)),),
+                              Image.asset('lib/images/indicator_yellow.png', height: 10,),
+                            ],
+                          ) : radonCurrent <= 450 ? Column(
+
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              SizedBox(height: 46-(46*((radonCurrent-300)/150)),),
+                              Image.asset('lib/images/indicator_red.png', height: 10,),
+                            ],
+                          ) : Column(
+
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              Image.asset('lib/images/indicator_red.png', height: 10,),
+                            ],
+                          ),
+
+                        ),
+                        SizedBox(width: 20,),
+                        Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              !useBluetoothData ? "${Duration(milliseconds: requestMsSinceEpoch-(radonHistoryTimestamps.isNotEmpty ? radonHistoryTimestamps.first.item1 : 0)).inMinutes} ${AppLocalizations.of(context)!.minsAgo}" :
+                              AppLocalizations.of(context)!.currentValue,
+                              style: const TextStyle(
+                                  color: Color(0xff78909C),
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w400
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Text(!useBluetoothData ? radonHistoryTimestamps.isNotEmpty ? "${radonHistoryTimestamps.first.item2} " : "0 " :
+                                  "$radonCurrent ",
+                                  style: TextStyle(
+                                    color: !useBluetoothData ? (radonHistoryTimestamps.isNotEmpty ? radonHistoryTimestamps.first.item2: 0) > 100 ? (radonHistoryTimestamps.isNotEmpty ? radonHistoryTimestamps.first.item2: 0) > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84) :
+                                    radonCurrent > 100 ? radonCurrent > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84) ,
+                                    fontSize: 62,
+                                    fontWeight: FontWeight.w600
+                                  ),
+                                ),
+                                Column(
+                                  children: [
+                                    SizedBox(height: 25,),
+                                    Text(unit == "Bq/m³" ? "Bq/m³": "pCi/L",
+                                      style: const TextStyle(
+                                          color: Colors.black,
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w400
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+
+                          ],
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 20,),
+                    SizedBox(
+                      height: 35,
+                      child: Center(
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.fromLTRB(10, 0, 10, 0),
+                          children: [
+                            Container(
+                              height: 20,
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(0, 0, 5, 0),
+                                child: OutlinedButton(
+                                  onPressed: (){
+                                    setState((){
+                                      stepsIntoPast = 1;
+                                      selectedNumberOfDays = 1;
+                                      chartSpots = getCurrentSpots();
+                                      chartBars = getCurrentBars();
+                                      List<int> barSizes = [];
+                                      chartBars.forEach((bar) {
+                                        barSizes.add(bar.barRods.first.toY.toInt());
+                                      });
+                                      currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
+                                      if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
+                                    });
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(20)
+                                    ),
+                                    side: BorderSide(width: 2,color: selectedNumberOfDays == 1 ? const Color(0xff0099F0) : const Color(0xff4f99F0)),
+                                    foregroundColor: Colors.black,
+                                    backgroundColor: selectedNumberOfDays == 1 ? const Color(0xff0099F0) : Colors.white,
+                                  ),
+                                  child: Text(AppLocalizations.of(context)!.last24h,style: TextStyle(
+                                      color: selectedNumberOfDays == 1 ? Colors.white : const Color(0xff0099F0)
+                                  ),),
+                                ),
+                              ),
+                            ),
+                            Container(
+                              height: 30,
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(0, 0, 5, 0),
+                                child: OutlinedButton(
+                                  onPressed: (){
+                                    setState((){
+                                      stepsIntoPast = 1;
+                                      selectedNumberOfDays = 2;
+                                      chartSpots = getCurrentSpots();
+                                      chartBars = getCurrentBars();
+                                      List<int> barSizes = [];
+                                      chartBars.forEach((bar) {
+                                        barSizes.add(bar.barRods.first.toY.toInt());
+                                      });
+                                      currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
+                                      if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
+                                    });
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(20)
+                                      ),
+                                      side: BorderSide(width: 2,color: selectedNumberOfDays == 2 ? const Color(0xff0099F0) : const Color(0xff4f99F0)),
+                                      foregroundColor: Colors.black,
+                                      backgroundColor: selectedNumberOfDays == 2 ? const Color(0xff0099F0) : Colors.white,
+                                      minimumSize: const Size(60,20)
+                                  ),
+                                  child: Text(AppLocalizations.of(context)!.last48h,style: TextStyle(
+                                      color: selectedNumberOfDays == 2 ? Colors.white : const Color(0xff0099F0)
+                                  ),),
+                                ),
+                              ),
+                            ),
+                            SizedBox(
+                              height: 30,
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(0, 0, 5, 0),
+                                child: OutlinedButton(
+                                  onPressed: ()=>{
+                                    setState((){
+                                      stepsIntoPast = 1;
+                                      selectedNumberOfDays = 7;
+                                      chartSpots = getCurrentSpots();
+                                      chartBars = getCurrentBars();
+                                      List<int> barSizes = [];
+                                      chartBars.forEach((bar) {
+                                        barSizes.add(bar.barRods.first.toY.toInt());
+                                      });
+                                      currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
+                                      if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
+                                    })
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(20)
+                                      ),
+                                      side: BorderSide(width: 2,color: selectedNumberOfDays == 7 ? const Color(0xff0099F0) : const Color(0xff4f99F0)),
+                                      foregroundColor: Colors.black,
+                                      backgroundColor: selectedNumberOfDays == 7 ? const Color(0xff0099F0) : Colors.white,
+                                      minimumSize: const Size(60,20)
+                                  ),
+                                  child: Text(AppLocalizations.of(context)!.last7d,style: TextStyle(
+                                      color: selectedNumberOfDays ==7 ? Colors.white : const Color(0xff0099F0)
+                                  ),),
+                                ),
+                              ),
+                            ),
+                            Container(
+                              height: 30,
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(0, 0, 5, 0),
+                                child: OutlinedButton(
+                                  onPressed: ()=>{
+                                    setState((){
+                                      stepsIntoPast = 1;
+                                      selectedNumberOfDays = 30;
+                                      chartSpots = getCurrentSpots();
+                                      chartBars = getCurrentBars();
+                                      List<int> barSizes = [];
+                                      chartBars.forEach((bar) {
+                                        barSizes.add(bar.barRods.first.toY.toInt());
+                                      });
+                                      currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
+                                      if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
+                                    })
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(20)
+                                      ),
+                                      side: BorderSide(width: 2,color: selectedNumberOfDays == 30 ? const Color(0xff0099F0) : const Color(0xff4f99F0)),
+                                      foregroundColor: Colors.black,
+                                      backgroundColor: selectedNumberOfDays == 30 ? const Color(0xff0099F0) : Colors.white,
+                                      minimumSize: const Size(60,20)
+                                  ),
+                                  child:  Text(AppLocalizations.of(context)!.last30d,style: TextStyle(
+                                      color: selectedNumberOfDays == 30 ? Colors.white : const Color(0xff0099F0)
+                                  ),),
+                                ),
+                              ),
+                            ),
+                            Container(
+                              height: 30,
+                              child: OutlinedButton(
+                                onPressed: ()=>{
+                                  setState((){
+                                    stepsIntoPast = 1;
+                                    selectedNumberOfDays = 0;
+                                    showAllData = false;
+                                    chartSpots = getCurrentSpots();
+                                    chartBars = getCurrentBars();
+                                  })
+                                },
+                                style: OutlinedButton.styleFrom(
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(20)
+                                    ),
+                                    side: BorderSide(width: 2,color: selectedNumberOfDays == 0 ? const Color(0xff0099F0) : const Color(0xff4f99F0)),
+                                    foregroundColor: Colors.black,
+                                    backgroundColor: selectedNumberOfDays == 0 ? const Color(0xff0099F0) : Colors.white,
+                                    minimumSize: const Size(60,20)
+                                ),
+                                child: Text(
+                                  AppLocalizations.of(context)!.completeHistory,
+                                  style: TextStyle(
+                                      color: selectedNumberOfDays == 0 ? Colors.white : const Color(0xff0099F0)
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 20,),
+                    SizedBox(
+                      height: 60,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Min.     \n" + (unit == "Bq/m³" ? "Bq/m³": "pCi/L"),
+                                      style: TextStyle(
+                                          color: Color(0xff78909C),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w400
+                                      ),
+                                    ),
+                                    Text("$currentMinValue ",
+                                      style: TextStyle(
+                                          color: currentMinValue > 100 ? currentMinValue > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
+                                          fontSize: 42,
+                                          fontWeight: FontWeight.w600
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Ø           \n" + (unit == "Bq/m³" ? "Bq/m³": "pCi/L"),
+                                      style: TextStyle(
+                                          color: Color(0xff78909C),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w400
+                                      ),
+                                    ),
+                                    Text("$currentAvgValue ",
+                                      style: TextStyle(
+                                          color: currentAvgValue > 100 ? currentAvgValue > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
+                                          fontSize: 42,
+                                          fontWeight: FontWeight.w600
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Max.     \n" + (unit == "Bq/m³" ? "Bq/m³": "pCi/L"),
+                                      style: TextStyle(
+                                          color: Color(0xff78909C),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w400
+                                      ),
+                                    ),
+                                    Text("$currentMaxValue",
+                                      style: TextStyle(
+                                          color: currentMaxValue > 100 ? currentMaxValue > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
+                                          fontSize: 42,
+                                          fontWeight: FontWeight.w600
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ]
+                      ),
+                    ),
+
+                  ],
+                ),
+                const SizedBox(height: 10),
                 Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  padding: const EdgeInsets.fromLTRB(0, 10, 0, 5),
+                  child: Column(
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          Text(
-                            "${Duration(milliseconds: requestMsSinceEpoch-radonHistoryTimestamps.first.item1).inMinutes} ${AppLocalizations.of(context)!.minsAgo}",
-                            style: const TextStyle(
-                                color: Color(0xff78909C),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400
-                            ),
-                          ),
-                          Text("${radonHistoryTimestamps.first.item2} ",
-                            style: TextStyle(
-                              color: radonHistoryTimestamps.first.item2 > 50 ? radonHistoryTimestamps.first.item2 > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
-                              fontSize: 32,
-                              fontWeight: FontWeight.w600
-                            ),
-                          ),
-                          Text(unit == "Bq/m³" ? "Bq/m³": "pCi/L",
-                            style: const TextStyle(
-                                color: Colors.black,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w400
-                            ),
-                          ),
-                        ],
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Ø ${AppLocalizations.of(context)!.avgLast} $selectedNumberOfDays ${AppLocalizations.of(context)!.days}",
-                            style: const TextStyle(
-                                color: Color(0xff78909C),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400
-                            ),
-                          ),
-                          Text("$currentAvgValue ",
-                            style: TextStyle(
-                                color: currentAvgValue > 50 ? currentAvgValue > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
-                                fontSize: 32,
-                                fontWeight: FontWeight.w600
-                            ),
-                          ),
-                          Text(unit == "Bq/m³" ? "Bq/m³": "pCi/L", style: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w400),),
-                        ],
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Max. ${AppLocalizations.of(context)!.avgLast} $selectedNumberOfDays ${AppLocalizations.of(context)!.days}",
-                            style: const TextStyle(
-                                color: Color(0xff78909C),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w400
-                            ),
-                          ),
-                          Text("$currentMaxValue ",
-                            style: TextStyle(
-                              color: currentMaxValue > 50 ? currentMaxValue > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
-                              fontSize: 32,
-                              fontWeight: FontWeight.w600
-                            ),
-                          ),
-                          Text(unit == "Bq/m³" ? "Bq/m³": "pCi/L",
-                            style: const TextStyle(
-                                color: Colors.black,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w400
-                            ),
+                          Row(
+                            children: [
+                              IconButton(
+                                  visualDensity: VisualDensity.compact,
+                                  onPressed: (){
+                                    setState(() {
+                                      if(!changeDiagram)showDiagramDots = !showDiagramDots;
+                                    });
+                                  },
+                                  icon: Icon(Icons.circle_outlined,color: showDiagramDots ? const Color(0xff0099F0) : Colors.grey,),
+                                tooltip: "Diagram tooltips",
+                              ),
+                              const SizedBox(width: 5,),
+                              IconButton(
+                                  visualDensity: VisualDensity.compact,
+                                  onPressed: (){
+                                    setState(() {
+                                      changeDiagram = !changeDiagram;
+                                    });
+                                  },
+                                  icon: Icon(!changeDiagram ? Icons.bar_chart : Icons.show_chart ,color: const Color(0xff0099F0),),
+                                tooltip: "Diagram type",
+                              ),
+                              const SizedBox(width: 5,),
+                              IconButton(
+                                  visualDensity: VisualDensity.compact,
+                                  onPressed: (){
+                                    setState(() {
+                                      if(!changeDiagram && selectedNumberOfDays != 0)showAllData = !showAllData;
+                                      chartSpots = getCurrentSpots();
+                                    });
+                                  },
+                                  icon: Icon(Icons.query_stats,color: showAllData ? const Color(0xff0099F0) : Colors.grey,),
+                                tooltip: "Show realtime values",
+                              ),
+                              const SizedBox(width: 15,),
+                            ],
                           )
                         ],
                       ),
+                      SizedBox(height: 5,),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          IconButton(
+                              onPressed: (){
+                                setState(() {
+                                  stepsIntoPast +=1;
+                                  chartSpots = getCurrentSpots();
+                                  chartBars = getCurrentBars();
+                                  List<int> barSizes = [];
+                                  for (var bar in chartBars) {
+                                    barSizes.add(bar.barRods.first.toY.toInt());
+                                  }
+                                  currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
+                                  if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
+                                });
+                              },
+                              icon: const Icon(Icons.arrow_back,color: Color(0xff0099F0), size: 30,)
+                          ),
+                          OutlinedButton(
+                            onPressed: () async {
+                              if(selectedNumberOfDays == 0)return;
+                              DateTime? newDate = await showDatePicker(
+                                  context: context,
+                                  initialDate: DateTime.now().subtract(Duration(days: 1)),
+                                  firstDate: DateTime.now().subtract(Duration(milliseconds: radonHistoryTimestamps != [] ? radonHistoryTimestamps.first.item1 : 0)),
+                                  lastDate: DateTime.now().subtract(Duration(days: 1))
+                              );
+                              if(newDate == null) return;
+                              newDate = DateTime(newDate.year,newDate.month, newDate.day, DateTime.fromMillisecondsSinceEpoch(requestMsSinceEpoch).hour, DateTime.fromMillisecondsSinceEpoch(requestMsSinceEpoch).minute);
+                              int newStepsIntoPast = 0;
+                              while(newDate.isBefore(DateTime.fromMillisecondsSinceEpoch(requestMsSinceEpoch-Duration(days: selectedNumberOfDays).inMilliseconds*(newStepsIntoPast+1)))){
+                                newStepsIntoPast++;
+                              }
+                              setState(() {
+                                stepsIntoPast = newStepsIntoPast+1;
+                                chartSpots = getCurrentSpots();
+                                chartBars = getCurrentBars();
+                                List<int> barSizes = [];
+                                chartBars.forEach((bar) {
+                                  barSizes.add(bar.barRods.first.toY.toInt());
+                                });
+                                currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
+                                if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
+                              });
+                            },
+                            style: OutlinedButton.styleFrom(backgroundColor: Colors.white, side: const BorderSide(width: 1,color: Color(0xffECEFF1))),
+                            child:  Text(
+                              " ${DateFormat('dd MMM yyyy').format(DateTime.fromMillisecondsSinceEpoch(requestMsSinceEpoch - Duration(days: selectedNumberOfDays).inMilliseconds - (Duration(days: selectedNumberOfDays).inMilliseconds * (stepsIntoPast-1))))} - ${DateFormat('dd MMM yyyy').format(DateTime.fromMillisecondsSinceEpoch(requestMsSinceEpoch - (Duration(days: selectedNumberOfDays).inMilliseconds * (stepsIntoPast-1))))} ",
+                            ),
+                          ),
+                          IconButton(
+                              onPressed: (){
+                                setState(() {
+                                  if(stepsIntoPast - 1 >= 1)stepsIntoPast -=1;
+                                  chartSpots = getCurrentSpots();
+                                  chartBars = getCurrentBars();
+                                  List<int> barSizes = [];
+                                  for (var bar in chartBars) {
+                                    barSizes.add(bar.barRods.first.toY.toInt());
+                                  }
+                                  currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
+                                  if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
+                                });
+                              },
+                              icon: const Icon(Icons.arrow_forward,color: Color(0xff0099F0), size: 30,)
+                          ),
+                        ],
+                      ),
+
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
+
+                Row(
+                  children: [
+                    SizedBox(
+                      width: MediaQuery.of(context).size.width,
+                      child: AspectRatio(
+                        aspectRatio: 2.1,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(0, 0, 30, 0),
+                          child: changeDiagram && selectedNumberOfDays != 0 ?
+                          BarChart(
+                              BarChartData(
+                                barTouchData: BarTouchData(
+                                  enabled: true,
+                                  touchTooltipData: BarTouchTooltipData(
+                                    tooltipBgColor: Colors.white,
+                                    tooltipPadding: const EdgeInsets.all(1),
+                                    tooltipMargin: 1,
+                                    tooltipBorder: const BorderSide(color: Colors.black),
+                                    getTooltipItem: (
+                                        BarChartGroupData group,
+                                        int groupIndex,
+                                        BarChartRodData rod,
+                                        int rodIndex,
+                                    ){
+                                      return BarTooltipItem(
+                                          barChartSpotString(groupIndex+1, rod.toY),
+                                          TextStyle(
+                                            color: rod.toY > 100 ? rod.toY > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                      ));
+                                    }
+                                  )
+                                ),
+                                titlesData: FlTitlesData(
+                                    show: true,
+                                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                    bottomTitles: AxisTitles(
+                                      sideTitles: SideTitles(
+                                        showTitles: true,
+                                        getTitlesWidget: (value, meta) {
+                                          return bottomTitleWidgets(value, meta);
+                                        },
+                                        reservedSize: 56,
+                                      ),
+                                      drawBelowEverything: true,
+                                    ),
+                                    leftTitles: const AxisTitles(
+                                      sideTitles: SideTitles(
+                                          showTitles: true,
+                                          reservedSize: 50
+                                      ),
+                                    )
+                                ),
+                                gridData: FlGridData(
+                                    show: true,
+                                    getDrawingVerticalLine: (value){
+                                      return const FlLine(
+                                          color: Color(0x00eceff1),
+                                          strokeWidth: 1
+                                      );
+                                    }
+                                ),
+                                alignment: BarChartAlignment.spaceAround,
+                                maxY: max(currentMaxAvgValue.toDouble()+100, 400),
+                                barGroups: chartBars,
+                                borderData: FlBorderData(
+                                    show: false
+                                ),
+                              )
+                          ) : SfCartesianChart(
+                            plotAreaBorderWidth: 0,
+                            primaryXAxis: DateTimeAxis(
+                              dateFormat: selectedNumberOfDays == 1 ? DateFormat.Hm() : selectedNumberOfDays == 2 ? DateFormat("EEE\nHH:mm") : selectedNumberOfDays == 7 ? DateFormat("d MMM\nHH:mm") : selectedNumberOfDays == 30 ? DateFormat("d MMM") : DateFormat("d MMM yy"),
+                              intervalType: selectedNumberOfDays == 1 ? DateTimeIntervalType.hours : selectedNumberOfDays == 2 ? DateTimeIntervalType.hours : DateTimeIntervalType.days,
+                              interval: selectedNumberOfDays == 1 ? 6 : selectedNumberOfDays == 2 ? 12 : selectedNumberOfDays == 7 ? 7/5 : selectedNumberOfDays == 30 ? 6 : (Duration(milliseconds: DateTime.now().millisecondsSinceEpoch - radonHistoryTimestamps.last.item1).inDays.toDouble()/4),
+                            ),
+                            primaryYAxis: NumericAxis(
+                                minimum: 0,
+                                maximum: max(currentMaxValue.toDouble()+100, 450),
+                                axisLine: AxisLine(width: 0),
+                                edgeLabelPlacement: EdgeLabelPlacement.shift,
+                                majorTickLines: MajorTickLines(size: 0)
+                            ),
+                            series: getSplineSeries(max(currentMaxValue.toDouble()+100, 450)),
+                            tooltipBehavior: TooltipBehavior(
+                                enable: showAllData ? false : true,
+                                format: "point.x  point.y ${unit}",
+                                decimalPlaces: 0,
+                                header: "",
+                                animationDuration: 0,
+                              canShowMarker: false
+                            ),
+                          )
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20,),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.only(right: changeDiagram ? 30 : 40),
+                      child: changeDiagram ? Text("*Values shown are averages per "+ (selectedNumberOfDays == 1 ? "hour" : selectedNumberOfDays == 2 ? "2 hours" : selectedNumberOfDays == 7 ? "6 hours" : selectedNumberOfDays == 30 ? "day" : ""), style: TextStyle(fontSize: 12, color: Colors.grey),) : showAllData ? Text("*Values shown are real values per 10mins", style: TextStyle(fontSize: 12, color: Colors.grey),) : Text("*Values shown are averages per "+ (selectedNumberOfDays == 1 ? "hour" : selectedNumberOfDays == 2 ? "hour" : selectedNumberOfDays == 7 ? "hour" : selectedNumberOfDays == 30 ? "6 hours" : "day"), style: TextStyle(fontSize: 12, color: Colors.grey),),
+                    ),
+                  ]
+                ),
+              ],
+            ),
+            ),
+          ),
+        )
+    ) : Scaffold(
+      resizeToAvoidBottomInset: true,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(height: 20,),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
                 SizedBox(
-                  height: 35,
+                  height: 30,
+                  width: 300,
                   child: ListView(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.fromLTRB(10, 0, 10, 0),
@@ -1122,16 +1945,25 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           child: OutlinedButton(
                             onPressed: (){
                               setState((){
+                                stepsIntoPast = 1;
                                 selectedNumberOfDays = 1;
+                                chartSpots = getCurrentSpots();
+                                chartBars = getCurrentBars();
+                                List<int> barSizes = [];
+                                chartBars.forEach((bar) {
+                                  barSizes.add(bar.barRods.first.toY.toInt());
+                                });
+                                currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
+                                if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
                               });
                             },
                             style: OutlinedButton.styleFrom(
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20)
-                                ),
-                                side: BorderSide(width: 2,color: selectedNumberOfDays == 1 ? const Color(0xff0099F0) : const Color(0xff4f99F0)),
-                                foregroundColor: Colors.black,
-                                backgroundColor: selectedNumberOfDays == 1 ? const Color(0xff0099F0) : Colors.white,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20)
+                              ),
+                              side: BorderSide(width: 2,color: selectedNumberOfDays == 1 ? const Color(0xff0099F0) : const Color(0xff4f99F0)),
+                              foregroundColor: Colors.black,
+                              backgroundColor: selectedNumberOfDays == 1 ? const Color(0xff0099F0) : Colors.white,
                             ),
                             child: Text(AppLocalizations.of(context)!.last24h,style: TextStyle(
                                 color: selectedNumberOfDays == 1 ? Colors.white : const Color(0xff0099F0)
@@ -1146,7 +1978,16 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           child: OutlinedButton(
                             onPressed: (){
                               setState((){
+                                stepsIntoPast = 1;
                                 selectedNumberOfDays = 2;
+                                chartSpots = getCurrentSpots();
+                                chartBars = getCurrentBars();
+                                List<int> barSizes = [];
+                                chartBars.forEach((bar) {
+                                  barSizes.add(bar.barRods.first.toY.toInt());
+                                });
+                                currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
+                                if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
                               });
                             },
                             style: OutlinedButton.styleFrom(
@@ -1164,14 +2005,23 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           ),
                         ),
                       ),
-                      Container(
+                      SizedBox(
                         height: 30,
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(0, 0, 5, 0),
                           child: OutlinedButton(
                             onPressed: ()=>{
                               setState((){
+                                stepsIntoPast = 1;
                                 selectedNumberOfDays = 7;
+                                chartSpots = getCurrentSpots();
+                                chartBars = getCurrentBars();
+                                List<int> barSizes = [];
+                                chartBars.forEach((bar) {
+                                  barSizes.add(bar.barRods.first.toY.toInt());
+                                });
+                                currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
+                                if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
                               })
                             },
                             style: OutlinedButton.styleFrom(
@@ -1196,7 +2046,16 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           child: OutlinedButton(
                             onPressed: ()=>{
                               setState((){
+                                stepsIntoPast = 1;
                                 selectedNumberOfDays = 30;
+                                chartSpots = getCurrentSpots();
+                                chartBars = getCurrentBars();
+                                List<int> barSizes = [];
+                                chartBars.forEach((bar) {
+                                  barSizes.add(bar.barRods.first.toY.toInt());
+                                });
+                                currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
+                                if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
                               })
                             },
                             style: OutlinedButton.styleFrom(
@@ -1219,7 +2078,11 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         child: OutlinedButton(
                           onPressed: ()=>{
                             setState((){
+                              stepsIntoPast = 1;
                               selectedNumberOfDays = 0;
+                              showAllData = false;
+                              chartSpots = getCurrentSpots();
+                              chartBars = getCurrentBars();
                             })
                           },
                           style: OutlinedButton.styleFrom(
@@ -1242,255 +2105,302 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     ],
                   ),
                 ),
-                const SizedBox(height: 50),
-                GestureDetector(
-                  onPanEnd: (details) {
-                    // Swiping in right direction.
-                    if (details.velocity.pixelsPerSecond.dx > 0) {
-                      setState(() {
-                        stepsIntoPast += 1;
-                      });
-                    }
-
-                    // Swiping in left direction.
-                    if (details.velocity.pixelsPerSecond.dx < 0) {
-                      if(stepsIntoPast>1){
-                        setState(() {
-                          stepsIntoPast -= 1;
-                        });
-                      }
-                    }
-                  },
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: MediaQuery.of(context).size.width,
-                        child: AspectRatio(
-                          aspectRatio:0.8,
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(0, 0, 30, 0),
-                            child: (selectedNumberOfDays == 7) || (selectedNumberOfDays == 30) ?
-                            BarChart(
-                                BarChartData(
-                                  barTouchData: BarTouchData(
-                                    enabled: true,
-                                    touchTooltipData: BarTouchTooltipData(
-                                      tooltipBgColor: Colors.white,
-                                      tooltipPadding: const EdgeInsets.all(1),
-                                      tooltipMargin: 1,
-                                      getTooltipItem: (
-                                          BarChartGroupData group,
-                                          int groupIndex,
-                                          BarChartRodData rod,
-                                          int rodIndex,
-                                      ){
-                                        return BarTooltipItem(
-                                            barChartSpotString(groupIndex+1, rod.toY),
-                                            TextStyle(
-                                            color: rod.toY > 50 ? rod.toY > 300 ? Colors.red : Colors.orange : Colors.green,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
-                                        ));
-                                      }
-                                    )
-                                  ),
-                                  titlesData: FlTitlesData(
-                                      show: true,
-                                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                      bottomTitles: AxisTitles(
-                                        sideTitles: SideTitles(
-                                          showTitles: true,
-                                          getTitlesWidget: (value, meta) {
-                                            return bottomTitleWidgets(value, meta);
-                                          },
-                                          reservedSize: 56,
-                                        ),
-                                        drawBelowEverything: true,
-                                      ),
-                                      leftTitles: const AxisTitles(
-                                        sideTitles: SideTitles(
-                                            showTitles: true,
-                                            reservedSize: 50
-                                        ),
-                                      )
-                                  ),
-                                  gridData: FlGridData(
-                                      show: true,
-                                      getDrawingVerticalLine: (value){
-                                        return const FlLine(
-                                            color: Color(0x00eceff1),
-                                            strokeWidth: 1
-                                        );
-                                      }
-                                  ),
-                                  alignment: BarChartAlignment.spaceAround,
-                                  maxY: (currentMaxValue/100.0).ceil()*100.0,
-                                  barGroups: getCurrentBars(),
-                                  borderData: FlBorderData(
-                                      show: false
-                                  ),
-                                )
-                            ) : LineChart(
-                                LineChartData(
-                                  maxX: selectedNumberOfDays == 0 ? (Duration(milliseconds: requestMsSinceEpoch - radonHistoryTimestamps.last.item1).inMinutes).toDouble() : 24,
-                                  maxY: (currentMaxValue/100.0).ceil()*100.0,
-                                  gridData: FlGridData(
-                                      show: true,
-                                      getDrawingVerticalLine: (value){
-                                        return const FlLine(
-                                            color: Color(0x00eceff1),
-                                            strokeWidth: 1
-                                        );
-                                      }
-                                  ),
-                                  lineBarsData: [
-                                    LineChartBarData(
-                                      spots: [const FlSpot(0, 0)],
-                                      dotData: const FlDotData(
-                                          show: false
-                                      ),
-                                    ),
-                                    LineChartBarData(
-                                      color: const Color(0xff0099F0),
-                                      spots: getCurrentSpots(),
-                                      isCurved: true,
-                                      curveSmoothness: 0.1,
-                                      preventCurveOverShooting: true,
-                                      dotData: const FlDotData(
-                                          show: false
-                                      ),
-                                      /*gradient: LinearGradient(
-                                          begin: Alignment.bottomCenter,
-                                          end: Alignment.topCenter,
-                                          colors: currentMaxValue>300 ? [
-                                            Colors.green,
-                                            Colors.green,
-                                            Colors.orange,
-                                            Colors.orange,
-                                            Colors.red,
-                                            Colors.red,
-                                          ] : currentMaxValue>50 ?[
-                                            Colors.green,
-                                            Colors.green,
-                                            Colors.orange,
-                                            Colors.orange,
-
-                                          ] : [
-                                            Colors.green,
-                                            Colors.green,
-
-                                          ],
-                                          stops: currentMaxValue>300 ?[0, 50<currentMaxValue ? 45.0/currentMaxValue : 1.0, 50<currentMaxValue ? 55.0/currentMaxValue : 1.0, 300<currentMaxValue ? 295/currentMaxValue : 1.0, 300<currentMaxValue ? 305/currentMaxValue : 3.00,1.0]
-                                              : currentMaxValue>50 ?[0, 50<currentMaxValue ? 45.0/currentMaxValue : 1.0, 50<currentMaxValue ? 55.0/currentMaxValue : 1.0, 300<currentMaxValue ? 295/currentMaxValue : 1.0]
-                                              :[0, 50<currentMaxValue ? 45.0/currentMaxValue : 1.0]
-                                      ),*/
-                                    )
-                                  ],
-                                  lineTouchData: LineTouchData(
-                                    enabled: true,
-                                    getTouchedSpotIndicator:
-                                        (LineChartBarData barData, List<int> spotIndexes) {
-                                      return spotIndexes.map((index) {
-                                        return TouchedSpotIndicatorData(
-                                          const FlLine(
-                                            strokeWidth: 0,
-                                            color: Colors.pink,
-                                          ),
-                                          FlDotData(
-                                            show: true,
-                                            getDotPainter: (spot, percent, barData, index) {
-                                              return spot.y != 0 && spot.x != 0 ? FlDotCirclePainter(
-                                                radius: 8,
-                                                color: spot.y > 50 ? spot.y >
-                                                    300 ? Colors.red : Colors
-                                                    .orange : Colors.green,
-                                                strokeWidth: 2,
-                                                strokeColor: Colors.black,
-                                              ) : FlDotCirclePainter(
-                                                radius: 0
-                                              );
-                                            }
-                                          ),
-                                        );
-                                      }).toList();
-                                    },
-                                    touchTooltipData: LineTouchTooltipData(
-                                      maxContentWidth: 100,
-                                      tooltipBgColor: Colors.white,
-                                      tooltipBorder: const BorderSide(color: Colors.black),
-                                      getTooltipItems: (touchedSpots) {
-                                        if(touchedSpots.first.x == 0 || touchedSpots.first.x == (selectedNumberOfDays == 0 ? (Duration(milliseconds: requestMsSinceEpoch - radonHistoryTimestamps.last.item1).inMinutes).toDouble() : 24))return [];
-                                        return touchedWidgets(touchedSpots);
-                                      },
-                                    ),
-                                    handleBuiltInTouches: true
-                                  ),
-                                  titlesData: FlTitlesData(
-                                    show: true,
-                                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                    bottomTitles: AxisTitles(
-                                      sideTitles: SideTitles(
-                                        showTitles: true,
-                                        getTitlesWidget: (value, meta) {
-                                          return bottomTitleWidgets(value, meta);
-                                        },
-                                        reservedSize: 56,
-                                        interval: selectedNumberOfDays == 0 ? (Duration(milliseconds: requestMsSinceEpoch - radonHistoryTimestamps.last.item1).inMinutes).toDouble()/4
-                                            : selectedNumberOfDays == 7 ? 1 : 6
-                                      ),
-                                      drawBelowEverything: true,
-                                    ),
-                                    leftTitles: const AxisTitles(
-                                      sideTitles: SideTitles(
-                                        showTitles: true,
-                                        reservedSize: 50
-                                      ),
-                                    )
-                                  ),
-                                  borderData: FlBorderData(
-                                      show: false
-                                  ),
-                                  extraLinesData: ExtraLinesData(
-                                      horizontalLines: [
-                                        HorizontalLine(
-                                            y: currentAvgValue.toDouble(),
-                                            dashArray: [20,5]
-                                        )
-                                      ]
-                                  )
-                              ),
-                              curve: Curves.ease
-                            ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                        visualDensity: VisualDensity.compact,
+                        onPressed: (){
+                          setState(() {
+                            stepsIntoPast +=1;
+                            chartSpots = getCurrentSpots();
+                            chartBars = getCurrentBars();
+                            List<int> barSizes = [];
+                            for (var bar in chartBars) {
+                              barSizes.add(bar.barRods.first.toY.toInt());
+                            }
+                            currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
+                            if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
+                          });
+                        },
+                        icon: const Icon(Icons.arrow_back,color: Color(0xff0099F0), size: 22,)
+                    ),
+                    Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.black12, width: 1.5),
+                          borderRadius: const BorderRadius.all(Radius.circular(20.0))
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(4.0),
+                          child: Text(
+                            " ${DateFormat('dd MMM yyyy').format(DateTime.fromMillisecondsSinceEpoch(requestMsSinceEpoch - Duration(days: selectedNumberOfDays).inMilliseconds - (Duration(days: selectedNumberOfDays).inMilliseconds * (stepsIntoPast-1))))} - ${DateFormat('dd MMM yyyy').format(DateTime.fromMillisecondsSinceEpoch(requestMsSinceEpoch - (Duration(days: selectedNumberOfDays).inMilliseconds * (stepsIntoPast-1))))} ",
                           ),
                         ),
-                      ),
-                    ],
-                  ),
+                    ),
+                    IconButton(
+                        visualDensity: VisualDensity.compact,
+                        onPressed: (){
+                          setState(() {
+                            if(stepsIntoPast - 1 >= 1)stepsIntoPast -=1;
+                            chartSpots = getCurrentSpots();
+                            chartBars = getCurrentBars();
+                            List<int> barSizes = [];
+                            for (var bar in chartBars) {
+                              barSizes.add(bar.barRods.first.toY.toInt());
+                            }
+                            currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
+                            if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
+                          });
+                        },
+                        icon: const Icon(Icons.arrow_forward,color: Color(0xff0099F0), size: 22,)
+                    ),
+                  ],
                 ),
-
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    IconButton(
+                        visualDensity: VisualDensity.compact,
+                        onPressed: (){
+                          setState(() {
+                            if(!changeDiagram)showDiagramDots = !showDiagramDots;
+                          });
+                        },
+                        icon: Icon(Icons.circle_outlined,color: showDiagramDots ? const Color(0xff0099F0) : Colors.grey, size: 22,)
+                    ),
+                    const SizedBox(width: 10,),
+                    IconButton(
+                        visualDensity: VisualDensity.compact,
+                        onPressed: (){
+                          setState(() {
+                            changeDiagram = !changeDiagram;
+                          });
+                        },
+                        icon: Icon(!changeDiagram ? Icons.bar_chart : Icons.query_stats ,color: const Color(0xff0099F0),)
+                    ),
+                    const SizedBox(width: 10,),
+                    IconButton(
+                        visualDensity: VisualDensity.compact,
+                        onPressed: (){
+                          if(!changeDiagram && selectedNumberOfDays != 0)showAllData = !showAllData;
+                          chartSpots = getCurrentSpots();
+                          setState(() {
+                          });
+                        },
+                        icon: Icon(Icons.query_stats,color: showAllData ? const Color(0xff0099F0) : Colors.grey,)
+                    ),
+                    const SizedBox(width: 20,),
+                  ],
+                ),
               ],
             ),
+            SizedBox(height: 5,),
+            SizedBox(
+              width: MediaQuery.of(context).size.width,
+              height: MediaQuery.of(context).size.height-75,
+              child: AspectRatio(
+                aspectRatio: 16/9,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 0, 50, 0),
+                  child: changeDiagram && selectedNumberOfDays != 0 ?
+                  BarChart(
+                      BarChartData(
+                        barTouchData: BarTouchData(
+                            enabled: true,
+                            touchTooltipData: BarTouchTooltipData(
+                                tooltipBgColor: Colors.white,
+                                tooltipPadding: const EdgeInsets.all(1),
+                                tooltipMargin: 1,
+                                getTooltipItem: (
+                                    BarChartGroupData group,
+                                    int groupIndex,
+                                    BarChartRodData rod,
+                                    int rodIndex,
+                                    ){
+                                  return BarTooltipItem(
+                                      barChartSpotString(groupIndex+1, rod.toY),
+                                      TextStyle(
+                                        color: rod.toY > 100 ? rod.toY > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ));
+                                }
+                            )
+                        ),
+                        titlesData: FlTitlesData(
+                            show: true,
+                            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                getTitlesWidget: (value, meta) {
+                                  return bottomTitleWidgets(value, meta);
+                                },
+                                reservedSize: 56,
+                              ),
+                              drawBelowEverything: true,
+                            ),
+                            leftTitles: const AxisTitles(
+                              sideTitles: SideTitles(
+                                  showTitles: true,
+                                  reservedSize: 50
+                              ),
+                            )
+                        ),
+                        gridData: FlGridData(
+                            show: true,
+                            getDrawingVerticalLine: (value){
+                              return const FlLine(
+                                  color: Color(0x00eceff1),
+                                  strokeWidth: 1
+                              );
+                            }
+                        ),
+                        alignment: BarChartAlignment.spaceAround,
+                        maxY: max(currentMaxAvgValue.toDouble()+100, 400),
+                        barGroups: chartBars,
+                        borderData: FlBorderData(
+                            show: false
+                        ),
+                      )
+                  ) : SfCartesianChart(
+                    plotAreaBorderWidth: 0,
+                    primaryXAxis: DateTimeAxis(
+                      dateFormat: selectedNumberOfDays == 1 ? DateFormat.Hm() : selectedNumberOfDays == 2 ? DateFormat("EEE\nHH:mm") : selectedNumberOfDays == 7 ? DateFormat("d MMM") : selectedNumberOfDays == 30 ? DateFormat("d MMM") : DateFormat("d MMM yy"),
+                      intervalType: selectedNumberOfDays == 1 ? DateTimeIntervalType.hours : selectedNumberOfDays == 2 ? DateTimeIntervalType.hours : DateTimeIntervalType.days,
+                      interval: selectedNumberOfDays == 1 ? 6 : selectedNumberOfDays == 2 ? 12 : selectedNumberOfDays == 7 ? 7/5 : selectedNumberOfDays == 30 ? 6 : (Duration(milliseconds: DateTime.now().millisecondsSinceEpoch - radonHistoryTimestamps.last.item1).inDays.toDouble()/4),
+                    ),
+                    primaryYAxis: NumericAxis(
+                        minimum: 0,
+                        maximum: max(currentMaxValue.toDouble()+50, 350),
+                        axisLine: AxisLine(width: 0),
+                        edgeLabelPlacement: EdgeLabelPlacement.shift,
+                        majorTickLines: MajorTickLines(size: 0)
+                    ),
+                    series: getSplineSeries(max(currentMaxValue.toDouble()+50, 350)),
+                    tooltipBehavior: TooltipBehavior(
+                        enable: showAllData ? false : true,
+                        format: "point.x  point.y ${unit}",
+                        decimalPlaces: 0,
+                        header: "",
+                        animationDuration: 0
+                    ),
+                  )
+                ),
+              ),
             ),
-          ),
-        )
+          ],
+        ),
+      ),
     );
   }
 
+  List<AreaSeries<ChartData, DateTime>> getSplineSeries(double max) {
+    return <AreaSeries<ChartData, DateTime>>[
+      AreaSeries<ChartData, DateTime>(
+        emptyPointSettings: EmptyPointSettings(
+          mode: EmptyPointMode.gap
+        ),
+        dataSource: chartSpots,
+        xValueMapper: (ChartData spot, _) => spot.x,
+        yValueMapper: (ChartData spot, _) => spot.y,
+        markerSettings: MarkerSettings(
+            isVisible: (showDiagramDots && (showAllData ? false : true)),
+          borderColor: Colors.black26,
+          color: Colors.black26
+        ),
+        borderGradient: LinearGradient(
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+            colors: currentMaxValue>300 ? [
+              Color(0xff0ace84).withOpacity(0.5),
+              Color(0xff0ace84).withOpacity(0.5),
+              Color(0xfffdca03).withOpacity(0.5),
+              Color(0xfffdca03).withOpacity(0.5),
+              Color(0xfffd4c56).withOpacity(0.5),
+              Color(0xfffd4c56).withOpacity(0.5),
+            ] : currentMaxValue>100 ?[
+              Color(0xff0ace84),
+              Color(0xff0ace84),
+              Color(0xfffdca03),
+              Color(0xfffdca03),
+            ] : [
+              Color(0xff0ace84),
+              Color(0xff0ace84),
+            ],
+            stops: currentMaxValue>300 ?[0, 100<currentMaxValue ? 90.0/currentMaxValue : 1.0, 100<currentMaxValue ? 110.0/currentMaxValue : 1.0, 300<currentMaxValue ? 290/currentMaxValue : 1.0, 300<currentMaxValue ? 310/currentMaxValue : 3.00,1.0]
+                : currentMaxValue>100 ?[0, 100<currentMaxValue ? 90.0/currentMaxValue : 1.0, 100<currentMaxValue ? 110.0/currentMaxValue : 1.0, 300<currentMaxValue ? 290/currentMaxValue : 1.0]
+                :[0,1.0]
+        ),
+        gradient: LinearGradient(
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+            colors: currentMaxValue>300 ? [
+              Color(0xff0ace84).withOpacity(0.5),
+              Color(0xff0ace84).withOpacity(0.5),
+              Color(0xfffdca03).withOpacity(0.5),
+              Color(0xfffdca03).withOpacity(0.5),
+              Color(0xfffd4c56).withOpacity(0.5),
+              Color(0xfffd4c56).withOpacity(0.5),
+            ] : currentMaxValue>100 ?[
+              Color(0xff0ace84).withOpacity(0.5),
+              Color(0xff0ace84).withOpacity(0.5),
+              Color(0xfffdca03).withOpacity(0.5),
+              Color(0xfffdca03).withOpacity(0.5),
+            ] : [
+              Color(0xff0ace84).withOpacity(0.5),
+              Color(0xff0ace84).withOpacity(0.5),
+            ],
+            stops: currentMaxValue>300 ?[0, 100<currentMaxValue ? 90.0/currentMaxValue : 1.0, 100<currentMaxValue ? 110.0/currentMaxValue : 1.0, 300<currentMaxValue ? 290/currentMaxValue : 1.0, 300<currentMaxValue ? 310/currentMaxValue : 3.00,1.0]
+                : currentMaxValue>100 ?[0, 100<currentMaxValue ? 90.0/currentMaxValue : 1.0, 100<currentMaxValue ? 110.0/currentMaxValue : 1.0, 300<currentMaxValue ? 290/currentMaxValue : 1.0]
+                :[0,1.0]
+        ),
+      )
+    ];
+  }
 
-  bottomTitleWidgets(double value, TitleMeta meta){
-    if(!(value.toInt() == 1 || value.toInt() == 30 || value.toInt() == 10 || value.toInt() == 20) && selectedNumberOfDays == 30) return SideTitleWidget(child: Text(""), axisSide: meta.axisSide);
+  bottomTitleWidgets(double valueUncorrected, TitleMeta meta){
+    int value = valueUncorrected.toInt();
+    if(value%(changeDiagram ? 6 : 30) != 0 && selectedNumberOfDays == 30 && !(value.toInt() == 0)) return SideTitleWidget(axisSide: meta.axisSide, child: const Text(""));
+    if(value%(changeDiagram ? 4 : 24) != 0 && selectedNumberOfDays == 7 && !(value.toInt() == 0)) return SideTitleWidget(axisSide: meta.axisSide, child: const Text(""));
+    if(value%6 != 0 && selectedNumberOfDays == 2 && !(value.toInt() == 0)) return SideTitleWidget(axisSide: meta.axisSide, child: const Text(""));
+    if(value%6 != 0 && selectedNumberOfDays == 1 && !(value.toInt() == 0)) return SideTitleWidget(axisSide: meta.axisSide, child: const Text(""));
+    //if(value != 0 && value != radonHistoryTimestamps.length && selectedNumberOfDays == 0) return SideTitleWidget(axisSide: meta.axisSide, child: const Text(""));
     const style = TextStyle(
       color: Colors.black,
       fontWeight: FontWeight.w400,
 
     );
+
+    if(selectedNumberOfDays == 7 && (value.toInt() == 0 || (value.toInt() == 168 && !changeDiagram) || (value.toInt() == 28 && changeDiagram))){
+      return SideTitleWidget(
+        axisSide: meta.axisSide,
+        space: 16,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Column(
+              children: [
+                Text(
+                  "${MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value*6)*3600000).toInt(), selectedNumberOfDays)}\n"
+                      "${MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value*6)*3600000).toInt(), 71)}\n"
+                      "${MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value*6)*3600000).toInt(), 72)}",
+                  style: style,
+                  textAlign:  TextAlign.center,
+                ),
+              ],
+            )
+            ],
+        ),
+      );
+    }
+
     if(selectedNumberOfDays == 0){
       return SideTitleWidget(
         axisSide: meta.axisSide,
         space: 16,
-        child: Text(MyLineChartData().convertMsToDateString(requestMsSinceEpoch-Duration(milliseconds: requestMsSinceEpoch-radonHistoryTimestamps.last.item1).inMilliseconds, selectedNumberOfDays) , style: style, textAlign:  TextAlign.center,),
+        child: Text(MyLineChartData().convertMsToDateString(requestMsSinceEpoch-Duration(milliseconds: requestMsSinceEpoch-radonHistoryTimestamps.last.item1).inMilliseconds+(value*60000).toInt(), selectedNumberOfDays) , style: style, textAlign:  TextAlign.center,),
       );
     }
     if(selectedNumberOfDays == 1){
@@ -1504,14 +2414,19 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       return SideTitleWidget(
         axisSide: meta.axisSide,
         space: 16,
-        child: Text(MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value*2)*3600000).toInt(), selectedNumberOfDays) , style: style, textAlign:  TextAlign.center,),
+        child: Text(MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value*2)*3600000).toInt(), 21) , style: style, textAlign:  TextAlign.center,),
       );
     }
     if(selectedNumberOfDays == 7){
       return SideTitleWidget(
         axisSide: meta.axisSide,
         space: 16,
-        child: Text(MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value*24)*3600000).toInt(), selectedNumberOfDays) , style: style, textAlign:  TextAlign.center,),
+        child: Column(
+          children: [
+            Text(MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value*(changeDiagram ? 6 : 1))*3600000).toInt(), selectedNumberOfDays) , style: style, textAlign:  TextAlign.center,),
+            Text(MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value*(changeDiagram ? 6 : 1))*3600000).toInt(), 71) , style: style, textAlign:  TextAlign.center,),
+          ],
+        ),
       );
     }
     if(selectedNumberOfDays == 30){
@@ -1531,7 +2446,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   List<LineTooltipItem?> touchedWidgets(List<LineBarSpot> touchedSpots){
     List<LineTooltipItem?> list =  touchedSpots.map((LineBarSpot touchedSpot) {
       final textStyle = TextStyle(
-        color: touchedSpot.y > 50 ? touchedSpot.y > 300 ? Colors.red : Colors.orange : Colors.green,
+        color: touchedSpot.y > 100 ? touchedSpot.y > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
         fontWeight: FontWeight.bold,
         fontSize: 14,
       );
@@ -1543,25 +2458,25 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       }
       if(selectedNumberOfDays == 1){
         return LineTooltipItem(
-          '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((24-touchedSpot.x)*3600000)).toInt(), selectedNumberOfDays)}, ${touchedSpot.y.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}',
+          '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((48-touchedSpot.x)*0.5*3600000)).toInt(), selectedNumberOfDays)}, ${touchedSpot.y.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}',
           textStyle,
         );
       }
       if(selectedNumberOfDays == 2){
         return LineTooltipItem(
-          '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((24-touchedSpot.x)*2*3600000)).toInt(), selectedNumberOfDays)}, ${touchedSpot.y.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}',
+          '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((96-touchedSpot.x)*0.5*3600000)).toInt(), selectedNumberOfDays)}, ${touchedSpot.y.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}',
           textStyle,
         );
       }
       if(selectedNumberOfDays == 7){
         return LineTooltipItem(
-          '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((7-touchedSpot.x-0.5)*24*3600000)).toInt(), selectedNumberOfDays)}, ${touchedSpot.y.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}',
+          '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((168-touchedSpot.x)*1*3600000)).toInt(), 73)}, ${touchedSpot.y.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}',
           textStyle,
         );
       }
       if(selectedNumberOfDays == 30){
         return LineTooltipItem(
-          '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((24-touchedSpot.x)*30*3600000)).toInt(), selectedNumberOfDays)}, ${touchedSpot.y.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}',
+          '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((120-touchedSpot.x)*6*3600000)).toInt(), selectedNumberOfDays)}, ${touchedSpot.y.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}',
           textStyle,
         );
       }
@@ -1574,10 +2489,23 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   }
 
   String barChartSpotString (int touchedBar, double touchedBarValue){
-    if(selectedNumberOfDays == 7){
-      return '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((7-touchedBar)*24*3600000)).toInt(), selectedNumberOfDays)}, ${touchedBarValue.toInt()} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}';
+
+    if(selectedNumberOfDays == 0){
+      return '${MyLineChartData().convertMsToDateString(requestMsSinceEpoch-Duration(milliseconds: requestMsSinceEpoch-radonHistoryTimestamps.last.item1).inMilliseconds , selectedNumberOfDays)}, ${touchedBarValue.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}';
     }
-    return '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((30-touchedBar)*24*3600000)).toInt(), selectedNumberOfDays)}, ${touchedBarValue.toInt()} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}';
+    if(selectedNumberOfDays == 1){
+      return '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((25-touchedBar)*3600000)).toInt(), 2)}, ${touchedBarValue.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}';
+    }
+    if(selectedNumberOfDays == 2){
+      return '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((25-touchedBar)*2*3600000)).toInt(), 2)}, ${touchedBarValue.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}';
+    }
+    if(selectedNumberOfDays == 7){
+      return '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((29-touchedBar)*6*3600000)).toInt(), 2)}, ${touchedBarValue.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}';
+    }
+    if(selectedNumberOfDays == 30){
+      return '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((31-touchedBar)*24*3600000)).toInt(), 2)}, ${touchedBarValue.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}';
+    }
+    return '${MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((selectedNumberOfDays == 0 ? Duration(milliseconds: requestMsSinceEpoch-radonHistoryTimestamps.last.item1).inMilliseconds : Duration(days: selectedNumberOfDays).inMilliseconds) -touchedBar*3600000).toInt(), selectedNumberOfDays)}, ${touchedBarValue.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}';
   }
 
   deviceSettingsScreen(){
@@ -1629,6 +2557,34 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       const ImageIcon(AssetImage('lib/images/lights.png')),
                       const SizedBox(width: 14,),
                       Text(AppLocalizations.of(context)!.deviceLights,style: const TextStyle(fontSize: 20.0, fontWeight: FontWeight.w400,), textAlign: TextAlign.center),
+                    ],
+                  ),
+
+                ],
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: (){
+              setState(() {
+                screenIndex = 25;
+              });
+            },
+            child: Container(
+              height: 50.0,
+              decoration: const BoxDecoration(
+                border: Border(bottom: BorderSide(width: 1,color: Color(0xffb0bec5))),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Row(
+                    children: [
+                      const SizedBox(width: 16,),
+                      const Icon(Icons.access_time),
+                      const SizedBox(width: 14,),
+                      Text("Clock & Date",style: const TextStyle(fontSize: 20.0, fontWeight: FontWeight.w400,), textAlign: TextAlign.center),
                     ],
                   ),
 
@@ -1846,7 +2802,71 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               onChanged: (value){
               },
             ),
-            const SizedBox(height: 20,),
+            Text("Indicator animation",style: const TextStyle(fontSize: 12),),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                SizedBox(
+                  width: 160,
+                  child: OutlinedButton(
+                      onPressed: () async{
+                        try {
+                          final result = await InternetAddress.lookup('example.com');
+                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                          }
+                        } on SocketException catch (_) {
+                          Fluttertoast.showToast(
+                              msg: AppLocalizations.of(context)!.noInternetT
+                          );
+                          return;
+                        }
+                        setDisplayAnimation(0);
+                        displayAnimation = 0;
+                        setState(() {
+
+                        });
+                      },
+                      style: OutlinedButton.styleFrom(backgroundColor: displayAnimation != 0 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text("Animation off", style: TextStyle(color: displayAnimation != 0 ?  const Color(0xff0099F0) : Colors.white),),
+                        ],
+                      )
+                  ),
+                ),
+                SizedBox(
+                  width: 160,
+                  child: OutlinedButton(
+                      onPressed: () async{
+                        try {
+                          final result = await InternetAddress.lookup('example.com');
+                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                          }
+                        } on SocketException catch (_) {
+                          Fluttertoast.showToast(
+                              msg: AppLocalizations.of(context)!.noInternetT
+                          );
+                          return;
+                        }
+                        setDisplayAnimation(1);
+                        displayAnimation = 1;
+                        setState(() {
+
+                        });
+                      },
+                      style: OutlinedButton.styleFrom(backgroundColor: displayAnimation != 1 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text("Animation on", style: TextStyle(color: displayAnimation != 1 ?  const Color(0xff0099F0) : Colors.white),),
+                        ],
+                      )
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 40,),
             Row(
               children: [
                 Text(AppLocalizations.of(context)!.display, style: const TextStyle(fontSize: 12),)
@@ -1909,7 +2929,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               onChanged: (value){
               },
             ),
-            const SizedBox(height: 30),
             Text(AppLocalizations.of(context)!.displayType,style: const TextStyle(fontSize: 12),),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1929,13 +2948,16 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           return;
                         }
                         displayType(0);
-                        d_unit=0;
+                        clock=0;
+                        setState(() {
+
+                        });
                       },
-                      style: OutlinedButton.styleFrom(backgroundColor: d_unit == 0 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                      style: OutlinedButton.styleFrom(backgroundColor: clock != 0 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(AppLocalizations.of(context)!.radon, style: TextStyle(color: d_unit == 0 ?  const Color(0xff0099F0) : Colors.white),),
+                          Text(AppLocalizations.of(context)!.radon, style: TextStyle(color: clock != 0 ?  const Color(0xff0099F0) : Colors.white),),
                         ],
                       )
                   ),
@@ -1955,13 +2977,16 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           return;
                         }
                         displayType(1);
-                        d_unit=1;
+                        clock=1;
+                        setState(() {
+
+                        });
                       },
-                      style: OutlinedButton.styleFrom(backgroundColor: d_unit == 1 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                      style: OutlinedButton.styleFrom(backgroundColor: clock != 1 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(AppLocalizations.of(context)!.time, style: TextStyle(color: d_unit == 1 ?  const Color(0xff0099F0) : Colors.white),),
+                          Text(AppLocalizations.of(context)!.time, style: TextStyle(color: clock != 1 ?  const Color(0xff0099F0) : Colors.white),),
                         ],
                       )
                   ),
@@ -1980,13 +3005,16 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           return;
                         }
                         displayType(2);
-                        d_unit=2;
+                        clock=2;
+                        setState(() {
+
+                        });
                       },
-                      style: OutlinedButton.styleFrom(backgroundColor: d_unit == 1 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                      style: OutlinedButton.styleFrom(backgroundColor: clock != 2 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(AppLocalizations.of(context)!.changing, style: TextStyle(color: d_unit == 1 ?  const Color(0xff0099F0) : Colors.white),),
+                          Text(AppLocalizations.of(context)!.changing, style: TextStyle(color: clock != 2 ?  const Color(0xff0099F0) : Colors.white),),
                         ],
                       )
                   ),
@@ -1994,68 +3022,331 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               ],
             ),
 
+          ],
+        ),
+      ),
+    );
+  }
 
-            /*Row( //grenzwertfarbupdate
+  deviceClockScreen(){
+    Map<String,String> tzMap = getTZMap();
+    tzLocations = [];
+    tzCodes = [];
+    tzMap.forEach((location,code){
+      tzLocations.add(location);
+      tzCodes.add(code);
+    });
+    return Scaffold(
+      appBar: AppBar(
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        backgroundColor: Colors.white,
+        titleSpacing: 0,
+        iconTheme: const IconThemeData(
+          color: Colors.black,
+        ),
+        title: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black),
+              onPressed: (){
+                setState(() {
+                  screenIndex = 2;
+                });
+              },
+            ),
+            Text("CLOCK & DATE",style: const TextStyle(color: Colors.black,fontSize: 20,fontWeight: FontWeight.w400),),
+          ],
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [Text("Clock-Type")]),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const SizedBox(width: 30),
-                Text("Messwertgrenze orangene LEDs"),
-                const SizedBox(width: 10),
-                Flexible(
-                  child: TextField(
-                    controller: orangeMinValue,
-                    obscureText: false,
-                    onChanged: (value){
-                    },
-                    onEditingComplete: (){
-                      _updateColors();
-                    },
-                    keyboardType: TextInputType.number,
-                    autofocus: false,
-                    decoration: InputDecoration(
-                      enabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.white),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.grey.shade400),
-                      ),
-                      fillColor: Colors.grey.shade200,
-                      filled: true,
-                    ),
+                SizedBox(
+                  width: 100,
+                  child: OutlinedButton(
+                      onPressed: () async{
+                        try {
+                          final result = await InternetAddress.lookup('example.com');
+                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                          }
+                        } on SocketException catch (_) {
+                          Fluttertoast.showToast(
+                              msg: AppLocalizations.of(context)!.noInternetT
+                          );
+                          return;
+                        }
+                        setClockType(1);
+                        clockType=1;
+                        setState(() {
+
+                        });
+                      },
+                      style: OutlinedButton.styleFrom(backgroundColor: clockType != 1 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text("24h", style: TextStyle(color: clockType != 1 ?  const Color(0xff0099F0) : Colors.white),),
+                        ],
+                      )
+                  ),
+                ),
+                SizedBox(
+                  width: 100,
+                  child: OutlinedButton(
+                      onPressed: () async{
+                        try {
+                          final result = await InternetAddress.lookup('example.com');
+                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                          }
+                        } on SocketException catch (_) {
+                          Fluttertoast.showToast(
+                              msg: AppLocalizations.of(context)!.noInternetT
+                          );
+                          return;
+                        }
+                        setClockType(2);
+                        clockType=2;
+                        setState(() {
+
+                        });
+                      },
+                      style: OutlinedButton.styleFrom(backgroundColor: clockType != 2 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text("12h", style: TextStyle(color: clockType != 2 ?  const Color(0xff0099F0) : Colors.white),),
+                        ],
+                      )
+                  ),
+                ),
+                SizedBox(
+                  child: OutlinedButton(
+                      onPressed: () async{
+                        try {
+                          final result = await InternetAddress.lookup('example.com');
+                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                          }
+                        } on SocketException catch (_) {
+                          Fluttertoast.showToast(
+                              msg: AppLocalizations.of(context)!.noInternetT
+                          );
+                          return;
+                        }
+                        setClockType(3);
+                        clockType=3;
+                        setState(() {
+
+                        });
+                      },
+                      style: OutlinedButton.styleFrom(backgroundColor: clockType!= 3 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text("Date", style: TextStyle(color: clockType != 3 ?  const Color(0xff0099F0) : Colors.white),),
+                        ],
+                      )
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 15),
+            SizedBox(
+              height: 30,
+            ),
+            Text("Timezone - current: ${currentTZ}",),
+            SizedBox(
+              height: 200,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: tzLocations.length,
+                itemBuilder: (context, index) {
+                  return ListTile(
+                    title: Text(tzLocations[index],style: TextStyle(fontSize: 12),),
+                    onTap: (){
+                      AlertDialog alert = AlertDialog(
+                        title: Text("Set ${tzLocations[index]} as timezone?", style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 20),),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(height: 10,),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () async{
+                                      try {
+                                        final result = await InternetAddress.lookup('example.com');
+                                        if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                                        }
+                                      } on SocketException catch (_) {
+                                        Fluttertoast.showToast(
+                                            msg: AppLocalizations.of(context)!.noInternetT
+                                        );
+                                        return;
+                                      }
+                                      setTimezone(tzCodes[index]);
+                                      currentTZ = tzCodes[index];
+                                      Navigator.pop(context);
+                                    },
+                                    style: OutlinedButton.styleFrom(backgroundColor: const Color(0xff0099f0),minimumSize: const Size(100, 50)),
+                                    child: Text(AppLocalizations.of(context)!.confirm,style: const TextStyle(color: Colors.white)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10,),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: (){
+                                      Navigator.pop(context);
+                                    },
+                                    style: OutlinedButton.styleFrom(backgroundColor: const Color(0xff0099f0),minimumSize: const Size(100, 50)),
+                                    child: Text(AppLocalizations.of(context)!.cancel,style: const TextStyle(color: Colors.black)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context){
+                          return alert;
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+            SizedBox(
+              height: 10,
+            ),
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                const SizedBox(width: 30),
-                const Text("Messwertgrenze rote LEDs"),
-                const SizedBox(width: 41),
-                Flexible(
+                Text("Change NTP server:",style: TextStyle(fontSize: 12)),
+                SizedBox(
+                  width: 10,
+                ),
+                SizedBox(
+                  width: 100,
                   child: TextField(
-                    controller: redMinValue,
-                    obscureText: false,
-                    onChanged: (value){
-                    },
-                    onEditingComplete: (){
-                      _updateColors();
-                    },
-                    keyboardType: TextInputType.number,
-                    autofocus: false,
+                    style: TextStyle(fontSize: 12),
+                    controller: customNTPServerController,
                     decoration: InputDecoration(
-                      enabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.white),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderSide: BorderSide(color: Colors.grey.shade400),
-                      ),
-                      fillColor: Colors.grey.shade200,
-                      filled: true,
+                      hintText: tzServer3
                     ),
                   ),
                 ),
+                SizedBox(
+                  width: 10,
+                ),
+                SizedBox(
+                  width: 100,
+                  child: OutlinedButton(
+                      onPressed: () async{
+                        try {
+                          final result = await InternetAddress.lookup('example.com');
+                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                          }
+                        } on SocketException catch (_) {
+                          Fluttertoast.showToast(
+                              msg: AppLocalizations.of(context)!.noInternetT
+                          );
+                          return;
+                        }
+                        setNTPServer(customNTPServerController.text);
+                        tzServer3 = customNTPServerController.text;
+                        setState(() {
+
+                        });
+                      },
+                      style: OutlinedButton.styleFrom(backgroundColor: Colors.white ,shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text("Apply", style: TextStyle(color: const Color(0xff0099F0),)),
+                        ],
+                      )
+                  ),
+                ),
               ],
-            ),*/
+            ),
+            SizedBox(height: 30,),
+            Row(children: [Text("Summer-Winter time enabled")]),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                SizedBox(
+                  width: 160,
+                  child: OutlinedButton(
+                      onPressed: () async{
+                        try {
+                          final result = await InternetAddress.lookup('example.com');
+                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                          }
+                        } on SocketException catch (_) {
+                          Fluttertoast.showToast(
+                              msg: AppLocalizations.of(context)!.noInternetT
+                          );
+                          return;
+                        }
+                        setMEZType(0);
+                        mezType = 0;
+                        setState(() {
+
+                        });
+                      },
+                      style: OutlinedButton.styleFrom(backgroundColor: mezType != 0 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text("Without change", style: TextStyle(color: mezType != 0 ?  const Color(0xff0099F0) : Colors.white),),
+                        ],
+                      )
+                  ),
+                ),
+                SizedBox(
+                  width: 160,
+                  child: OutlinedButton(
+                      onPressed: () async{
+                        try {
+                          final result = await InternetAddress.lookup('example.com');
+                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                          }
+                        } on SocketException catch (_) {
+                          Fluttertoast.showToast(
+                              msg: AppLocalizations.of(context)!.noInternetT
+                          );
+                          return;
+                        }
+                        setMEZType(1);
+                        mezType = 1;
+                        setState(() {
+
+                        });
+                      },
+                      style: OutlinedButton.styleFrom(backgroundColor: mezType != 1 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text("With change", style: TextStyle(color: mezType != 1 ?  const Color(0xff0099F0) : Colors.white),),
+                        ],
+                      )
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -2286,7 +3577,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   readCharacteristic = characteristic;
                   subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
                     String message = utf8.decode(data).trim();
-                    print(utf8.decode(data));
+                    logger.d(utf8.decode(data));
                     if(message == "" && !loginSuccessful){
                     }
                     if(message == 'LOGIN OK' && !hasScanned){
@@ -2360,24 +3651,30 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     }
   }
 
-  readOfflineData() async{
+  Future<dynamic> readOfflineData() async{
+    if(futureFuncRunning)return;
+    requestMsSinceEpoch = DateTime.now().millisecondsSinceEpoch;
+    futureFuncRunning = true;
+    radonHistory = [];
+    radonHistoryTimestamps = [];
     foundAccessPoints = {};
-
-    showDialog(context: context, builder: (context){
-      return Scaffold(
-          body: Center(
-              child:Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(AppLocalizations.of(context)!.searchingDevice),
-                  const SizedBox(height: 36,),
-                  const CircularProgressIndicator(color: Colors.black,),
-                ],
-              )
-          )
-      );
-    });
+    if(!useBluetoothData){
+      showDialog(context: context, builder: (context) {
+        return Scaffold(
+            body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(AppLocalizations.of(context)!.searchingDevice),
+                    const SizedBox(height: 36,),
+                    const CircularProgressIndicator(color: Colors.black,),
+                  ],
+                )
+            )
+        );
+      });
+    }
     if (Platform.isAndroid) {
       await FlutterBluePlus.turnOn();
     }
@@ -2395,27 +3692,109 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     }
     FlutterBluePlus.stopScan();
     bool deviceFound = false;
+    bool listening = false;
     subscription = FlutterBluePlus.scanResults.listen((results) async {
       for (ScanResult r in results) {
         if (!deviceFound) {
           List<int> bluetoothAdvertisementData = [];
           String bluetoothDeviceName = "";
           if(r.advertisementData.manufacturerData.keys.isNotEmpty){
+            logger.d(r.advertisementData.manufacturerData);
             if(r.advertisementData.manufacturerData.values.isNotEmpty){
               bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
             }
             if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
             if(bluetoothDeviceName == device.values.first.name){
+              radonValue = bluetoothAdvertisementData.elementAt(1).toString();
               radonCurrent = bluetoothAdvertisementData.elementAt(1);
               radonWeekly = bluetoothAdvertisementData.elementAt(5);
               radonEver = bluetoothAdvertisementData.elementAt(9);
               deviceFound = true;
               FlutterBluePlus.stopScan();
               subscription!.cancel();
-              setState(() {
-                Navigator.pop(context);
-                screenIndex = 23;
-              });
+              btDevice = r.device;
+              await btDevice!.connect();
+              if (Platform.isAndroid) {
+                await r.device.requestMtu(300);
+              }
+              bool loginSuccessful = false;
+              List<BluetoothService> services = await r.device.discoverServices();
+              for (var service in services){
+                for(var characteristic in service.characteristics){
+                  if(characteristic.properties.notify){
+                    await characteristic.setNotifyValue(true);
+                    readCharacteristic = characteristic;
+                    subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                      String message = utf8.decode(data).trim();
+                      logger.d(utf8.decode(data));
+                      if(message == "" && !loginSuccessful){
+                      }
+                      if(message == 'LOGIN OK'){
+                        loginSuccessful = true;
+                        await Future<void>.delayed( const Duration(milliseconds: 100));
+                        readGraph = true;
+                        await writeCharacteristic!.write(utf8.encode('READGRAPH'));
+                        await Future<void>.delayed( const Duration(seconds: 5));
+                        await btDevice!.disconnect(timeout: 1);
+                        logger.d(radonHistoryTimestamps);
+                        radonHistoryTimestamps = radonHistoryTimestamps.reversed.toList();
+                        chartSpots = getCurrentSpots();
+                        chartBars = getCurrentBars();
+                        List<int> barSizes = [];
+                        chartBars.forEach((bar) {
+                          barSizes.add(bar.barRods.first.toY.toInt());
+                        });
+                        currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
+                        if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
+                        btDevice!.removeBond();
+                        subscriptionToDevice?.cancel();
+                        loaded = true;
+                        setState(() {
+                          screenIndex = 1;
+                        });
+                      }
+                      if(message.length >= 2 && message.substring(0,2)=="|A"){
+                        var bluetoothCurrentValuesAsString = message.split("|")[1];
+                        var bluetoothCurrentvalues = bluetoothCurrentValuesAsString.split(",");
+                        unit = bluetoothCurrentvalues[0].substring(3) == "1" ? "Bq/m³": "pCi/L";
+                        d_led_t = bluetoothCurrentvalues[1].substring(3) == "1";
+                        d_led_f = bluetoothCurrentvalues[2].substring(3) == "1";
+                        d_led_fb = double.parse(bluetoothCurrentvalues[3].substring(3));
+                        d_led_tb = double.parse(bluetoothCurrentvalues[4].substring(3));
+                        d_unit = int.parse(bluetoothCurrentvalues[10].substring(3));
+                        radonCurrent = int.parse(bluetoothCurrentvalues[1].substring(3));
+                      }
+                      if(readGraph){
+                        var bluetoothRadonHistory = message.split(";");
+                        for (var timestamp in bluetoothRadonHistory) {
+                          try{
+                            String dateString = timestamp.split(" ")[0];
+                            int year = int.parse(dateString.split(".")[0])+2000;
+                            int month = int.parse(dateString.split(".")[1]);
+                            int day = int.parse(dateString.split(".")[2]);
+                            int hour = int.parse(timestamp.split(" ")[1].split(",")[0]);
+                            int radon = int.parse(timestamp.split(" ")[1].split(",")[1]);
+                            Tuple2<int,int> singleTimestamp = Tuple2<int,int> (DateTime(year,month,day,hour).millisecondsSinceEpoch,radon);
+                            radonHistoryTimestamps.add(singleTimestamp);
+                          }catch(e){
+                          }
+                        }
+                      }
+                    });
+                  }
+                  if(characteristic.properties.write){
+                    writeCharacteristic = characteristic;
+                    await Future<void>.delayed( const Duration(milliseconds: 300));
+                    if(!loginSuccessful){
+                      try{
+                        loginSuccessful = true;
+                        await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+                      }catch(e){
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -3290,14 +4669,13 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     dio.options.headers['Authorization'] = "Bearer $token";
     Response response;
     try{
-      response = await dio.delete(
+      await dio.delete(
         'https://dashboard.livair.io/api/livAir/unshare',
         data: jsonEncode({
           "deviceIds": [device.keys.first],
           "email": emailToRemove
         })
       );
-      viewerData = response.data;
     }on DioError catch(e){
       Fluttertoast.showToast(
           msg: "Failed to receive data"
@@ -3648,11 +5026,11 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
 
   stopViewingDialog() async{
     AlertDialog alert = AlertDialog(
-      title: Text("Stop viewing?", style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 20),),
+      title: Text(AppLocalizations.of(context)!.stopViewing, style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 20),),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text("Do you really want to stop viewing this device? You will only be able to see the device again, if the owner shares it again."),
+          Text(AppLocalizations.of(context)!.stopViewingM),
           const SizedBox(height: 30,),
           Row(
             children: [
@@ -3692,7 +5070,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     });
                   },
                   style: OutlinedButton.styleFrom(backgroundColor: const Color(0xff0099f0),minimumSize: const Size(100, 50),side: const BorderSide(color: Color(0xff0099f0))),
-                  child: Text("Stop viewing",style: TextStyle(color: Colors.white)),
+                  child: Text(AppLocalizations.of(context)!.stopViewing,style: const TextStyle(color: Colors.white)),
                 ),
               ),
             ],
@@ -3722,16 +5100,17 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     );
   }
 
-  setPage(int index){
+  setPage(int index, bool isWide){
     switch(index) {
       case 0: return const Column();
-      case 1: return deviceDetailScreen();
+      case 1: return deviceDetailScreen(isWide);
       case 2: return deviceSettingsScreen();
       case 20: return deviceLightsScreen();
       case 21: return deviceWifiSelectScreen();
       case 22: return deviceWifiPasswordScreen();
       case 23: return offlineDataScreen();
       case 24: return changeLocationScreen();
+      case 25: return deviceClockScreen();
       case 3: return showDeviceInfoScreen();
       case 5: return dataExportScreen();
       case 6: return shareDeviceScreen();
@@ -3748,21 +5127,510 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         .hasMatch(emailController.text);
   }
 
+  Map<String,String> getTZMap(){
+    return {
+      "Africa/Abidjan":"GMT0",
+      "Africa/Accra":"GMT0",
+      "Africa/Addis_Ababa":"EAT-3",
+      "Africa/Algiers":"CET-1",
+      "Africa/Asmara":"EAT-3",
+      "Africa/Bamako":"GMT0",
+      "Africa/Bangui":"WAT-1",
+      "Africa/Banjul":"GMT0",
+      "Africa/Bissau":"GMT0",
+      "Africa/Blantyre":"CAT-2",
+      "Africa/Brazzaville":"WAT-1",
+      "Africa/Bujumbura":"CAT-2",
+      "Africa/Cairo":"EET-2EEST:M4.5.5/0:M10.5.4/24",
+      "Africa/Casablanca":"<+01>-1",
+      "Africa/Ceuta":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Africa/Conakry":"GMT0",
+      "Africa/Dakar":"GMT0",
+      "Africa/Dar_es_Salaam":"EAT-3",
+      "Africa/Djibouti":"EAT-3",
+      "Africa/Douala":"WAT-1",
+      "Africa/El_Aaiun":"<+01>-1",
+      "Africa/Freetown":"GMT0",
+      "Africa/Gaborone":"CAT-2",
+      "Africa/Harare":"CAT-2",
+      "Africa/Johannesburg":"SAST-2",
+      "Africa/Juba":"CAT-2",
+      "Africa/Kampala":"EAT-3",
+      "Africa/Khartoum":"CAT-2",
+      "Africa/Kigali":"CAT-2",
+      "Africa/Kinshasa":"WAT-1",
+      "Africa/Lagos":"WAT-1",
+      "Africa/Libreville":"WAT-1",
+      "Africa/Lome":"GMT0",
+      "Africa/Luanda":"WAT-1",
+      "Africa/Lubumbashi":"CAT-2",
+      "Africa/Lusaka":"CAT-2",
+      "Africa/Malabo":"WAT-1",
+      "Africa/Maputo":"CAT-2",
+      "Africa/Maseru":"SAST-2",
+      "Africa/Mbabane":"SAST-2",
+      "Africa/Mogadishu":"EAT-3",
+      "Africa/Monrovia":"GMT0",
+      "Africa/Nairobi":"EAT-3",
+      "Africa/Ndjamena":"WAT-1",
+      "Africa/Niamey":"WAT-1",
+      "Africa/Nouakchott":"GMT0",
+      "Africa/Ouagadougou":"GMT0",
+      "Africa/Porto-Novo":"WAT-1",
+      "Africa/Sao_Tome":"GMT0",
+      "Africa/Tripoli":"EET-2",
+      "Africa/Tunis":"CET-1",
+      "Africa/Windhoek":"CAT-2",
+      "America/Adak":"HST10HDT:M3.2.0:M11.1.0",
+      "America/Anchorage":"AKST9AKDT:M3.2.0:M11.1.0",
+      "America/Anguilla":"AST4",
+      "America/Antigua":"AST4",
+      "America/Araguaina":"<-03>3",
+      "America/Argentina/Buenos_Aires":"<-03>3",
+      "America/Argentina/Catamarca":"<-03>3",
+      "America/Argentina/Cordoba":"<-03>3",
+      "America/Argentina/Jujuy":"<-03>3",
+      "America/Argentina/La_Rioja":"<-03>3",
+      "America/Argentina/Mendoza":"<-03>3",
+      "America/Argentina/Rio_Gallegos":"<-03>3",
+      "America/Argentina/Salta":"<-03>3",
+      "America/Argentina/San_Juan":"<-03>3",
+      "America/Argentina/San_Luis":"<-03>3",
+      "America/Argentina/Tucuman":"<-03>3",
+      "America/Argentina/Ushuaia":"<-03>3",
+      "America/Aruba":"AST4",
+      "America/Asuncion":"<-04>4<-03>:M10.1.0/0:M3.4.0/0",
+      "America/Atikokan":"EST5",
+      "America/Bahia":"<-03>3",
+      "America/Bahia_Banderas":"CST6",
+      "America/Barbados":"AST4",
+      "America/Belem":"<-03>3",
+      "America/Belize":"CST6",
+      "America/Blanc-Sablon":"AST4",
+      "America/Boa_Vista":"<-04>4",
+      "America/Bogota":"<-05>5",
+      "America/Boise":"MST7MDT:M3.2.0:M11.1.0",
+      "America/Cambridge_Bay":"MST7MDT:M3.2.0:M11.1.0",
+      "America/Campo_Grande":"<-04>4",
+      "America/Cancun":"EST5",
+      "America/Caracas":"<-04>4",
+      "America/Cayenne":"<-03>3",
+      "America/Cayman":"EST5",
+      "America/Chicago":"CST6CDT:M3.2.0:M11.1.0",
+      "America/Chihuahua":"CST6",
+      "America/Costa_Rica":"CST6",
+      "America/Creston":"MST7",
+      "America/Cuiaba":"<-04>4",
+      "America/Curacao":"AST4",
+      "America/Danmarkshavn":"GMT0",
+      "America/Dawson":"MST7",
+      "America/Dawson_Creek":"MST7",
+      "America/Denver":"MST7MDT:M3.2.0:M11.1.0",
+      "America/Detroit":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Dominica":"AST4",
+      "America/Edmonton":"MST7MDT:M3.2.0:M11.1.0",
+      "America/Eirunepe":"<-05>5",
+      "America/El_Salvador":"CST6",
+      "America/Fortaleza":"<-03>3",
+      "America/Fort_Nelson":"MST7",
+      "America/Glace_Bay":"AST4ADT:M3.2.0:M11.1.0",
+      "America/Godthab":"<-02>2<-01>:M3.5.0/-1:M10.5.0/0",
+      "America/Goose_Bay":"AST4ADT:M3.2.0:M11.1.0",
+      "America/Grand_Turk":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Grenada":"AST4",
+      "America/Guadeloupe":"AST4",
+      "America/Guatemala":"CST6",
+      "America/Guayaquil":"<-05>5",
+      "America/Guyana":"<-04>4",
+      "America/Halifax":"AST4ADT:M3.2.0:M11.1.0",
+      "America/Havana":"CST5CDT:M3.2.0/0:M11.1.0/1",
+      "America/Hermosillo":"MST7",
+      "America/Indiana/Indianapolis":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Indiana/Knox":"CST6CDT:M3.2.0:M11.1.0",
+      "America/Indiana/Marengo":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Indiana/Petersburg":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Indiana/Tell_City":"CST6CDT:M3.2.0:M11.1.0",
+      "America/Indiana/Vevay":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Indiana/Vincennes":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Indiana/Winamac":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Inuvik":"MST7MDT:M3.2.0:M11.1.0",
+      "America/Iqaluit":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Jamaica":"EST5",
+      "America/Juneau":"AKST9AKDT:M3.2.0:M11.1.0",
+      "America/Kentucky/Louisville":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Kentucky/Monticello":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Kralendijk":"AST4",
+      "America/La_Paz":"<-04>4",
+      "America/Lima":"<-05>5",
+      "America/Los_Angeles":"PST8PDT:M3.2.0:M11.1.0",
+      "America/Lower_Princes":"AST4",
+      "America/Maceio":"<-03>3",
+      "America/Managua":"CST6",
+      "America/Manaus":"<-04>4",
+      "America/Marigot":"AST4",
+      "America/Martinique":"AST4",
+      "America/Matamoros":"CST6CDT:M3.2.0:M11.1.0",
+      "America/Mazatlan":"MST7",
+      "America/Menominee":"CST6CDT:M3.2.0:M11.1.0",
+      "America/Merida":"CST6",
+      "America/Metlakatla":"AKST9AKDT:M3.2.0:M11.1.0",
+      "America/Mexico_City":"CST6",
+      "America/Miquelon":"<-03>3<-02>:M3.2.0:M11.1.0",
+      "America/Moncton":"AST4ADT:M3.2.0:M11.1.0",
+      "America/Monterrey":"CST6",
+      "America/Montevideo":"<-03>3",
+      "America/Montreal":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Montserrat":"AST4",
+      "America/Nassau":"EST5EDT:M3.2.0:M11.1.0",
+      "America/New_York":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Nipigon":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Nome":"AKST9AKDT:M3.2.0:M11.1.0",
+      "America/Noronha":"<-02>2",
+      "America/North_Dakota/Beulah":"CST6CDT:M3.2.0:M11.1.0",
+      "America/North_Dakota/Center":"CST6CDT:M3.2.0:M11.1.0",
+      "America/North_Dakota/New_Salem":"CST6CDT:M3.2.0:M11.1.0",
+      "America/Nuuk":"<-02>2<-01>:M3.5.0/-1:M10.5.0/0",
+      "America/Ojinaga":"CST6CDT:M3.2.0:M11.1.0",
+      "America/Panama":"EST5",
+      "America/Pangnirtung":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Paramaribo":"<-03>3",
+      "America/Phoenix":"MST7",
+      "America/Port-au-Prince":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Port_of_Spain":"AST4",
+      "America/Porto_Velho":"<-04>4",
+      "America/Puerto_Rico":"AST4",
+      "America/Punta_Arenas":"<-03>3",
+      "America/Rainy_River":"CST6CDT:M3.2.0:M11.1.0",
+      "America/Rankin_Inlet":"CST6CDT:M3.2.0:M11.1.0",
+      "America/Recife":"<-03>3",
+      "America/Regina":"CST6",
+      "America/Resolute":"CST6CDT:M3.2.0:M11.1.0",
+      "America/Rio_Branco":"<-05>5",
+      "America/Santarem":"<-03>3",
+      "America/Santiago":"<-04>4<-03>:M9.1.6/24:M4.1.6/24",
+      "America/Santo_Domingo":"AST4",
+      "America/Sao_Paulo":"<-03>3",
+      "America/Scoresbysund":"<-02>2<-01>:M3.5.0/-1:M10.5.0/0",
+      "America/Sitka":"AKST9AKDT:M3.2.0:M11.1.0",
+      "America/St_Barthelemy":"AST4",
+      "America/St_Johns":"NST3:30NDT:M3.2.0:M11.1.0",
+      "America/St_Kitts":"AST4",
+      "America/St_Lucia":"AST4",
+      "America/St_Thomas":"AST4",
+      "America/St_Vincent":"AST4",
+      "America/Swift_Current":"CST6",
+      "America/Tegucigalpa":"CST6",
+      "America/Thule":"AST4ADT:M3.2.0:M11.1.0",
+      "America/Thunder_Bay":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Tijuana":"PST8PDT:M3.2.0:M11.1.0",
+      "America/Toronto":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Tortola":"AST4",
+      "America/Vancouver":"PST8PDT:M3.2.0:M11.1.0",
+      "America/Whitehorse":"MST7",
+      "America/Winnipeg":"CST6CDT:M3.2.0:M11.1.0",
+      "America/Yakutat":"AKST9AKDT:M3.2.0:M11.1.0",
+      "America/Yellowknife":"MST7MDT:M3.2.0:M11.1.0",
+      "Antarctica/Casey":"<+08>-8",
+      "Antarctica/Davis":"<+07>-7",
+      "Antarctica/DumontDUrville":"<+10>-10",
+      "Antarctica/Macquarie":"AEST-10AEDT:M10.1.0:M4.1.0/3",
+      "Antarctica/Mawson":"<+05>-5",
+      "Antarctica/McMurdo":"NZST-12NZDT:M9.5.0:M4.1.0/3",
+      "Antarctica/Palmer":"<-03>3",
+      "Antarctica/Rothera":"<-03>3",
+      "Antarctica/Syowa":"<+03>-3",
+      "Antarctica/Troll":"<+00>0<+02>-2:M3.5.0/1:M10.5.0/3",
+      "Antarctica/Vostok":"<+05>-5",
+      "Arctic/Longyearbyen":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Asia/Aden":"<+03>-3",
+      "Asia/Almaty":"<+05>-5",
+      "Asia/Amman":"<+03>-3",
+      "Asia/Anadyr":"<+12>-12",
+      "Asia/Aqtau":"<+05>-5",
+      "Asia/Aqtobe":"<+05>-5",
+      "Asia/Ashgabat":"<+05>-5",
+      "Asia/Atyrau":"<+05>-5",
+      "Asia/Baghdad":"<+03>-3",
+      "Asia/Bahrain":"<+03>-3",
+      "Asia/Baku":"<+04>-4",
+      "Asia/Bangkok":"<+07>-7",
+      "Asia/Barnaul":"<+07>-7",
+      "Asia/Beirut":"EET-2EEST:M3.5.0/0:M10.5.0/0",
+      "Asia/Bishkek":"<+06>-6",
+      "Asia/Brunei":"<+08>-8",
+      "Asia/Chita":"<+09>-9",
+      "Asia/Choibalsan":"<+08>-8",
+      "Asia/Colombo":"<+0530>-5:30",
+      "Asia/Damascus":"<+03>-3",
+      "Asia/Dhaka":"<+06>-6",
+      "Asia/Dili":"<+09>-9",
+      "Asia/Dubai":"<+04>-4",
+      "Asia/Dushanbe":"<+05>-5",
+      "Asia/Famagusta":"EET-2EEST:M3.5.0/3:M10.5.0/4",
+      "Asia/Gaza":"EET-2EEST:M3.4.4/50:M10.4.4/50",
+      "Asia/Hebron":"EET-2EEST:M3.4.4/50:M10.4.4/50",
+      "Asia/Ho_Chi_Minh":"<+07>-7",
+      "Asia/Hong_Kong":"HKT-8",
+      "Asia/Hovd":"<+07>-7",
+      "Asia/Irkutsk":"<+08>-8",
+      "Asia/Jakarta":"WIB-7",
+      "Asia/Jayapura":"WIT-9",
+      "Asia/Jerusalem":"IST-2IDT:M3.4.4/26:M10.5.0",
+      "Asia/Kabul":"<+0430>-4:30",
+      "Asia/Kamchatka":"<+12>-12",
+      "Asia/Karachi":"PKT-5",
+      "Asia/Kathmandu":"<+0545>-5:45",
+      "Asia/Khandyga":"<+09>-9",
+      "Asia/Kolkata":"IST-5:30",
+      "Asia/Krasnoyarsk":"<+07>-7",
+      "Asia/Kuala_Lumpur":"<+08>-8",
+      "Asia/Kuching":"<+08>-8",
+      "Asia/Kuwait":"<+03>-3",
+      "Asia/Macau":"CST-8",
+      "Asia/Magadan":"<+11>-11",
+      "Asia/Makassar":"WITA-8",
+      "Asia/Manila":"PST-8",
+      "Asia/Muscat":"<+04>-4",
+      "Asia/Nicosia":"EET-2EEST:M3.5.0/3:M10.5.0/4",
+      "Asia/Novokuznetsk":"<+07>-7",
+      "Asia/Novosibirsk":"<+07>-7",
+      "Asia/Omsk":"<+06>-6",
+      "Asia/Oral":"<+05>-5",
+      "Asia/Phnom_Penh":"<+07>-7",
+      "Asia/Pontianak":"WIB-7",
+      "Asia/Pyongyang":"KST-9",
+      "Asia/Qatar":"<+03>-3",
+      "Asia/Qyzylorda":"<+05>-5",
+      "Asia/Riyadh":"<+03>-3",
+      "Asia/Sakhalin":"<+11>-11",
+      "Asia/Samarkand":"<+05>-5",
+      "Asia/Seoul":"KST-9",
+      "Asia/Shanghai":"CST-8",
+      "Asia/Singapore":"<+08>-8",
+      "Asia/Srednekolymsk":"<+11>-11",
+      "Asia/Taipei":"CST-8",
+      "Asia/Tashkent":"<+05>-5",
+      "Asia/Tbilisi":"<+04>-4",
+      "Asia/Tehran":"<+0330>-3:30",
+      "Asia/Thimphu":"<+06>-6",
+      "Asia/Tokyo":"JST-9",
+      "Asia/Tomsk":"<+07>-7",
+      "Asia/Ulaanbaatar":"<+08>-8",
+      "Asia/Urumqi":"<+06>-6",
+      "Asia/Ust-Nera":"<+10>-10",
+      "Asia/Vientiane":"<+07>-7",
+      "Asia/Vladivostok":"<+10>-10",
+      "Asia/Yakutsk":"<+09>-9",
+      "Asia/Yangon":"<+0630>-6:30",
+      "Asia/Yekaterinburg":"<+05>-5",
+      "Asia/Yerevan":"<+04>-4",
+      "Atlantic/Azores":"<-01>1<+00>:M3.5.0/0:M10.5.0/1",
+      "Atlantic/Bermuda":"AST4ADT:M3.2.0:M11.1.0",
+      "Atlantic/Canary":"WET0WEST:M3.5.0/1:M10.5.0",
+      "Atlantic/Cape_Verde":"<-01>1",
+      "Atlantic/Faroe":"WET0WEST:M3.5.0/1:M10.5.0",
+      "Atlantic/Madeira":"WET0WEST:M3.5.0/1:M10.5.0",
+      "Atlantic/Reykjavik":"GMT0",
+      "Atlantic/South_Georgia":"<-02>2",
+      "Atlantic/Stanley":"<-03>3",
+      "Atlantic/St_Helena":"GMT0",
+      "Australia/Adelaide":"ACST-9:30ACDT:M10.1.0:M4.1.0/3",
+      "Australia/Brisbane":"AEST-10",
+      "Australia/Broken_Hill":"ACST-9:30ACDT:M10.1.0:M4.1.0/3",
+      "Australia/Currie":"AEST-10AEDT:M10.1.0:M4.1.0/3",
+      "Australia/Darwin":"ACST-9:30",
+      "Australia/Eucla":"<+0845>-8:45",
+      "Australia/Hobart":"AEST-10AEDT:M10.1.0:M4.1.0/3",
+      "Australia/Lindeman":"AEST-10",
+      "Australia/Lord_Howe":"<+1030>-10:30<+11>-11:M10.1.0:M4.1.0",
+      "Australia/Melbourne":"AEST-10AEDT:M10.1.0:M4.1.0/3",
+      "Australia/Perth":"AWST-8",
+      "Australia/Sydney":"AEST-10AEDT:M10.1.0:M4.1.0/3",
+      "Europe/Amsterdam":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Andorra":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Astrakhan":"<+04>-4",
+      "Europe/Athens":"EET-2EEST:M3.5.0/3:M10.5.0/4",
+      "Europe/Belgrade":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Berlin":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Bratislava":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Brussels":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Bucharest":"EET-2EEST:M3.5.0/3:M10.5.0/4",
+      "Europe/Budapest":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Busingen":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Chisinau":"EET-2EEST:M3.5.0:M10.5.0/3",
+      "Europe/Copenhagen":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Dublin":"IST-1GMT0:M10.5.0:M3.5.0/1",
+      "Europe/Gibraltar":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Guernsey":"GMT0BST:M3.5.0/1:M10.5.0",
+      "Europe/Helsinki":"EET-2EEST:M3.5.0/3:M10.5.0/4",
+      "Europe/Isle_of_Man":"GMT0BST:M3.5.0/1:M10.5.0",
+      "Europe/Istanbul":"<+03>-3",
+      "Europe/Jersey":"GMT0BST:M3.5.0/1:M10.5.0",
+      "Europe/Kaliningrad":"EET-2",
+      "Europe/Kiev":"EET-2EEST:M3.5.0/3:M10.5.0/4",
+      "Europe/Kirov":"MSK-3",
+      "Europe/Lisbon":"WET0WEST:M3.5.0/1:M10.5.0",
+      "Europe/Ljubljana":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/London":"GMT0BST:M3.5.0/1:M10.5.0",
+      "Europe/Luxembourg":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Madrid":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Malta":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Mariehamn":"EET-2EEST:M3.5.0/3:M10.5.0/4",
+      "Europe/Minsk":"<+03>-3",
+      "Europe/Monaco":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Moscow":"MSK-3",
+      "Europe/Oslo":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Paris":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Podgorica":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Prague":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Riga":"EET-2EEST:M3.5.0/3:M10.5.0/4",
+      "Europe/Rome":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Samara":"<+04>-4",
+      "Europe/San_Marino":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Sarajevo":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Saratov":"<+04>-4",
+      "Europe/Simferopol":"MSK-3",
+      "Europe/Skopje":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Sofia":"EET-2EEST:M3.5.0/3:M10.5.0/4",
+      "Europe/Stockholm":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Tallinn":"EET-2EEST:M3.5.0/3:M10.5.0/4",
+      "Europe/Tirane":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Ulyanovsk":"<+04>-4",
+      "Europe/Uzhgorod":"EET-2EEST:M3.5.0/3:M10.5.0/4",
+      "Europe/Vaduz":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Vatican":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Vienna":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Vilnius":"EET-2EEST:M3.5.0/3:M10.5.0/4",
+      "Europe/Volgograd":"MSK-3",
+      "Europe/Warsaw":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Zagreb":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Zaporozhye":"EET-2EEST:M3.5.0/3:M10.5.0/4",
+      "Europe/Zurich":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Indian/Antananarivo":"EAT-3",
+      "Indian/Chagos":"<+06>-6",
+      "Indian/Christmas":"<+07>-7",
+      "Indian/Cocos":"<+0630>-6:30",
+      "Indian/Comoro":"EAT-3",
+      "Indian/Kerguelen":"<+05>-5",
+      "Indian/Mahe":"<+04>-4",
+      "Indian/Maldives":"<+05>-5",
+      "Indian/Mauritius":"<+04>-4",
+      "Indian/Mayotte":"EAT-3",
+      "Indian/Reunion":"<+04>-4",
+      "Pacific/Apia":"<+13>-13",
+      "Pacific/Auckland":"NZST-12NZDT:M9.5.0:M4.1.0/3",
+      "Pacific/Bougainville":"<+11>-11",
+      "Pacific/Chatham":"<+1245>-12:45<+1345>:M9.5.0/2:45:M4.1.0/3:45",
+      "Pacific/Chuuk":"<+10>-10",
+      "Pacific/Easter":"<-06>6<-05>:M9.1.6/22:M4.1.6/22",
+      "Pacific/Efate":"<+11>-11",
+      "Pacific/Enderbury":"<+13>-13",
+      "Pacific/Fakaofo":"<+13>-13",
+      "Pacific/Fiji":"<+12>-12",
+      "Pacific/Funafuti":"<+12>-12",
+      "Pacific/Galapagos":"<-06>6",
+      "Pacific/Gambier":"<-09>9",
+      "Pacific/Guadalcanal":"<+11>-11",
+      "Pacific/Guam":"ChST-10",
+      "Pacific/Honolulu":"HST10",
+      "Pacific/Kiritimati":"<+14>-14",
+      "Pacific/Kosrae":"<+11>-11",
+      "Pacific/Kwajalein":"<+12>-12",
+      "Pacific/Majuro":"<+12>-12",
+      "Pacific/Marquesas":"<-0930>9:30",
+      "Pacific/Midway":"SST11",
+      "Pacific/Nauru":"<+12>-12",
+      "Pacific/Niue":"<-11>11",
+      "Pacific/Norfolk":"<+11>-11<+12>:M10.1.0:M4.1.0/3",
+      "Pacific/Noumea":"<+11>-11",
+      "Pacific/Pago_Pago":"SST11",
+      "Pacific/Palau":"<+09>-9",
+      "Pacific/Pitcairn":"<-08>8",
+      "Pacific/Pohnpei":"<+11>-11",
+      "Pacific/Port_Moresby":"<+10>-10",
+      "Pacific/Rarotonga":"<-10>10",
+      "Pacific/Saipan":"ChST-10",
+      "Pacific/Tahiti":"<-10>10",
+      "Pacific/Tarawa":"<+12>-12",
+      "Pacific/Tongatapu":"<+13>-13",
+      "Pacific/Wake":"<+12>-12",
+      "Pacific/Wallis":"<+12>-12",
+      "Etc/GMT":"GMT0",
+      "Etc/GMT-0":"GMT0",
+      "Etc/GMT-1":"<+01>-1",
+      "Etc/GMT-2":"<+02>-2",
+      "Etc/GMT-3":"<+03>-3",
+      "Etc/GMT-4":"<+04>-4",
+      "Etc/GMT-5":"<+05>-5",
+      "Etc/GMT-6":"<+06>-6",
+      "Etc/GMT-7":"<+07>-7",
+      "Etc/GMT-8":"<+08>-8",
+      "Etc/GMT-9":"<+09>-9",
+      "Etc/GMT-10":"<+10>-10",
+      "Etc/GMT-11":"<+11>-11",
+      "Etc/GMT-12":"<+12>-12",
+      "Etc/GMT-13":"<+13>-13",
+      "Etc/GMT-14":"<+14>-14",
+      "Etc/GMT0":"GMT0",
+      "Etc/GMT+0":"GMT0",
+      "Etc/GMT+1":"<-01>1",
+      "Etc/GMT+2":"<-02>2",
+      "Etc/GMT+3":"<-03>3",
+      "Etc/GMT+4":"<-04>4",
+      "Etc/GMT+5":"<-05>5",
+      "Etc/GMT+6":"<-06>6",
+      "Etc/GMT+7":"<-07>7",
+      "Etc/GMT+8":"<-08>8",
+      "Etc/GMT+9":"<-09>9",
+      "Etc/GMT+10":"<-10>10",
+      "Etc/GMT+11":"<-11>11",
+      "Etc/GMT+12":"<-12>12",
+      "Etc/UCT":"UTC0",
+      "Etc/UTC":"UTC0",
+      "Etc/Greenwich":"GMT0",
+      "Etc/Universal":"UTC0",
+      "Etc/Zulu":"UTC0",
+    };
+  }
+
 
   @override
   Widget build(BuildContext context) {
-      return WillPopScope(
-        onWillPop: () async{
-          return false;
-        },
-        child: FutureBuilder(
+    bool isWide = MediaQuery.of(context).orientation != Orientation.landscape;
+    return WillPopScope(
+      onWillPop: () async{
+        return false;
+      },
+      child: useBluetoothData ? FutureBuilder(
+          future: readOfflineData(),
+          builder: (context, projectSnap){
+            return loaded ? setPage(screenIndex, isWide) : Scaffold(
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Loading data over\n Bluetooth",
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 36,),
+                    CircularProgressIndicator(
+                      color: Colors.black,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+        ) : FutureBuilder(
             future: futureFunc(),
             builder: (context, projectSnap){
-              return setPage(screenIndex);
-            }
-        ),
-      );
-  }
+            return setPage(screenIndex, isWide);
+          },
+        )
+    );
+}
 
 }
 
@@ -3800,3 +5668,10 @@ class Details {
 abstract class Observable{
 
 }
+
+class ChartData {
+  ChartData(this.x, this.y);
+  final DateTime x;
+  final double? y;
+}
+

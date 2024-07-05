@@ -43,7 +43,7 @@ class MyTextField extends StatelessWidget {
             fillColor: Colors.white,
             filled: true,
             hintText: hintText,
-            hintStyle: TextStyle(color: Color(0xff90a4ae),fontSize: 14),
+            hintStyle: const TextStyle(color: Color(0xff90a4ae),fontSize: 14),
           ),
 
         ),

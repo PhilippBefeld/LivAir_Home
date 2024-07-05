@@ -9,6 +9,7 @@ class Device2{
   String? label;
   String name;
   int deviceAdded;
+  bool? isBtAvailable;
 
   //besteht später aus DeviceID-Device Paaren
   Device2({
@@ -20,7 +21,8 @@ class Device2{
     required this.radon,
     this.label,
     required this.name,
-    required this.deviceAdded
+    required this.deviceAdded,
+    this.isBtAvailable
   });
 
   update(int? lastSync,String? location,String? floor,String? locationId,bool? isOnline,int? radon,String? label,String? name){

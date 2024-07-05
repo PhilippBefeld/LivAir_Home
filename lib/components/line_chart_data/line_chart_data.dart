@@ -8,6 +8,9 @@ class MyLineChartData {
       return "${dateTime.hour.toString().padLeft(2,"0")}:${dateTime.minute.toString().padLeft(2,"0")}";
     }
     if(days == 2){
+      return "${DateFormat('EEEE').format(dateTime).substring(0,2)} ${dateTime.hour.toString().padLeft(2,"0")}:${dateTime.minute.toString().padLeft(2,"0")}";
+    }
+    if(days == 21){
       return "${DateFormat('EEEE').format(dateTime).substring(0,2)}\n${dateTime.hour.toString().padLeft(2,"0")}:${dateTime.minute.toString().padLeft(2,"0")}";
     }
     if(days == 7){
@@ -17,8 +20,18 @@ class MyLineChartData {
       return "${DateFormat('d MMM').format(dateTime)}";
     }
     if(days == 0){
-      return "${dateTime.day.toString().padLeft(2,"0")}.${dateTime.month.toString().padLeft(2,"0")}.${dateTime.year.toString().substring(2,4)}";
+      return "${DateFormat('MMM yyyy').format(dateTime)}";
     }
+    if(days == 71){
+      return "${DateFormat('d').format(dateTime)}";
+    }
+    if(days == 72){
+      return "${DateFormat('MMM').format(dateTime)}";
+    }
+    if(days == 73){
+      return "${DateFormat('EEEE').format(dateTime).substring(0,2)} ${DateFormat('d').format(dateTime)}, ${dateTime.hour.toString().padLeft(2,"0")}:${dateTime.minute.toString().padLeft(2,"0")}";
+    }
+    return "Error";
     return "${dateTime.day}.${dateTime.month}.${dateTime.year}  ${dateTime.hour}:${dateTime.minute}";
   }
 

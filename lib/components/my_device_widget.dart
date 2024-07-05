@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 
 class MyDeviceWidget extends StatelessWidget {
   final String name;
   final Function() onTap;
   bool isOnline;
-  String radonValue;
-  String unit;
+  final String radonValue;
+  final String unit;
+  final int lastSync;
+  final bool isViewer;
+  bool? isBtAvailable;
+
 
   MyDeviceWidget({
     super.key,
@@ -14,11 +19,18 @@ class MyDeviceWidget extends StatelessWidget {
     required this.name,
     required this.isOnline,
     required this.radonValue,
-    required this.unit
+    required this.unit,
+    required this.lastSync,
+    required this.isViewer,
+    this.isBtAvailable
   });
 
   setIsOnline(bool onlineStatus){
     this.isOnline = onlineStatus;
+  }
+
+  setIsBtAvailable(bool onlineStatus){
+    this.isBtAvailable = onlineStatus;
   }
 
   @override
@@ -41,6 +53,7 @@ class MyDeviceWidget extends StatelessWidget {
                 children: [
                   Text(
                     name,
+                    overflow: TextOverflow.fade,
                     style: const TextStyle(
                       color: Colors.black,
                       fontWeight: FontWeight.bold,
@@ -51,9 +64,9 @@ class MyDeviceWidget extends StatelessWidget {
                     children: [
                       radonValue != "-1" ? RichText(
                           text: TextSpan(
-                              text: radonValue,
+                              text: (lastSync<3600000 || lastSync == -1) ? radonValue : "0",
                               style: TextStyle(
-                                  color: int.parse(radonValue) > 50 ? int.parse(radonValue) > 300 ? Color(0xfffd4c56) : Color(0xfffdca03) : Color(0xff0ace84),
+                                  color: int.parse(radonValue) > 100 ? int.parse(radonValue) > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
                                   fontSize: 20,
                                   fontWeight: FontWeight.w600
                               ),
@@ -76,34 +89,12 @@ class MyDeviceWidget extends StatelessWidget {
               const SizedBox(height: 10,),
               Row(
                 mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  SizedBox(
-                    width: 50,
-                    height: 26,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        borderRadius: const BorderRadius.all(Radius.circular(4)),
-                        border: Border(
-                          bottom: BorderSide(color: isOnline ? const Color(0xffA5E658) : Colors.grey,),
-                          top: BorderSide(color: isOnline ? const Color(0xffA5E658)  : Colors.grey,),
-                          right: BorderSide(color: isOnline ? const Color(0xffA5E658)  : Colors.grey,),
-                          left: BorderSide(color: isOnline ? const Color(0xffA5E658)  : Colors.grey,),
-                        )
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            isOnline ? "online" : "offline",
-                            style: TextStyle(color: isOnline ? const Color(0xffA5E658)  : Colors.grey,),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                ],
+                  isBtAvailable != null ? isBtAvailable! ? (Duration(milliseconds: lastSync).inMinutes<=10) && (lastSync !=-1) ? Row(children: [const Icon(Icons.bluetooth, color: Color(0xff0099F0),),const ImageIcon(AssetImage('lib/images/isOnline.png'),color: Color(0xff0099F0),)],) : const Icon(Icons.bluetooth, color: Color(0xff0099F0),) : const ImageIcon(AssetImage('lib/images/isOnline.png'),color: Color(0xff0099F0),) : (Duration(milliseconds: lastSync).inMinutes<=10) && (lastSync !=-1) ? const ImageIcon(AssetImage('lib/images/isOnline.png'),color: Color(0xff0099F0),) : const ImageIcon(AssetImage('lib/images/isOnline.png'),color: Color(0xffCFD8DC)),
+                  const SizedBox(width: 10),
+                  lastSync == -1 ? isViewer ? Text("Status not visible as viewer") : Text("Not synced yet") : lastSync<3600000 ? Text("Last sync: ${Duration(milliseconds: lastSync).inMinutes} ${AppLocalizations.of(context)!.minsAgo}") : lastSync<3600000*3 ? Text("Last sync: ${Duration(milliseconds: lastSync).inHours}h ${Duration(milliseconds: lastSync).inMinutes} ${AppLocalizations.of(context)!.minsAgo}") : lastSync<86400000 ? Text("Last sync: ${Duration(milliseconds: lastSync).inHours} ${AppLocalizations.of(context)!.hoursAgo}") : Text("Last sync: ${Duration(milliseconds: lastSync).inDays} ${AppLocalizations.of(context)!.daysAgo}")
+                ]
               ),
             ],
           ),

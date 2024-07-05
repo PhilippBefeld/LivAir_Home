@@ -36,6 +36,8 @@ class SignInPageState extends State<SignInPage> {
 
   String currentScreen = '';
 
+  bool obscurePasswordController = true;
+
   var lastLoginError = '';
   String? lastEmail;
   String? lastPassword;
@@ -422,219 +424,229 @@ class SignInPageState extends State<SignInPage> {
           return Scaffold(
             backgroundColor: Colors.white,
             body: SafeArea(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(22, 22, 22,0),
-                  child: Column(
-                      children: [
-                        const SizedBox(height: 10,),
-                        const Image(image: AssetImage('lib/images/LivAir_Light.png'),color: null,),
-                        const SizedBox(height: 20,),
-                        Row(
-                          children: [
-                            Text(AppLocalizations.of(context)!.signIn,style: const TextStyle(fontFamily: "Inter",fontSize: 20.0,fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                        const SizedBox(height: 30,),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(5.0,0,5,0),
-                          child: GestureDetector(
-                            onTap: googleSignIn,
-                            child: const Image(image: AssetImage('lib/images/SignInWithGoogle.png'),color: null,)
+              child: SingleChildScrollView(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 22, 22,0),
+                    child: Column(
+                        children: [
+                          const SizedBox(height: 10,),
+                          const Image(image: AssetImage('lib/images/LivAir_Light.png'),color: null,),
+                          const SizedBox(height: 20,),
+                          Row(
+                            children: [
+                              Text(AppLocalizations.of(context)!.signIn,style: const TextStyle(fontFamily: "Inter",fontSize: 20.0,fontWeight: FontWeight.w600)),
+                            ],
                           ),
-                        ),
-                        const SizedBox(height: 16,),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(5,0,5,0),
-                          child: GestureDetector(
-                              onTap: null,
-                              child: const Image(image: AssetImage('lib/images/SignInWithFacebook.png'),color: null,)
+                          const SizedBox(height: 30,),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(5.0,0,5,0),
+                            child: GestureDetector(
+                              onTap: googleSignIn,
+                              child: const Image(image: AssetImage('lib/images/SignInWithGoogle.png'),color: null,)
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 50,),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            Text(AppLocalizations.of(context)!.email,style: const TextStyle(color: Colors.black,fontSize: 12),),
-                          ],
-                        ),
-                        const SizedBox(height: 5,),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: emailController,
-                                decoration: InputDecoration(
-                                  enabledBorder: const OutlineInputBorder(
-                                    borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                                  ),
-                                  focusedBorder: const OutlineInputBorder(
-                                    borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                                  ),
-                                  fillColor: Colors.white,
-                                  filled: true,
-                                  hintText: AppLocalizations.of(context)!.emailAddress,
-                                  hintStyle: TextStyle(color: Colors.grey[850],fontSize: 14),
-                                ),
-                                onChanged: (value){
-                                  if(checkLogInEmail()){
-                                    setState(() {
-                                    });
-                                  }
-                                },
-                              ),
+                          const SizedBox(height: 16,),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(5,0,5,0),
+                            child: GestureDetector(
+                                onTap: null,
+                                child: const Image(image: AssetImage('lib/images/SignInWithFacebook.png'),color: null,)
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 10,),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            Text(AppLocalizations.of(context)!.password,style: const TextStyle(color: Colors.black,fontSize: 12),),
-                          ],
-                        ),
-                        const SizedBox(height: 5,),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: passwordController,
-                                decoration: InputDecoration(
-                                  enabledBorder: const OutlineInputBorder(
-                                    borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          const SizedBox(height: 50,),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              Text(AppLocalizations.of(context)!.email,style: const TextStyle(color: Colors.black,fontSize: 12),),
+                            ],
+                          ),
+                          const SizedBox(height: 5,),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: emailController,
+                                  decoration: InputDecoration(
+                                    enabledBorder: const OutlineInputBorder(
+                                      borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                                    ),
+                                    focusedBorder: const OutlineInputBorder(
+                                      borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                                    ),
+                                    fillColor: Colors.white,
+                                    filled: true,
+                                    hintText: AppLocalizations.of(context)!.emailAddress,
+                                    hintStyle: TextStyle(color: Colors.grey[850],fontSize: 14),
                                   ),
-                                  focusedBorder: const OutlineInputBorder(
-                                    borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                                  ),
-                                  fillColor: Colors.white,
-                                  filled: true,
-                                  hintText: AppLocalizations.of(context)!.password,
-                                  hintStyle: const TextStyle(color: Color(0xff90a4ae),fontSize: 14),
-                                ),
-                                onChanged: null,
-                                obscureText: true,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: ListTileTheme(
-                                horizontalTitleGap: 0,
-                                child: CheckboxListTile(
-                                  controlAffinity: ListTileControlAffinity.leading,
-                                  contentPadding: const EdgeInsets.all(0),
-                                  title: Text(AppLocalizations.of(context)!.keepSignedIn,style: const TextStyle(fontSize: 14),textWidthBasis: TextWidthBasis.parent,),
-                                  value: savePasswordChecked,
-                                  onChanged: (bool? value){
-                                    setState((){
-                                      savePasswordChecked = value!;
-                                    });
+                                  onChanged: (value){
+                                    if(checkLogInEmail()){
+                                      setState(() {
+                                      });
+                                    }
                                   },
                                 ),
                               ),
-                            ),
-
-                            TextButton(
-                                onPressed: () async{
-                                  try {
-                                    final result = await InternetAddress.lookup('example.com');
-                                    if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                            ],
+                          ),
+                          const SizedBox(height: 10,),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              Text(AppLocalizations.of(context)!.password,style: const TextStyle(color: Colors.black,fontSize: 12),),
+                            ],
+                          ),
+                          const SizedBox(height: 5,),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: passwordController,
+                                  decoration: InputDecoration(
+                                    enabledBorder: const OutlineInputBorder(
+                                      borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                                    ),
+                                    focusedBorder: const OutlineInputBorder(
+                                      borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                                    ),
+                                    fillColor: Colors.white,
+                                    filled: true,
+                                    hintText: AppLocalizations.of(context)!.password,
+                                    hintStyle: const TextStyle(color: Color(0xff90a4ae),fontSize: 14),
+                                    suffixIcon: GestureDetector(
+                                      onTap: (){
+                                        setState(() {
+                                          obscurePasswordController = !obscurePasswordController;
+                                        });
+                                      },
+                                      child: Icon(obscurePasswordController ? Icons.visibility : Icons.visibility_off)
+                                    )
+                                  ),
+                                  onChanged: null,
+                                  obscureText: obscurePasswordController,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: ListTileTheme(
+                                  horizontalTitleGap: 0,
+                                  child: CheckboxListTile(
+                                    controlAffinity: ListTileControlAffinity.leading,
+                                    contentPadding: const EdgeInsets.all(0),
+                                    title: Text(AppLocalizations.of(context)!.keepSignedIn,style: const TextStyle(fontSize: 14),textWidthBasis: TextWidthBasis.parent,),
+                                    value: savePasswordChecked,
+                                    onChanged: (bool? value){
+                                      setState((){
+                                        savePasswordChecked = value!;
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ),
+                
+                              TextButton(
+                                  onPressed: () async{
+                                    try {
+                                      final result = await InternetAddress.lookup('example.com');
+                                      if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                                      }
+                                    } on SocketException catch (_) {
+                                      Fluttertoast.showToast(
+                                          msg: AppLocalizations.of(context)!.noInternetT
+                                      );
+                                      return;
                                     }
-                                  } on SocketException catch (_) {
-                                    Fluttertoast.showToast(
-                                        msg: AppLocalizations.of(context)!.noInternetT
-                                    );
-                                    return;
-                                  }
-                                  forgotPassword;
-                                },
-                                child: Text(AppLocalizations.of(context)!.forgotPasswordQ,style: const TextStyle(fontSize: 14,decoration: TextDecoration.underline),)),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ListTileTheme(
-                                horizontalTitleGap: 0,
-                                child: CheckboxListTile(
-                                  controlAffinity: ListTileControlAffinity.leading,
-                                  contentPadding: const EdgeInsets.all(0),
-                                  title: Text(AppLocalizations.of(context)!.autoSignIn,style: const TextStyle(fontSize: 14),textWidthBasis: TextWidthBasis.parent,),
-                                  value: autoSignIn,
-                                  onChanged: (bool? value){
-                                    setState(() {
-                                      autoSignIn = value!;
-                                    });
+                                    forgotPassword;
                                   },
+                                  child: Text(AppLocalizations.of(context)!.forgotPasswordQ,style: const TextStyle(fontSize: 14,decoration: TextDecoration.underline),)),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ListTileTheme(
+                                  horizontalTitleGap: 0,
+                                  child: CheckboxListTile(
+                                    controlAffinity: ListTileControlAffinity.leading,
+                                    contentPadding: const EdgeInsets.all(0),
+                                    title: Text(AppLocalizations.of(context)!.autoSignIn,style: const TextStyle(fontSize: 14),textWidthBasis: TextWidthBasis.parent,),
+                                    value: autoSignIn,
+                                    onChanged: (bool? value){
+                                      setState(() {
+                                        autoSignIn = value!;
+                                      });
+                                    },
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-
-                        Text(lastLoginError != '' ? lastLoginError : ''),
-
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () async{
-                                  try {
-                                    final result = await InternetAddress.lookup('example.com');
-                                    if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                            ],
+                          ),
+                
+                          Text(lastLoginError != '' ? lastLoginError : ''),
+                
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () async{
+                                    try {
+                                      final result = await InternetAddress.lookup('example.com');
+                                      if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                                      }
+                                    } on SocketException catch (_) {
+                                      Fluttertoast.showToast(
+                                          msg: AppLocalizations.of(context)!.noInternetT
+                                      );
+                                      return;
                                     }
-                                  } on SocketException catch (_) {
-                                    Fluttertoast.showToast(
-                                        msg: AppLocalizations.of(context)!.noInternetT
-                                    );
-                                    return;
-                                  }
-                                  if(emailIsCorrect)logIn();
-                                },
-                                style: OutlinedButton.styleFrom(
-                                    side: const BorderSide(width: 2,color: Color(0xff0099f0)),
-                                    foregroundColor: Colors.white,
-                                    backgroundColor: const Color(0xff0099F0),
-                                  minimumSize: const Size(0, 45)
+                                    if(emailIsCorrect)logIn();
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                      side: const BorderSide(width: 2,color: Color(0xff0099f0)),
+                                      foregroundColor: Colors.white,
+                                      backgroundColor: const Color(0xff0099F0),
+                                    minimumSize: const Size(0, 45)
+                                  ),
+                                  child: Text(AppLocalizations.of(context)!.signIn),
                                 ),
-                                child: Text(AppLocalizations.of(context)!.signIn),
                               ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 25),
-                        Row(
-                          children: [
-                            Text(AppLocalizations.of(context)!.noAccountQ),
-                            TextButton(
-                                onPressed: () async{
-                                  try {
-                                    final result = await InternetAddress.lookup('example.com');
-                                    if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                            ],
+                          ),
+                
+                          const SizedBox(height: 25),
+                          Row(
+                            children: [
+                              Text(AppLocalizations.of(context)!.noAccountQ),
+                              TextButton(
+                                  onPressed: () async{
+                                    try {
+                                      final result = await InternetAddress.lookup('example.com');
+                                      if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                                      }
+                                    } on SocketException catch (_) {
+                                      Fluttertoast.showToast(
+                                          msg: AppLocalizations.of(context)!.noInternetT
+                                      );
+                                      return;
                                     }
-                                  } on SocketException catch (_) {
-                                    Fluttertoast.showToast(
-                                        msg: AppLocalizations.of(context)!.noInternetT
+                                    Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                            builder: (context) => SignUpPage(token: token, refreshToken: refreshToken,)
+                                        )
                                     );
-                                    return;
-                                  }
-                                  Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                          builder: (context) => SignUpPage(token: token, refreshToken: refreshToken,)
-                                      )
-                                  );
-                                },
-                                child: Text(AppLocalizations.of(context)!.signUp, style: const TextStyle(fontSize: 14,decoration: TextDecoration.underline),)
-                            )
-                          ],
-                        )
-                      ]
-                  ),
-                )
+                                  },
+                                  child: Text(AppLocalizations.of(context)!.signUp, style: const TextStyle(fontSize: 14,decoration: TextDecoration.underline),)
+                              )
+                            ],
+                          )
+                        ]
+                    ),
+                  )
+                ),
               )
             )
           );

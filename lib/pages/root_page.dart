@@ -121,7 +121,7 @@ class _DestinationViewState extends State<DestinationView> {
                 });
               },
               items: [
-                BottomNavigationBarItem(icon: const SizedBox(width:24,height:28,child: ImageIcon(AssetImage('lib/images/devices.png'),color: Colors.black)), label: AppLocalizations.of(context)!.devices),
+                BottomNavigationBarItem(icon: SizedBox(width:28,height:28,child: Image.asset('lib/images/devices2.png')), label: AppLocalizations.of(context)!.devices),
 
                 BottomNavigationBarItem(icon: const SizedBox(width:24,height:28,child: ImageIcon(AssetImage('lib/images/warnings.png'),color: Colors.black)), label: AppLocalizations.of(context)!.warnings,),
 
@@ -133,7 +133,7 @@ class _DestinationViewState extends State<DestinationView> {
           ),
         ) : Scaffold(
           body: Center(
-            child: setPageOnBoarding(screenIndex),
+            child: SingleChildScrollView(child: setPageOnBoarding(screenIndex)),
           ),
         );
       }
@@ -191,7 +191,6 @@ class _DestinationViewState extends State<DestinationView> {
                 ],
               ),
               const SizedBox(height: 20,),
-
               Row(
                 children: [
                   Expanded(

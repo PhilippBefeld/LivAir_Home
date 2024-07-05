@@ -39,6 +39,8 @@ class DevicePageState extends State<DevicePage> {
   final storage = const FlutterSecureStorage();
   String? unit;
 
+  List<String> isBtAvailable = [];
+
   DevicePageState(this.token, this.refreshToken);
   DeviceResponse pagingInfo = DeviceResponse(0,0);
   List<Map<String,dynamic>> currentDevices = [];
@@ -78,6 +80,7 @@ class DevicePageState extends State<DevicePage> {
     searchedAdditionalDevices = false;
     unit = await storage.read(key: 'unit');
     currentDevices2 = [];
+    isBtAvailable = [];
     firstTry = false;
     try{
       try {
@@ -107,7 +110,7 @@ class DevicePageState extends State<DevicePage> {
                 "page": 0
               }
           );
-          print(result2.data);
+          logger.d(result2.data);
           Map<String,dynamic> map = result2.data;
           List list = map["data"];
           for (var element in list) {
@@ -124,14 +127,18 @@ class DevicePageState extends State<DevicePage> {
                     "keys": "radon"
                   }
               );
+              var msSincelastSync = -1;
+              try{
+                msSincelastSync = (DateTime.now().millisecondsSinceEpoch-result2.data["radon"].elementAt(0)["ts"]).toInt();
+              }catch(e){}
               currentDevices2.add({
                 element["id"]["id"].toString() : Device2(
-                  lastSync : 0,
+                  lastSync : msSincelastSync,
                   location : "/",
                   floor : "",
                   locationId : "/",
                   isOnline : element["additionalInfo"]["syncStatus"] == "active" ? true : false,
-                  radon : int.parse(result2.data["radon"].elementAt(0)["value"]),
+                  radon : int.parse(result2.data["radon"].elementAt(0)["value"] ?? "0"),
                   label : element["label"],
                   name : element["name"],
                   deviceAdded: 1,
@@ -146,6 +153,7 @@ class DevicePageState extends State<DevicePage> {
                 "page": 0
               }
           );
+          logger.d(result.data);
           map = result.data;
           list = map["data"];
           for (var element in list) {
@@ -162,14 +170,18 @@ class DevicePageState extends State<DevicePage> {
                     "keys": "radon"
                   }
               );
+              var msSinceLastSync = -1;
+              try{
+                msSinceLastSync = (DateTime.now().millisecondsSinceEpoch-result.data["radon"].elementAt(0)["ts"]).toInt();
+              }catch(e){}
               currentDevices2.add({
                 element["id"]["id"].toString() : Device2(
-                  lastSync : 0,
+                  lastSync : msSinceLastSync,
                   location : "/",
                   floor : "viewer",
                   locationId : "/",
-                  isOnline : false,
-                  radon : int.parse(result.data["radon"].elementAt(0)["value"]),
+                  isOnline : element["additionalInfo"]["syncStatus"] == "active" ? true : false,
+                  radon : int.parse(result.data["radon"].elementAt(0)["value"] ?? "0"),
                   label : element["label"],
                   name : element["name"],
                   deviceAdded: 1,
@@ -177,6 +189,49 @@ class DevicePageState extends State<DevicePage> {
               });
             }
           }
+          setState(() {
+
+          });
+          if (Platform.isAndroid) {
+            await FlutterBluePlus.turnOn();
+          }
+          var locationEnabled = await location.serviceEnabled();
+          if(!locationEnabled){
+            var locationEnabled2 = await location.requestService();
+            if(!locationEnabled2){
+            }
+          }
+          var permissionGranted = await location.hasPermission();
+          if(permissionGranted == PermissionStatus.denied){
+            permissionGranted = await location.requestPermission();
+            if(permissionGranted != PermissionStatus.granted){
+            }
+          }
+          FlutterBluePlus.stopScan();
+          bool deviceFound = false;
+          bool listening = false;
+          subscription = FlutterBluePlus.scanResults.listen((results) async {
+            for (ScanResult r in results) {
+              if (!deviceFound) {
+                List<int> bluetoothAdvertisementData = [];
+                String bluetoothDeviceName = "";
+                if(r.advertisementData.manufacturerData.keys.isNotEmpty){
+                  logger.d(r.advertisementData.manufacturerData);
+                  if(r.advertisementData.manufacturerData.values.isNotEmpty){
+                    bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
+                  }
+                  if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
+                  currentDevices2.forEach((device){
+                    if(device.values.first.name == bluetoothDeviceName){
+                      device.values.first.isBtAvailable = true;
+                    }
+                  });
+                }
+              }
+            }
+          });
+          FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
+          await Future<void>.delayed( const Duration(seconds: 4));
           setState(() {
 
           });
@@ -896,6 +951,48 @@ class DevicePageState extends State<DevicePage> {
         }
     );
   }
+
+  showColorInfo(){
+    AlertDialog alert = AlertDialog(
+      title: Text("Radon Index", style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 20),),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Image.asset('lib/images/radonranges.png'),
+          Row(
+            children: [
+              SizedBox(width:24,height:28,child: Image.asset('lib/images/greenLine.png')),
+              SizedBox(width: 10,),
+              Text("No action required", style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),),
+            ],
+          ),
+          Row(
+            children: [
+              SizedBox(width:24,height:28,child: Image.asset('lib/images/yellowLine.png')),
+              SizedBox(width: 10,),
+              Text("Consider actions (eg. ventilating)", style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),),
+            ],
+          ),
+          Row(
+            children: [
+              SizedBox(width:24,height:28,child: Image.asset('lib/images/redLine.png')),
+              SizedBox(width: 10,),
+              Text("Action strongly recommended)", style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),),
+            ],
+          ),
+          SizedBox(height: 10,),
+          Text("*Measuring interval: 10 min", style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 14),),
+        ],
+      ),
+    );
+    showDialog(
+      context: context,
+      builder: (BuildContext context){
+        return alert;
+      },
+    );
+  }
   
   deviceScreen(){
     return FutureBuilder(
@@ -947,7 +1044,12 @@ class DevicePageState extends State<DevicePage> {
                 ),
               ],
               elevation: 0,
-              title: Text(AppLocalizations.of(context)!.allDevicesT,style: const TextStyle( fontSize: 20,fontWeight: FontWeight.w400),),
+              title: Row(
+                children: [
+                  Text(AppLocalizations.of(context)!.allDevicesT,style: const TextStyle( fontSize: 20,fontWeight: FontWeight.w400),),
+                  IconButton(onPressed: showColorInfo, icon: const Icon(Icons.info_outline),color: const Color(0xff0099f0))
+                ],
+              ),
               centerTitle: false,
             ),
             body: SafeArea(
@@ -969,22 +1071,15 @@ class DevicePageState extends State<DevicePage> {
                             itemBuilder: (BuildContext context, int index) {
                               return MyDeviceWidget(
                                 onTap: () async{
-                                    try {
-                                      final result = await InternetAddress.lookup('example.com');
-                                      if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                                      }
-                                    } on SocketException catch (_) {
-                                      Fluttertoast.showToast(
-                                          msg: AppLocalizations.of(context)!.noInternetT
-                                      );
-                                      return;
-                                    }
                                   showDeviceDetails(currentDevices2[index]);
                                 },
                                 name: currentDevices2[index].values.elementAt(0).floor == "viewer" ?  "${currentDevices2[index].values.elementAt(0).label} (as Viewer)" : currentDevices2[index].values.elementAt(0).label!,
                                 isOnline: currentDevices2[index].values.elementAt(0).isOnline,
+                                lastSync: currentDevices2[index].values.elementAt(0).lastSync,
                                 radonValue: currentDevices2[index].values.elementAt(0).radon.toString(),
                                 unit: unit == "Bq/m³" ? "Bq/m³": "pCi/L",
+                                isViewer: currentDevices2[index].values.elementAt(0).floor == "viewer" ? true : false,
+                                isBtAvailable: currentDevices2[index].values.elementAt(0).isBtAvailable,
                               );
                             },
                           ),

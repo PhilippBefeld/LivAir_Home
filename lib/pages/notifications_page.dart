@@ -173,9 +173,11 @@ class NotificationsPageState extends State<NotificationsPage>{
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.circle_outlined,size: 70,),
+              const ImageIcon(AssetImage('lib/images/notifications.png'),size: 50,),
               const SizedBox(height: 15,),
-              Text(AppLocalizations.of(context)!.upToDate)
+              Text(AppLocalizations.of(context)!.upToDate),
+              const SizedBox(height: 15,),
+              Text(AppLocalizations.of(context)!.noNotificationsT),
             ],
           ),
         ),

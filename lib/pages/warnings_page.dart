@@ -131,9 +131,11 @@ class WarningsPageState extends State<WarningsPage>{
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const ImageIcon(AssetImage('lib/images/ListButton_Circle.png'),size: 50,),
+              const ImageIcon(AssetImage('lib/images/warnings.png'),size: 50,),
               const SizedBox(height: 15,),
               Text(AppLocalizations.of(context)!.noWarningsYet),
+              const SizedBox(height: 15,),
+              Text(AppLocalizations.of(context)!.noWarningsT),
               const SizedBox(height: 30,),
               OutlinedButton(
                 onPressed: () async {
@@ -468,7 +470,9 @@ class WarningsPageState extends State<WarningsPage>{
                     name: labels[deviceIndex],
                     isOnline: areOnline[deviceIndex],
                     radonValue: "-1",
+                    lastSync: -1,
                     unit: unit == "Bq/m³" ? "Bq/m³": "pCi/L",
+                    isViewer: false,
                   );
                 },
               ),
@@ -541,8 +545,9 @@ class WarningsPageState extends State<WarningsPage>{
                           );
                           return;
                         }
-                        setState(() {
+                        setState(() async{
                           updateWarning();
+                          await Future.delayed(const Duration(milliseconds: 100));
                           index = 0;
                         });
                       } ,
