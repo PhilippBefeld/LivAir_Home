@@ -8,7 +8,6 @@ import 'package:livair_home/pages/warnings_page.dart';
 import 'package:livair_home/pages/profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:livair_home/pages/device_page.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'package:location/location.dart';
@@ -40,7 +39,6 @@ class _DestinationViewState extends State<DestinationView> {
 
   _DestinationViewState(this.token, this.refreshToken);
 
-  final Dio dio = Dio();
   final location = Location();
 
   StreamSubscription<List<ScanResult>>? subscription;

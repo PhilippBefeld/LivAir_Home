@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:logger/logger.dart';
 import 'package:dio/dio.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -23,8 +24,8 @@ class NotificationsPage extends StatefulWidget {
 
 class NotificationsPageState extends State<NotificationsPage>{
 
-  final String token;
-  final String refreshToken;
+  String token;
+  String refreshToken;
   final Logger logger = Logger();
   final Dio dio = Dio();
 
@@ -46,11 +47,19 @@ class NotificationsPageState extends State<NotificationsPage>{
     notificationsLoaded = true;
     notifications = [];
     String? userId;
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
-
     try{
+      dio.options.headers['content-Type'] = 'application/json';
+      dio.options.headers['Accept'] = "application/json";
+      dio.options.headers['Authorization'] = "Bearer $token";
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       Response userInfoResponse = await dio.get('https://dashboard.livair.io/api/auth/user');
       userId = userInfoResponse.data["id"]["id"];
       var result = await dio.get('https://dashboard.livair.io/api/plugins/telemetry/USER/$userId/values/timeseries',
@@ -323,10 +332,19 @@ class NotificationsPageState extends State<NotificationsPage>{
 
   deleteNotifications() async {
     String? userId;
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
     try{
+      dio.options.headers['content-Type'] = 'application/json';
+      dio.options.headers['Accept'] = "application/json";
+      dio.options.headers['Authorization'] = "Bearer $token";
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       Response userInfoResponse = await dio.get('https://dashboard.livair.io/api/auth/user');
       userId = userInfoResponse.data["id"]["id"];
       await dio.delete('https://dashboard.livair.io/api/plugins/telemetry/USER/$userId/timeseries/delete',

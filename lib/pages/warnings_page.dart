@@ -6,6 +6,7 @@ import 'package:flutter_time_picker_spinner/flutter_time_picker_spinner.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:logger/logger.dart';
 import 'package:dio/dio.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -26,9 +27,11 @@ class WarningsPage extends StatefulWidget {
 
 class WarningsPageState extends State<WarningsPage>{
 
-  final String token;
-  final String refreshToken;
+  String token;
+  String refreshToken;
   final Logger logger = Logger();
+  final dio = Dio();
+
 
   final storage = FlutterSecureStorage();
   String? unit;
@@ -67,14 +70,21 @@ class WarningsPageState extends State<WarningsPage>{
     }
     warnings.clear();
     unit = await storage.read(key: 'unit');
-    final dio = Dio();
-
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
 
     var response;
     try {
+      dio.options.headers['content-Type'] = 'application/json';
+      dio.options.headers['Accept'] = "application/json";
+      dio.options.headers['Authorization'] = "Bearer $token";
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       response = await dio.get('https://dashboard.livair.io/api/livAir/warnings');
     }catch(e){
       print(e);
@@ -258,13 +268,25 @@ class WarningsPageState extends State<WarningsPage>{
     }
   }
 
-  getAllDevices(){
+  getAllDevices() async{
     deviceIds = [];
     labels = [];
     areOnline = [];
     lastSyncs = [];
     WebSocketChannel? channel;
     try {
+      dio.options.headers['content-Type'] = 'application/json';
+      dio.options.headers['Accept'] = "application/json";
+      dio.options.headers['Authorization'] = "Bearer $token";
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       channel = WebSocketChannel.connect(
         Uri.parse(
             'wss://dashboard.livair.io/api/ws/plugins/telemetry?token=$token'),
@@ -565,11 +587,19 @@ class WarningsPageState extends State<WarningsPage>{
   }
 
   updateWarning() async{
-    final dio = Dio();
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
     try{
+      dio.options.headers['content-Type'] = 'application/json';
+      dio.options.headers['Accept'] = "application/json";
+      dio.options.headers['Authorization'] = "Bearer $token";
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       dio.post(
           "https://dashboard.livair.io/api/livAir/warning",
           data: jsonEncode(
@@ -650,8 +680,6 @@ class WarningsPageState extends State<WarningsPage>{
   }
 
   deleteWarning() async{
-    final dio = Dio();
-
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";

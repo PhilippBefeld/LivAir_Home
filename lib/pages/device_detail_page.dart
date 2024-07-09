@@ -9,6 +9,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_time_picker_spinner/flutter_time_picker_spinner.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_places_flutter/model/prediction.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
@@ -41,8 +42,8 @@ class DeviceDetailPage extends StatefulWidget {
 
 class DeviceDetailPageState extends State<DeviceDetailPage>{
 
-  final String token;
-  final String refreshToken;
+  String token;
+  String refreshToken;
 
   final Dio dio = Dio();
   final logger = Logger();
@@ -57,6 +58,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   int screenIndex = 0;
 
   bool loaded = false;
+  bool loadedInternet = false;
 
   final displayController = TextEditingController();
   final statusLEDController = TextEditingController();
@@ -66,7 +68,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   bool useBluetoothData = false;
 
   bool changeDiagram = false;
-  bool showDiagramDots = true;
+  bool showDiagramDots = false;
   bool showAllData = false;
 
 
@@ -150,6 +152,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   int radonWeekly = 0;
   int radonEver = 0;
   bool readGraph = false;
+  bool useBtGraph = false;
 
   //warningScreen values
   TextEditingController thresHoldController = TextEditingController();
@@ -208,6 +211,18 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     radonValue = AppLocalizations.of(context)!.noRadonValues;
     String id = device.keys.elementAt(0);
     try{
+      dio.options.headers['content-Type'] = 'application/json';
+      dio.options.headers['Accept'] = "application/json";
+      dio.options.headers['Authorization'] = "Bearer $token";
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       channel = WebSocketChannel.connect(
         Uri.parse('wss://dashboard.livair.io/api/ws/plugins/telemetry?token=$token'),
       );
@@ -604,6 +619,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       });
                       currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
                       if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
+
+                      loadedInternet = true;
                       setState(() {
                         channel!.sink.add({
                           "cmds": [
@@ -637,7 +654,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   }
 
 
-  changeDisplayBrightness(){
+  changeDisplayBrightness()async{
     if(telemetryRunning)return;
     telemetryRunning = true;
     String id = device.keys.elementAt(0);
@@ -645,6 +662,15 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
     try{
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
         data: jsonEncode(
             {
@@ -661,7 +687,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     telemetryRunning = false;
   }
 
-  changeLEDBrightness(){
+  changeLEDBrightness() async{
     if(telemetryRunning)return;
     telemetryRunning = true;
     String id = device.keys.elementAt(0);
@@ -669,6 +695,15 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
     try{
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
         data: jsonEncode(
             {
@@ -686,7 +721,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   }
 
 
-  void _updateColors() {
+  void _updateColors() async{
     if(int.parse(orangeMinValue.value.text)>=int.parse(redMinValue.value.text) || int.parse(orangeMinValue.value.text)==1) {
       Fluttertoast.showToast(
           msg: 'Bitte Werte korrigieren.'
@@ -698,6 +733,15 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
     try{
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
         data: jsonEncode(
             {
@@ -714,7 +758,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       );
     }
   }
-  displayOnOff(bool value) {
+  displayOnOff(bool value) async{
     int intValue = 0;
     if(value) intValue = 1;
     String id = device.keys.elementAt(0);
@@ -722,6 +766,15 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
     try{
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
         data: jsonEncode(
             {
@@ -745,6 +798,15 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
     try{
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       await dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
         data: jsonEncode(
             {
@@ -760,12 +822,21 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     }
   }
 
-  void displayType(int value) {
+  void displayType(int value) async{
     String id = device.keys.elementAt(0);
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
     try{
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
         data: jsonEncode(
             {
@@ -781,12 +852,21 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     }
   }
 
-  void setClockType(int value){
+  void setClockType(int value)async{
     String id = device.keys.elementAt(0);
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
     try{
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
        dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
         data: jsonEncode(
             {
@@ -802,12 +882,21 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     }
   }
 
-  void setMEZType(int value){
+  void setMEZType(int value) async{
     String id = device.keys.elementAt(0);
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
     try{
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
         data: jsonEncode(
             {
@@ -823,12 +912,21 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     }
   }
 
-  void setTimezone(String value){
+  void setTimezone(String value) async{
     String id = device.keys.elementAt(0);
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
     try{
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+        dio.options.headers['Authorization'] = "Bearer $token";
+      }
       dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
         data: jsonEncode(
             {
@@ -844,12 +942,21 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     }
   }
 
-  void setNTPServer(String value){
+  void setNTPServer(String value) async{
     String id = device.keys.elementAt(0);
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
     try{
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
         data: jsonEncode(
             {
@@ -865,12 +972,21 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     }
   }
 
-  void setDisplayAnimation(int value){
+  void setDisplayAnimation(int value) async{
     String id = device.keys.elementAt(0);
     dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
     try{
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
         data: jsonEncode(
             {
@@ -1105,6 +1221,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     value: useBluetoothData,
                     onChanged: (bool value) {
                       loaded = false;
+                      loadedInternet = false;
                       futureFuncRunning = false;
                       firstTry = true;
                       useBluetoothData = value;
@@ -1126,6 +1243,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               icon: const Icon(Icons.refresh, color: Colors.black),
               onPressed: () async{
                 loaded = false;
+                loadedInternet = false;
                 futureFuncRunning = false;
                 firstTry = true;
                 setState(() {
@@ -1598,86 +1716,89 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     SizedBox(height: 20,),
                     SizedBox(
                       height: 60,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "Min.     \n" + (unit == "Bq/m³" ? "Bq/m³": "pCi/L"),
-                                      style: TextStyle(
-                                          color: Color(0xff78909C),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w400
+                      width: MediaQuery.sizeOf(context).width-20,
+                      child: FittedBox(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Min.     \n" + (unit == "Bq/m³" ? "Bq/m³": "pCi/L"),
+                                        style: TextStyle(
+                                            color: Color(0xff78909C),
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w400
+                                        ),
                                       ),
-                                    ),
-                                    Text("$currentMinValue ",
-                                      style: TextStyle(
-                                          color: currentMinValue > 100 ? currentMinValue > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
-                                          fontSize: 42,
-                                          fontWeight: FontWeight.w600
+                                      Text("$currentMinValue ",
+                                        style: TextStyle(
+                                            color: currentMinValue > 100 ? currentMinValue > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
+                                            fontSize: 42,
+                                            fontWeight: FontWeight.w600
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "Ø           \n" + (unit == "Bq/m³" ? "Bq/m³": "pCi/L"),
-                                      style: TextStyle(
-                                          color: Color(0xff78909C),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w400
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Ø           \n" + (unit == "Bq/m³" ? "Bq/m³": "pCi/L"),
+                                        style: TextStyle(
+                                            color: Color(0xff78909C),
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w400
+                                        ),
                                       ),
-                                    ),
-                                    Text("$currentAvgValue ",
-                                      style: TextStyle(
-                                          color: currentAvgValue > 100 ? currentAvgValue > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
-                                          fontSize: 42,
-                                          fontWeight: FontWeight.w600
+                                      Text("$currentAvgValue ",
+                                        style: TextStyle(
+                                            color: currentAvgValue > 100 ? currentAvgValue > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
+                                            fontSize: 42,
+                                            fontWeight: FontWeight.w600
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "Max.     \n" + (unit == "Bq/m³" ? "Bq/m³": "pCi/L"),
-                                      style: TextStyle(
-                                          color: Color(0xff78909C),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w400
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Max.     \n" + (unit == "Bq/m³" ? "Bq/m³": "pCi/L"),
+                                        style: TextStyle(
+                                            color: Color(0xff78909C),
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w400
+                                        ),
                                       ),
-                                    ),
-                                    Text("$currentMaxValue",
-                                      style: TextStyle(
-                                          color: currentMaxValue > 100 ? currentMaxValue > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
-                                          fontSize: 42,
-                                          fontWeight: FontWeight.w600
+                                      Text("$currentMaxValue",
+                                        style: TextStyle(
+                                            color: currentMaxValue > 100 ? currentMaxValue > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
+                                            fontSize: 42,
+                                            fontWeight: FontWeight.w600
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ]
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ]
+                        ),
                       ),
                     ),
 
@@ -1689,8 +1810,28 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   child: Column(
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
+                          Row(
+                            children: [
+                              useBluetoothData ? TextButton(
+                                  onPressed: (){
+                                    useBtGraph = true;
+                                    loaded = false;
+                                    futureFuncRunning = false;
+                                    setState(() {
+
+                                    });
+                                  },
+                                  child: Row(
+                                    children: [
+                                      Text("Load all data with",style: TextStyle(color: const Color(0xff0099F0)),),
+                                      Icon(Icons.bluetooth,color: const Color(0xff0099F0),)
+                                    ],
+                                  )
+                              ) : Text(""),
+                            ],
+                          ),
                           Row(
                             children: [
                               IconButton(
@@ -1781,6 +1922,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             style: OutlinedButton.styleFrom(backgroundColor: Colors.white, side: const BorderSide(width: 1,color: Color(0xffECEFF1))),
                             child:  Text(
                               " ${DateFormat('dd MMM yyyy').format(DateTime.fromMillisecondsSinceEpoch(requestMsSinceEpoch - Duration(days: selectedNumberOfDays).inMilliseconds - (Duration(days: selectedNumberOfDays).inMilliseconds * (stepsIntoPast-1))))} - ${DateFormat('dd MMM yyyy').format(DateTime.fromMillisecondsSinceEpoch(requestMsSinceEpoch - (Duration(days: selectedNumberOfDays).inMilliseconds * (stepsIntoPast-1))))} ",
+                              style: TextStyle(color: const Color(0xff0099F0)),
                             ),
                           ),
                           IconButton(
@@ -3732,9 +3874,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       if(message == 'LOGIN OK'){
                         loginSuccessful = true;
                         await Future<void>.delayed( const Duration(milliseconds: 100));
-                        readGraph = true;
-                        await writeCharacteristic!.write(utf8.encode('READGRAPH'));
-                        await Future<void>.delayed( const Duration(seconds: 5));
+                        if(useBtGraph){
+                          readGraph = true;
+                          await writeCharacteristic!.write(utf8.encode('READGRAPH'));
+                          await Future<void>.delayed( const Duration(seconds: 5));
+                          useBtGraph = false;
+                        }
                         await btDevice!.disconnect(timeout: 1);
                         logger.d(radonHistoryTimestamps);
                         radonHistoryTimestamps = radonHistoryTimestamps.reversed.toList();
@@ -3958,13 +4103,22 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   }
 
   changeLocation() async{
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
-    dio.post('https://dashboard.livair.io/api/plugins/telemetry/${device.keys.first}/SHARED_SCOPE',data: {
-      "location": deviceLocationController.text
-    });
     try{
+      dio.options.headers['content-Type'] = 'application/json';
+      dio.options.headers['Accept'] = "application/json";
+      dio.options.headers['Authorization'] = "Bearer $token";
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
+      dio.post('https://dashboard.livair.io/api/plugins/telemetry/${device.keys.first}/SHARED_SCOPE',data: {
+        "location": deviceLocationController.text
+      });
     }catch(e){
       setState(() {
         Navigator.pop(context);
@@ -4218,10 +4372,19 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   }
 
   renameDevice () async{
-    dio.options.headers['content-Type'] = 'application/json';
+    try{ dio.options.headers['content-Type'] = 'application/json';
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
-    try{
+
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       await dio.post('https://dashboard.livair.io/api/livAir/renameDevice/${device.keys.first}/${renameController.text}',);
     }on DioException catch(e){
       setState(() {
@@ -4562,10 +4725,19 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
 
   sendShareInvite() async {
     if(!isValidEmail())return;
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
     try{
+      dio.options.headers['content-Type'] = 'application/json';
+      dio.options.headers['Accept'] = "application/json";
+      dio.options.headers['Authorization'] = "Bearer $token";
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       await dio.post(
           'https://dashboard.livair.io/api/livAir/share',
         data: jsonEncode(
@@ -4587,11 +4759,20 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   }
 
   getViewers() async {
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
     Response response;
     try{
+      dio.options.headers['content-Type'] = 'application/json';
+      dio.options.headers['Accept'] = "application/json";
+      dio.options.headers['Authorization'] = "Bearer $token";
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       response = await dio.get(
           'https://dashboard.livair.io/api/livAir/viewers/${device.keys.elementAt(0)}',
       );
@@ -4837,13 +5018,19 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   }
 
   updateWarning() async{
-    final dio = Dio();
-
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
-
     try{
+      dio.options.headers['content-Type'] = 'application/json';
+      dio.options.headers['Accept'] = "application/json";
+      dio.options.headers['Authorization'] = "Bearer $token";
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       dio.post(
         "https://dashboard.livair.io/api/livAir/warning",
         data: jsonEncode(
@@ -4931,10 +5118,19 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       },
     );
     String id = device.keys.elementAt(0);
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
     try{
+      dio.options.headers['content-Type'] = 'application/json';
+      dio.options.headers['Accept'] = "application/json";
+      dio.options.headers['Authorization'] = "Bearer $token";
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
         data: jsonEncode(
             {
@@ -5623,10 +5819,27 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               ),
             );
           }
-        ) : FutureBuilder(
+        ) :  FutureBuilder(
             future: futureFunc(),
             builder: (context, projectSnap){
-            return setPage(screenIndex, isWide);
+            return loadedInternet ? setPage(screenIndex, isWide)  : Scaffold(
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Loading data",
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 36,),
+                    CircularProgressIndicator(
+                      color: Colors.black,
+                    ),
+                  ],
+                ),
+              ),
+            );
           },
         )
     );

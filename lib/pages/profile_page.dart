@@ -7,6 +7,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:logger/logger.dart';
 import 'package:livair_home/components/long_Strings/policy.dart';
 import 'package:livair_home/components/long_Strings/imprint.dart';
@@ -27,8 +28,8 @@ class ProfilePage extends StatefulWidget {
 
 class ProfilePageState extends State<ProfilePage>{
 
-  final String token;
-  final String refreshToken;
+  String token;
+  String refreshToken;
   final Dio dio = Dio();
   final logger = Logger();
 
@@ -78,23 +79,32 @@ class ProfilePageState extends State<ProfilePage>{
       String? userId;
       unit = await storage.read(key: 'unit');
       language = await storage.read(key: "language");
-      dio.options.headers['content-Type'] = 'application/json';
-      dio.options.headers['Accept'] = "application/json";
-      dio.options.headers['Authorization'] = "Bearer $token";
       var response;
       try{
+        dio.options.headers['content-Type'] = 'application/json';
+        dio.options.headers['Accept'] = "application/json";
+        dio.options.headers['Authorization'] = "Bearer $token";
+        if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+          Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+              data: {
+                "refreshToken": refreshToken
+              });
+          token = loginResponse.data["token"];
+          refreshToken = loginResponse.data["refreshToken"];
+        }
+        dio.options.headers['Authorization'] = "Bearer $token";
         Response userInfoResponse = await dio.get('https://dashboard.livair.io/api/auth/user');
         userId = userInfoResponse.data["id"]["id"];
 
         response = await dio.get("https://dashboard.livair.io/api/user/$userId");
-        print(response);
+        responseData = response!.data;
+        nameController.text = responseData["firstName"];
+        name = responseData["firstName"];
+        emailController.text = responseData["email"];
+        language = responseData["additionalInfo"]["lang"] == "en_US" ? "english" : "german";
       }catch(e){
         logger.e(e);
       }
-      responseData = response!.data;
-      nameController.text = responseData["firstName"];
-      name = responseData["firstName"];
-      emailController.text = responseData["email"];
       setState(() {
       });
     }
@@ -103,8 +113,19 @@ class ProfilePageState extends State<ProfilePage>{
   postProfileData() async{
     responseData["firstName"] = nameController.text;
     responseData["email"] = emailController.text;
-
     try{
+      dio.options.headers['content-Type'] = 'application/json';
+      dio.options.headers['Accept'] = "application/json";
+      dio.options.headers['Authorization'] = "Bearer $token";
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       await dio.post("https://dashboard.livair.io/api/user?sendActivationMail=false",
         data: responseData
       );
@@ -224,11 +245,19 @@ class ProfilePageState extends State<ProfilePage>{
   }
 
   updatePassword() async{
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
-
     try{
+      dio.options.headers['content-Type'] = 'application/json';
+      dio.options.headers['Accept'] = "application/json";
+      dio.options.headers['Authorization'] = "Bearer $token";
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       await dio.post(
           "https://dashboard.livair.io/api/auth/changePassword",
         data: jsonEncode(
@@ -778,11 +807,20 @@ class ProfilePageState extends State<ProfilePage>{
   }
 
    Future<bool> canDeleteAccount() async{
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json, text/plain, */*";
-    dio.options.headers['Authorization'] = "Bearer $token";
     var result;
     try{
+      dio.options.headers['content-Type'] = 'application/json';
+      dio.options.headers['Accept'] = "application/json";
+      dio.options.headers['Authorization'] = "Bearer $token";
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       result = await dio.get('https://dashboard.livair.io/api/livAir/canDeleteAccount');
     }on DioError catch(e){
     }
@@ -901,17 +939,31 @@ class ProfilePageState extends State<ProfilePage>{
     return Column(
       children: [
         GestureDetector(
-          onTap: () {
-            dio.options.headers['content-Type'] = 'application/json';
-            dio.options.headers['Accept'] = "application/json, text/plain, */*";
-            dio.options.headers['Authorization'] = "Bearer $token";
-            dio.post('https://dashboard.livair.io/api/livAir/language/english');
-            setState(() {
-              MVP.of(context)!.setLocale(const Locale.fromSubtags(languageCode: 'en'));
-              currentIndex = 0;
-              showAppBar = false;
-              appBarTitle = "";
-            });
+          onTap: () async{
+            try{
+              dio.options.headers['content-Type'] = 'application/json';
+              dio.options.headers['Accept'] = "application/json";
+              dio.options.headers['Authorization'] = "Bearer $token";
+              if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+                Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+                    data: {
+                      "refreshToken": refreshToken
+                    });
+                token = loginResponse.data["token"];
+                refreshToken = loginResponse.data["refreshToken"];
+              }
+              dio.options.headers['Authorization'] = "Bearer $token";
+              dio.post('https://dashboard.livair.io/api/livAir/language/english');
+              setState(() {
+                MVP.of(context)!.setLocale(const Locale.fromSubtags(languageCode: 'en'));
+                language = "english";
+                storage.write(key: 'language', value: "english");
+                currentIndex = 0;
+                showAppBar = false;
+                appBarTitle = "";
+              });
+            }catch(e){
+            }
           },
           child: Container(
             height: 50.0,
@@ -930,7 +982,7 @@ class ProfilePageState extends State<ProfilePage>{
                 ),
                 Row(
                   children: [
-                    Icon(language != "english" ? Icons.circle : Icons.circle_outlined,color: const Color(0xff0099f0),),
+                    Icon(language == "english" ? Icons.circle : Icons.circle_outlined,color: const Color(0xff0099f0),),
                     const SizedBox(width: 22,)
                   ],
                 )
@@ -939,13 +991,24 @@ class ProfilePageState extends State<ProfilePage>{
           ),
         ),
         GestureDetector(
-          onTap: (){
+          onTap: () async{
             dio.options.headers['content-Type'] = 'application/json';
-            dio.options.headers['Accept'] = "application/json, text/plain, */*";
+            dio.options.headers['Accept'] = "application/json";
+            dio.options.headers['Authorization'] = "Bearer $token";
+            if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+              Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+                  data: {
+                    "refreshToken": refreshToken
+                  });
+              token = loginResponse.data["token"];
+              refreshToken = loginResponse.data["refreshToken"];
+            }
             dio.options.headers['Authorization'] = "Bearer $token";
             dio.post('https://dashboard.livair.io/api/livAir/language/german');
             setState(() {
               MVP.of(context)!.setLocale(const Locale.fromSubtags(languageCode: 'de'));
+              language = "german";
+              storage.write(key: 'language', value: "german");
               currentIndex = 0;
               showAppBar = false;
               appBarTitle = "";
@@ -969,7 +1032,7 @@ class ProfilePageState extends State<ProfilePage>{
                 ),
                 Row(
                   children: [
-                    Icon(language == "english" ? Icons.circle : Icons.circle_outlined,color: const Color(0xff0099f0),),
+                    Icon(language == "german" ? Icons.circle : Icons.circle_outlined,color: const Color(0xff0099f0),),
                     const SizedBox(width: 22,)
                   ],
                 )
@@ -985,9 +1048,18 @@ class ProfilePageState extends State<ProfilePage>{
     return Column(
       children: [
         GestureDetector(
-          onTap: (){
+          onTap: () async{
             dio.options.headers['content-Type'] = 'application/json';
-            dio.options.headers['Accept'] = "application/json, text/plain, */*";
+            dio.options.headers['Accept'] = "application/json";
+            dio.options.headers['Authorization'] = "Bearer $token";
+            if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+              Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+                  data: {
+                    "refreshToken": refreshToken
+                  });
+              token = loginResponse.data["token"];
+              refreshToken = loginResponse.data["refreshToken"];
+            }
             dio.options.headers['Authorization'] = "Bearer $token";
             dio.post('https://dashboard.livair.io/api/livAir/units/BqM3');
             setState(() {
@@ -1023,9 +1095,18 @@ class ProfilePageState extends State<ProfilePage>{
           ),
         ),
         GestureDetector(
-          onTap: (){
+          onTap: () async{
             dio.options.headers['content-Type'] = 'application/json';
-            dio.options.headers['Accept'] = "application/json, text/plain, */*";
+            dio.options.headers['Accept'] = "application/json";
+            dio.options.headers['Authorization'] = "Bearer $token";
+            if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+              Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+                  data: {
+                    "refreshToken": refreshToken
+                  });
+              token = loginResponse.data["token"];
+              refreshToken = loginResponse.data["refreshToken"];
+            }
             dio.options.headers['Authorization'] = "Bearer $token";
             dio.post('https://dashboard.livair.io/api/livAir/units/pCiL');
             setState(() {
@@ -1421,11 +1502,20 @@ class ProfilePageState extends State<ProfilePage>{
   }
 
   sendShareInvite() async {
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
     var response;
     try{
+      dio.options.headers['content-Type'] = 'application/json';
+      dio.options.headers['Accept'] = "application/json";
+      dio.options.headers['Authorization'] = "Bearer $token";
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       response = await dio.post(
           'https://dashboard.livair.io/api/livAir/share',
           data: jsonEncode(
@@ -1448,11 +1538,20 @@ class ProfilePageState extends State<ProfilePage>{
   }
 
   sendShareInvite2() async {
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
     var response;
     try{
+      dio.options.headers['content-Type'] = 'application/json';
+      dio.options.headers['Accept'] = "application/json";
+      dio.options.headers['Authorization'] = "Bearer $token";
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       response = await dio.post(
           'https://dashboard.livair.io/api/livAir/share',
           data: jsonEncode(
@@ -1475,11 +1574,20 @@ class ProfilePageState extends State<ProfilePage>{
   }
 
   sendShareInvite3() async {
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
     var response;
     try{
+      dio.options.headers['content-Type'] = 'application/json';
+      dio.options.headers['Accept'] = "application/json";
+      dio.options.headers['Authorization'] = "Bearer $token";
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       response = await dio.post(
           'https://dashboard.livair.io/api/livAir/share',
           data: jsonEncode(
@@ -1540,13 +1648,24 @@ class ProfilePageState extends State<ProfilePage>{
     });
   }
 
-  getAllDevices(int index){
+  getAllDevices(int index) async{
     deviceIds = [];
     labels = [];
     devicesToShare = [];
 
     WebSocketChannel channel;
     try {
+      dio.options.headers['content-Type'] = 'application/json';
+      dio.options.headers['Accept'] = "application/json";
+      dio.options.headers['Authorization'] = "Bearer $token";
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
       channel = WebSocketChannel.connect(
         Uri.parse(
             'wss://dashboard.livair.io/api/ws/plugins/telemetry?token=$token'),

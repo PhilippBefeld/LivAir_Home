@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:livair_home/components/my_button.dart';
 import 'package:livair_home/components/my_textfield.dart';
 import 'package:livair_home/pages/root_page.dart';
@@ -85,6 +86,7 @@ class SignInPageState extends State<SignInPage> {
 
         token = response.data['token'];
         dio.options.headers['Authorization'] = "Bearer $token";
+
         var isVerifiedData = await dio.get('https://dashboard.livair.io/api/livAir/isVerified/${emailController.text}');
         if(isVerifiedData.data == "true"){
           enterConfirmationCode();

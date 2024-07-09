@@ -8,6 +8,7 @@ import 'package:flutter_material_symbols/flutter_material_symbols.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_places_flutter/model/prediction.dart';
+import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:livair_home/components/my_device_widget.dart';
 import 'package:livair_home/pages/device_detail_page.dart';
 import 'package:livair_home/components/data/device.dart';
@@ -31,8 +32,8 @@ class DevicePage extends StatefulWidget {
 
 class DevicePageState extends State<DevicePage> {
 
-  final String token;
-  final String refreshToken;
+  String token;
+  String refreshToken;
   final logger = Logger();
   final Dio dio = Dio();
   final location = Location();
@@ -93,9 +94,17 @@ class DevicePageState extends State<DevicePage> {
         );
         return;
       }
-
       dio.options.headers['content-Type'] = 'application/json';
       dio.options.headers['Accept'] = "application/json";
+      dio.options.headers['Authorization'] = "Bearer $token";
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
       dio.options.headers['Authorization'] = "Bearer $token";
       if(!searchedAdditionalDevices){
         searchedAdditionalDevices = true;
@@ -250,8 +259,10 @@ class DevicePageState extends State<DevicePage> {
   void showDeviceDetails(Map<String,Device2> device){
 
     Navigator.of(context).push(
-        MaterialPageRoute(
-            builder: (context) => DeviceDetailPage(token: token, refreshToken: refreshToken,device: device,)
+        PageRouteBuilder(
+            pageBuilder: (context, Animation<double> animation1, Animation<double> animation2) => DeviceDetailPage(token: token, refreshToken: refreshToken,device: device,),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero
         )
     ).then((_) => setState(() {
       firstTry = true;
@@ -344,10 +355,19 @@ class DevicePageState extends State<DevicePage> {
   }
 
   sendDeviceClaimRequest() async{
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
     try{
+      dio.options.headers['content-Type'] = 'application/json';
+      dio.options.headers['Accept'] = "application/json";
+      dio.options.headers['Authorization'] = "Bearer $token";
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
       await dio.post('https://dashboard.livair.io/api/livAir/claim',
           data:
           {
