@@ -68,7 +68,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   bool useBluetoothData = false;
 
   bool changeDiagram = false;
-  bool showDiagramDots = false;
+  bool showDiagramDots = true;
   bool showAllData = false;
 
 
@@ -81,7 +81,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   List<ChartData> chartSpots = [];
   List<BarChartGroupData> chartBars = [];
   int selectedNumberOfDays = 1;
-  int currentMaxValue = 100;
+  int currentMaxValue = 0;
   int currentMinValue = 0;
   int currentAvgValue = 0;
   int currentMaxAvgValue = 100;
@@ -149,7 +149,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
 
   //offlineData values
   int radonCurrent = 0;
-  int radonWeekly = 0;
+  int radonDaily = 0;
   int radonEver = 0;
   bool readGraph = false;
   bool useBtGraph = false;
@@ -200,12 +200,50 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           msg: AppLocalizations.of(context)!.noInternetT
       );
       useBluetoothData = true;
+      try{
+        channel!.sink.add({
+          "cmds": [
+            {
+              "entityType": "DEVICE",
+              "entityId": device.keys.elementAt(0),
+              "scope": "CLIENT_SCOPE",
+              "cmdId": 1,
+              "unsubscribe": true
+            }
+          ]
+        });
+      }catch(e){
+      }
       setState(() {
       });
       return;
     }
-    currentMaxAvgValue = 100;
-    currentMaxAvgValueSpots= 100;
+    print(device.values.first.isOnline);
+    if(!device.values.first.isOnline){
+      useBluetoothData = true;
+      try{
+        channel!.sink.add({
+          "cmds": [
+            {
+              "entityType": "DEVICE",
+              "entityId": device.keys.elementAt(0),
+              "scope": "CLIENT_SCOPE",
+              "cmdId": 1,
+              "unsubscribe": true
+            }
+          ]
+        });
+      }catch(e){
+      }
+      Fluttertoast.showToast(
+          msg: "No data online yet"
+      );
+      setState(() {
+      });
+      return;
+    }
+    currentMaxAvgValue = 0;
+    currentMaxAvgValueSpots= 0;
     futureFuncRunning = true;
     unit = await storage.read(key: 'unit');
     radonValue = AppLocalizations.of(context)!.noRadonValues;
@@ -603,11 +641,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   try {
                     List<dynamic> radonValues = element["timeseries"]["radon"];
                     device.values.first.isOnline = jsonDecode(updateData.first["latest"]["ENTITY_FIELD"]["additionalInfo"]["value"].toString())["syncStatus"] == "active" ? true : false;
-                    if(radonValues.isNotEmpty){
+                    if(radonValues.isNotEmpty) {
                       radonHistory = radonValues;
                       radonHistoryTimestamps = [];
                       for (var element in radonHistory) {
-                        Tuple2<int,int> singleTimestamp = Tuple2<int,int> (element['ts'], int.parse(element['value']));
+                        Tuple2<int, int> singleTimestamp = Tuple2<int, int>(
+                            element['ts'], int.parse(element['value']));
                         radonHistoryTimestamps.add(singleTimestamp);
                       }
                       radonCurrent = radonHistoryTimestamps.first.item2;
@@ -617,25 +656,23 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       chartBars.forEach((bar) {
                         barSizes.add(bar.barRods.first.toY.toInt());
                       });
-                      currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
-                      if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
-
-                      loadedInternet = true;
-                      setState(() {
-                        channel!.sink.add({
-                          "cmds": [
-                            {
-                              "entityType": "DEVICE",
-                              "entityId": device.keys.elementAt(0),
-                              "scope": "CLIENT_SCOPE",
-                              "cmdId": 1,
-                              "unsubscribe": true
-                            }
-                          ]
-                        });
-                        screenIndex = 1;
+                      currentMaxAvgValue = ((barSizes.reduce(max) / 100).ceil()) * 100;
+                    }else{
+                      radonHistory = radonValues;
+                      radonHistoryTimestamps = [];
+                      radonCurrent = 0;
+                      chartSpots = getCurrentSpots();
+                      chartBars = getCurrentBars();
+                      List<int> barSizes = [];
+                      chartBars.forEach((bar) {
+                        barSizes.add(bar.barRods.first.toY.toInt());
                       });
+                      currentMaxAvgValue = ((barSizes.reduce(max) / 100).ceil()) * 100;
                     }
+                    loadedInternet = true;
+                    setState(() {
+                      screenIndex = 1;
+                    });
                   } catch (e) {
                     logger.e(e);
                   }
@@ -1003,6 +1040,11 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   }
 
   List<ChartData> getCurrentSpots(){
+    radonHistoryTimestamps.sort((a,b) {
+      return a.item1.compareTo(b.item1);
+    });
+    radonHistoryTimestamps = radonHistoryTimestamps.reversed.toList();
+    print(radonHistoryTimestamps);
     int startTimeseries =  selectedNumberOfDays == 0 ? radonHistoryTimestamps.last.item1 : requestMsSinceEpoch - (Duration(days: selectedNumberOfDays).inMilliseconds * stepsIntoPast);
     List<ChartData> spots = [];
     radonValuesTimeseries = [];
@@ -1033,7 +1075,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     }
     if(radonValuesTimeseries.isEmpty){
       currentAvgValue = 0;
-      currentMaxValue = 1;
+      currentMaxValue = 0;
     }else {
       currentAvgValue = sum~/radonValuesTimeseries.length;
       currentMaxValue = radonValuesTimeseries.reduce(max);
@@ -1202,6 +1244,20 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     icon: const Icon(Icons.arrow_back, color: Colors.black),
                     onPressed: (){
                       setState(() {
+                        try{
+                          channel!.sink.add({
+                            "cmds": [
+                              {
+                                "entityType": "DEVICE",
+                                "entityId": device.keys.elementAt(0),
+                                "scope": "CLIENT_SCOPE",
+                                "cmdId": 1,
+                                "unsubscribe": true
+                              }
+                            ]
+                          });
+                        }catch(e){
+                        }
                         Navigator.pop(context);
                       });
                     },
@@ -1224,7 +1280,23 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       loadedInternet = false;
                       futureFuncRunning = false;
                       firstTry = true;
+                      selectedNumberOfDays = 1;
                       useBluetoothData = value;
+                      radonHistoryTimestamps = [];
+                      try{
+                        channel!.sink.add({
+                          "cmds": [
+                            {
+                              "entityType": "DEVICE",
+                              "entityId": device.keys.elementAt(0),
+                              "scope": "CLIENT_SCOPE",
+                              "cmdId": 1,
+                              "unsubscribe": true
+                            }
+                          ]
+                        });
+                      }catch(e){
+                      }
                       setState(() {
                       });
                     },
@@ -1246,6 +1318,23 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 loadedInternet = false;
                 futureFuncRunning = false;
                 firstTry = true;
+                if(useBluetoothData){
+                  readGraph = false;
+                }
+                try{
+                  channel!.sink.add({
+                    "cmds": [
+                      {
+                        "entityType": "DEVICE",
+                        "entityId": device.keys.elementAt(0),
+                        "scope": "CLIENT_SCOPE",
+                        "cmdId": 1,
+                        "unsubscribe": true
+                      }
+                    ]
+                  });
+                }catch(e){
+                }
                 setState(() {
                 });
               },
@@ -1561,7 +1650,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                         barSizes.add(bar.barRods.first.toY.toInt());
                                       });
                                       currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
-                                      if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
                                     });
                                   },
                                   style: OutlinedButton.styleFrom(
@@ -1594,7 +1682,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                         barSizes.add(bar.barRods.first.toY.toInt());
                                       });
                                       currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
-                                      if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
                                     });
                                   },
                                   style: OutlinedButton.styleFrom(
@@ -1628,7 +1715,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                         barSizes.add(bar.barRods.first.toY.toInt());
                                       });
                                       currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
-                                      if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
                                     })
                                   },
                                   style: OutlinedButton.styleFrom(
@@ -1662,7 +1748,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                         barSizes.add(bar.barRods.first.toY.toInt());
                                       });
                                       currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
-                                      if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
                                     })
                                   },
                                   style: OutlinedButton.styleFrom(
@@ -1721,7 +1806,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                             crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
+                            children: !((radonHistoryTimestamps.length == 0) && useBluetoothData) ? [
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -1797,6 +1882,32 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                   ),
                                 ],
                               ),
+                            ] : [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "Ø 24h       \n" + (unit == "Bq/m³" ? "Bq/m³": "pCi/L"),
+                                        style: TextStyle(
+                                            color: Color(0xff78909C),
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w400
+                                        ),
+                                      ),
+                                      Text("$radonDaily ",
+                                        style: TextStyle(
+                                            color: radonDaily > 100 ? radonDaily > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
+                                            fontSize: 42,
+                                            fontWeight: FontWeight.w600
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ]
                         ),
                       ),
@@ -1825,7 +1936,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                   },
                                   child: Row(
                                     children: [
-                                      Text("Load all data with",style: TextStyle(color: const Color(0xff0099F0)),),
+                                      Text("Load history with",style: TextStyle(color: const Color(0xff0099F0)),),
                                       Icon(Icons.bluetooth,color: const Color(0xff0099F0),)
                                     ],
                                   )
@@ -1916,7 +2027,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                   barSizes.add(bar.barRods.first.toY.toInt());
                                 });
                                 currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
-                                if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
                               });
                             },
                             style: OutlinedButton.styleFrom(backgroundColor: Colors.white, side: const BorderSide(width: 1,color: Color(0xffECEFF1))),
@@ -2024,7 +2134,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             primaryXAxis: DateTimeAxis(
                               dateFormat: selectedNumberOfDays == 1 ? DateFormat.Hm() : selectedNumberOfDays == 2 ? DateFormat("EEE\nHH:mm") : selectedNumberOfDays == 7 ? DateFormat("d MMM\nHH:mm") : selectedNumberOfDays == 30 ? DateFormat("d MMM") : DateFormat("d MMM yy"),
                               intervalType: selectedNumberOfDays == 1 ? DateTimeIntervalType.hours : selectedNumberOfDays == 2 ? DateTimeIntervalType.hours : DateTimeIntervalType.days,
-                              interval: selectedNumberOfDays == 1 ? 6 : selectedNumberOfDays == 2 ? 12 : selectedNumberOfDays == 7 ? 7/5 : selectedNumberOfDays == 30 ? 6 : (Duration(milliseconds: DateTime.now().millisecondsSinceEpoch - radonHistoryTimestamps.last.item1).inDays.toDouble()/4),
+                              interval: selectedNumberOfDays == 1 ? 6 : selectedNumberOfDays == 2 ? 12 : selectedNumberOfDays == 7 ? 7/5 : selectedNumberOfDays == 30 ? 6 : (Duration(milliseconds: DateTime.now().millisecondsSinceEpoch - radonHistoryTimestamps.last.item1 ).inDays.toDouble()/4) != 0 ? (Duration(milliseconds: DateTime.now().millisecondsSinceEpoch - radonHistoryTimestamps.last.item1).inDays.toDouble()/4) : null,
                             ),
                             primaryYAxis: NumericAxis(
                                 minimum: 0,
@@ -2096,7 +2206,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                   barSizes.add(bar.barRods.first.toY.toInt());
                                 });
                                 currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
-                                if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
                               });
                             },
                             style: OutlinedButton.styleFrom(
@@ -2129,7 +2238,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                   barSizes.add(bar.barRods.first.toY.toInt());
                                 });
                                 currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
-                                if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
                               });
                             },
                             style: OutlinedButton.styleFrom(
@@ -2163,7 +2271,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                   barSizes.add(bar.barRods.first.toY.toInt());
                                 });
                                 currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
-                                if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
                               })
                             },
                             style: OutlinedButton.styleFrom(
@@ -2197,7 +2304,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                   barSizes.add(bar.barRods.first.toY.toInt());
                                 });
                                 currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
-                                if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
                               })
                             },
                             style: OutlinedButton.styleFrom(
@@ -2791,32 +2897,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           ),
           GestureDetector(
             onTap: (){
-              readOfflineData();
-            },
-            child: Container(
-              height: 50,
-              decoration: const BoxDecoration(
-                border: Border(bottom: BorderSide(width: 1,color: Color(0xffb0bec5))),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Row(
-                    children: [
-                      const SizedBox(width: 16,),
-                      const Icon(Icons.bluetooth,color: Colors.black54,),
-                      const SizedBox(width: 14,),
-                      Text(AppLocalizations.of(context)!.localDevice,style: const TextStyle(fontSize: 20.0, fontWeight: FontWeight.w400,), textAlign: TextAlign.center),
-                    ],
-                  ),
-
-                ],
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: (){
               setState(() {
                 screenIndex = 1;
               });
@@ -3303,71 +3383,76 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
             ),
             Text("Timezone - current: ${currentTZ}",),
             SizedBox(
-              height: 200,
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: tzLocations.length,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    title: Text(tzLocations[index],style: TextStyle(fontSize: 12),),
-                    onTap: (){
-                      AlertDialog alert = AlertDialog(
-                        title: Text("Set ${tzLocations[index]} as timezone?", style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 20),),
-                        content: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const SizedBox(height: 10,),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton(
-                                    onPressed: () async{
-                                      try {
-                                        final result = await InternetAddress.lookup('example.com');
-                                        if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+              height: 300,
+              child: Scrollbar(
+                interactive: true,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: tzLocations.length,
+                  itemBuilder: (context, index) {
+                    return ListTile(
+                      title: Text(tzLocations[index],style: TextStyle(fontSize: 12),),
+                      onTap: (){
+                        AlertDialog alert = AlertDialog(
+                          title: Text("Set ${tzLocations[index]} as timezone?", style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 20),),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(height: 10,),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton(
+                                      onPressed: () async{
+                                        try {
+                                          final result = await InternetAddress.lookup('example.com');
+                                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                                          }
+                                        } on SocketException catch (_) {
+                                          Fluttertoast.showToast(
+                                              msg: AppLocalizations.of(context)!.noInternetT
+                                          );
+                                          return;
                                         }
-                                      } on SocketException catch (_) {
-                                        Fluttertoast.showToast(
-                                            msg: AppLocalizations.of(context)!.noInternetT
-                                        );
-                                        return;
-                                      }
-                                      setTimezone(tzCodes[index]);
-                                      currentTZ = tzCodes[index];
-                                      Navigator.pop(context);
-                                    },
-                                    style: OutlinedButton.styleFrom(backgroundColor: const Color(0xff0099f0),minimumSize: const Size(100, 50)),
-                                    child: Text(AppLocalizations.of(context)!.confirm,style: const TextStyle(color: Colors.white)),
+                                        setTimezone(tzCodes[index]);
+                                        currentTZ = tzCodes[index];
+                                        Navigator.pop(context);
+                                        setState(() {
+                                        });
+                                      },
+                                      style: OutlinedButton.styleFrom(backgroundColor: const Color(0xff0099f0),minimumSize: const Size(100, 50)),
+                                      child: Text(AppLocalizations.of(context)!.confirm,style: const TextStyle(color: Colors.white)),
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10,),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton(
-                                    onPressed: (){
-                                      Navigator.pop(context);
-                                    },
-                                    style: OutlinedButton.styleFrom(backgroundColor: const Color(0xff0099f0),minimumSize: const Size(100, 50)),
-                                    child: Text(AppLocalizations.of(context)!.cancel,style: const TextStyle(color: Colors.black)),
+                                ],
+                              ),
+                              const SizedBox(height: 10,),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton(
+                                      onPressed: (){
+                                        Navigator.pop(context);
+                                      },
+                                      style: OutlinedButton.styleFrom(backgroundColor: const Color(0xff0099f0),minimumSize: const Size(100, 50)),
+                                      child: Text(AppLocalizations.of(context)!.cancel,style: const TextStyle(color: Colors.black)),
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context){
-                          return alert;
-                        },
-                      );
-                    },
-                  );
-                },
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context){
+                            return alert;
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
             ),
             SizedBox(
@@ -3799,6 +3884,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     futureFuncRunning = true;
     radonHistory = [];
     radonHistoryTimestamps = [];
+    currentMinValue = 0;
+    currentMaxValue = 0;
     foundAccessPoints = {};
     if(!useBluetoothData){
       showDialog(context: context, builder: (context) {
@@ -3849,96 +3936,138 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
             if(bluetoothDeviceName == device.values.first.name){
               radonValue = bluetoothAdvertisementData.elementAt(1).toString();
               radonCurrent = bluetoothAdvertisementData.elementAt(1);
-              radonWeekly = bluetoothAdvertisementData.elementAt(5);
+              radonDaily = bluetoothAdvertisementData.elementAt(5);
+              currentAvgValue = bluetoothAdvertisementData.elementAt(5);
               radonEver = bluetoothAdvertisementData.elementAt(9);
               deviceFound = true;
               FlutterBluePlus.stopScan();
               subscription!.cancel();
               btDevice = r.device;
               await btDevice!.connect();
-              if (Platform.isAndroid) {
-                await r.device.requestMtu(300);
-              }
-              bool loginSuccessful = false;
-              List<BluetoothService> services = await r.device.discoverServices();
-              for (var service in services){
-                for(var characteristic in service.characteristics){
-                  if(characteristic.properties.notify){
-                    await characteristic.setNotifyValue(true);
-                    readCharacteristic = characteristic;
-                    subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
-                      String message = utf8.decode(data).trim();
-                      logger.d(utf8.decode(data));
-                      if(message == "" && !loginSuccessful){
-                      }
-                      if(message == 'LOGIN OK'){
-                        loginSuccessful = true;
-                        await Future<void>.delayed( const Duration(milliseconds: 100));
-                        if(useBtGraph){
-                          readGraph = true;
-                          await writeCharacteristic!.write(utf8.encode('READGRAPH'));
-                          await Future<void>.delayed( const Duration(seconds: 5));
-                          useBtGraph = false;
+              try{
+                if (Platform.isAndroid) {
+                  await r.device.requestMtu(300);
+                }
+                int BtTimestampCount = -1;
+                int currentBtTimestampCount = -1;
+                bool loginSuccessful = false;
+                List<BluetoothService> services = await r.device.discoverServices();
+                for (var service in services){
+                  for(var characteristic in service.characteristics){
+                    if(characteristic.properties.notify){
+                      await characteristic.setNotifyValue(true);
+                      readCharacteristic = characteristic;
+                      subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                        String message = utf8.decode(data).trim();
+                        logger.d(utf8.decode(data));
+                        if(message == "" && !loginSuccessful){
                         }
-                        await btDevice!.disconnect(timeout: 1);
-                        logger.d(radonHistoryTimestamps);
-                        radonHistoryTimestamps = radonHistoryTimestamps.reversed.toList();
-                        chartSpots = getCurrentSpots();
-                        chartBars = getCurrentBars();
-                        List<int> barSizes = [];
-                        chartBars.forEach((bar) {
-                          barSizes.add(bar.barRods.first.toY.toInt());
-                        });
-                        currentMaxAvgValue = ((barSizes.reduce(max)/100).ceil())*100;
-                        if(currentMaxAvgValue == 0)currentMaxAvgValue = 100;
-                        btDevice!.removeBond();
-                        subscriptionToDevice?.cancel();
-                        loaded = true;
-                        setState(() {
-                          screenIndex = 1;
-                        });
-                      }
-                      if(message.length >= 2 && message.substring(0,2)=="|A"){
-                        var bluetoothCurrentValuesAsString = message.split("|")[1];
-                        var bluetoothCurrentvalues = bluetoothCurrentValuesAsString.split(",");
-                        unit = bluetoothCurrentvalues[0].substring(3) == "1" ? "Bq/m³": "pCi/L";
-                        d_led_t = bluetoothCurrentvalues[1].substring(3) == "1";
-                        d_led_f = bluetoothCurrentvalues[2].substring(3) == "1";
-                        d_led_fb = double.parse(bluetoothCurrentvalues[3].substring(3));
-                        d_led_tb = double.parse(bluetoothCurrentvalues[4].substring(3));
-                        d_unit = int.parse(bluetoothCurrentvalues[10].substring(3));
-                        radonCurrent = int.parse(bluetoothCurrentvalues[1].substring(3));
-                      }
-                      if(readGraph){
-                        var bluetoothRadonHistory = message.split(";");
-                        for (var timestamp in bluetoothRadonHistory) {
-                          try{
-                            String dateString = timestamp.split(" ")[0];
-                            int year = int.parse(dateString.split(".")[0])+2000;
-                            int month = int.parse(dateString.split(".")[1]);
-                            int day = int.parse(dateString.split(".")[2]);
-                            int hour = int.parse(timestamp.split(" ")[1].split(",")[0]);
-                            int radon = int.parse(timestamp.split(" ")[1].split(",")[1]);
-                            Tuple2<int,int> singleTimestamp = Tuple2<int,int> (DateTime(year,month,day,hour).millisecondsSinceEpoch,radon);
-                            radonHistoryTimestamps.add(singleTimestamp);
-                          }catch(e){
+                        if(message == 'LOGIN OK'){
+                          loginSuccessful = true;
+                          await writeCharacteristic!.write(utf8.encode('ValsRead'));
+                          await Future<void>.delayed( const Duration(milliseconds: 100));
+                          if(useBtGraph){
+                            readGraph = true;
+                            await writeCharacteristic!.write(utf8.encode('READGRAPH'));
+                            useBtGraph = false;
+                          }else{
+                            chartSpots = getCurrentSpots();
+                            chartBars = getCurrentBars();
+                            List<int> barSizes = [];
+                            chartBars.forEach((bar) {
+                              barSizes.add(bar.barRods.first.toY.toInt());
+                            });
+                            currentAvgValue = bluetoothAdvertisementData.elementAt(5);
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            loaded = true;
+                            setState(() {
+                              screenIndex = 1;
+                            });
                           }
                         }
-                      }
-                    });
-                  }
-                  if(characteristic.properties.write){
-                    writeCharacteristic = characteristic;
-                    await Future<void>.delayed( const Duration(milliseconds: 300));
-                    if(!loginSuccessful){
-                      try{
-                        loginSuccessful = true;
-                        await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
-                      }catch(e){
+                        if(message.contains("{ts-")){
+                          BtTimestampCount = int.parse(message.substring(4, message.length-1));
+                        }
+                        if(message.length >= 2 && message.substring(0,2)=="|A"){
+                          var bluetoothCurrentValuesAsString = message.split("|")[1];
+                          var bluetoothCurrentvalues = bluetoothCurrentValuesAsString.split(",");
+                          unit = bluetoothCurrentvalues[0].substring(3) == "1" ? "Bq/m³": "pCi/L";
+                          d_led_t = bluetoothCurrentvalues[1].substring(3) == "1";
+                          d_led_f = bluetoothCurrentvalues[2].substring(3) == "1";
+                          d_led_fb = double.parse(bluetoothCurrentvalues[3].substring(3));
+                          d_led_tb = double.parse(bluetoothCurrentvalues[4].substring(3));
+                          d_unit = int.parse(bluetoothCurrentvalues[10].substring(3));
+                        }
+                        if(readGraph){
+                          var bluetoothRadonHistory = message.split(";");
+                          for (var timestamp in bluetoothRadonHistory) {
+                            currentBtTimestampCount++;
+                            try{
+                              String dateString = timestamp.split(" ")[0];
+                              int year = int.parse(dateString.split(".")[0])+2000;
+                              int month = int.parse(dateString.split(".")[1]);
+                              int day = int.parse(dateString.split(".")[2]);
+                              int hour = int.parse(timestamp.split(" ")[1].split(",")[0]);
+                              int radon = int.parse(timestamp.split(" ")[1].split(",")[1]);
+                              Tuple2<int,int> singleTimestamp = Tuple2<int,int> (DateTime(year,month,day,hour).millisecondsSinceEpoch,radon);
+                              radonHistoryTimestamps.add(singleTimestamp);
+                            }catch(e){
+                            }
+                          }
+                          currentBtTimestampCount--;
+                          if((BtTimestampCount == currentBtTimestampCount+1) && (BtTimestampCount != -1)){
+                            radonHistoryTimestamps = radonHistoryTimestamps.reversed.toList();
+                            chartSpots = getCurrentSpots();
+                            chartBars = getCurrentBars();
+                            List<int> barSizes = [];
+                            chartBars.forEach((bar) {
+                              barSizes.add(bar.barRods.first.toY.toInt());
+                            });
+                            chartSpots.forEach((bar) {
+                              print(bar.y);
+                            });
+                            currentMaxAvgValue = ((barSizes.reduce(max) / 100).ceil()) * 100;
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            loaded = true;
+                            setState(() {
+                              screenIndex = 1;
+                            });
+                          }
+                        }
+                      });
+                    }
+                    if(characteristic.properties.write){
+                      writeCharacteristic = characteristic;
+                      await Future<void>.delayed( const Duration(milliseconds: 300));
+                      if(!loginSuccessful){
+                        try{
+                          loginSuccessful = true;
+                          await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+                        }catch(e){
+                        }
                       }
                     }
                   }
                 }
+              }catch(e){
+                chartSpots = getCurrentSpots();
+                chartBars = getCurrentBars();
+                List<int> barSizes = [];
+                chartBars.forEach((bar) {
+                  barSizes.add(bar.barRods.first.toY.toInt());
+                });
+                currentAvgValue = bluetoothAdvertisementData.elementAt(5);
+                await btDevice!.disconnect(timeout: 1);
+                btDevice!.removeBond();
+                subscriptionToDevice?.cancel();
+                loaded = true;
+                setState(() {
+                  screenIndex = 1;
+                });
               }
             }
           }
@@ -3953,48 +4082,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           msg: "The device wasn't found"
       );
     }
-  }
-
-  offlineDataScreen(){
-    return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: (){
-            setState(() {
-              screenIndex = 2;
-            });
-          },
-        ),
-        backgroundColor: Colors.white,
-        titleSpacing: 0,
-        iconTheme: const IconThemeData(
-          color: Colors.black,
-        ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(AppLocalizations.of(context)!.noWifiNeeded),
-            const SizedBox(height: 30,),
-            Text(AppLocalizations.of(context)!.live,style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w400, color: Color(0xff78909c)),),
-            const SizedBox(height: 4,),
-            Text("$radonCurrent ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}",style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w400),),
-            const SizedBox(height: 20,),
-            Text(AppLocalizations.of(context)!.weekly,style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w400, color: Color(0xff78909c)),),
-            const SizedBox(height: 4,),
-            Text("$radonWeekly ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}",style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w400),),
-            const SizedBox(height: 20,),
-            Text(AppLocalizations.of(context)!.sinceConnected,style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w400, color: Color(0xff78909c)),),
-            const SizedBox(height: 4,),
-            Text("$radonEver ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}",style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w400),),
-            ]
-        ),
-      ),
-    );
   }
 
   changeLocationScreen(){
@@ -5304,7 +5391,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       case 20: return deviceLightsScreen();
       case 21: return deviceWifiSelectScreen();
       case 22: return deviceWifiPasswordScreen();
-      case 23: return offlineDataScreen();
       case 24: return changeLocationScreen();
       case 25: return deviceClockScreen();
       case 3: return showDeviceInfoScreen();
@@ -5337,9 +5423,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       "Africa/Blantyre":"CAT-2",
       "Africa/Brazzaville":"WAT-1",
       "Africa/Bujumbura":"CAT-2",
-      "Africa/Cairo":"EET-2EEST:M4.5.5/0:M10.5.4/24",
+      "Africa/Cairo":"EET-2EEST,M4.5.5/0,M10.5.4/24",
       "Africa/Casablanca":"<+01>-1",
-      "Africa/Ceuta":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Africa/Ceuta":"CET-1CEST,M3.5.0,M10.5.0/3",
       "Africa/Conakry":"GMT0",
       "Africa/Dakar":"GMT0",
       "Africa/Dar_es_Salaam":"EAT-3",
@@ -5377,8 +5463,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       "Africa/Tripoli":"EET-2",
       "Africa/Tunis":"CET-1",
       "Africa/Windhoek":"CAT-2",
-      "America/Adak":"HST10HDT:M3.2.0:M11.1.0",
-      "America/Anchorage":"AKST9AKDT:M3.2.0:M11.1.0",
+      "America/Adak":"HST10HDT,M3.2.0,M11.1.0",
+      "America/Anchorage":"AKST9AKDT,M3.2.0,M11.1.0",
       "America/Anguilla":"AST4",
       "America/Antigua":"AST4",
       "America/Araguaina":"<-03>3",
@@ -5395,7 +5481,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       "America/Argentina/Tucuman":"<-03>3",
       "America/Argentina/Ushuaia":"<-03>3",
       "America/Aruba":"AST4",
-      "America/Asuncion":"<-04>4<-03>:M10.1.0/0:M3.4.0/0",
+      "America/Asuncion":"<-04>4<-03>,M10.1.0/0,M3.4.0/0",
       "America/Atikokan":"EST5",
       "America/Bahia":"<-03>3",
       "America/Bahia_Banderas":"CST6",
@@ -5405,14 +5491,14 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       "America/Blanc-Sablon":"AST4",
       "America/Boa_Vista":"<-04>4",
       "America/Bogota":"<-05>5",
-      "America/Boise":"MST7MDT:M3.2.0:M11.1.0",
-      "America/Cambridge_Bay":"MST7MDT:M3.2.0:M11.1.0",
+      "America/Boise":"MST7MDT,M3.2.0,M11.1.0",
+      "America/Cambridge_Bay":"MST7MDT,M3.2.0,M11.1.0",
       "America/Campo_Grande":"<-04>4",
       "America/Cancun":"EST5",
       "America/Caracas":"<-04>4",
       "America/Cayenne":"<-03>3",
       "America/Cayman":"EST5",
-      "America/Chicago":"CST6CDT:M3.2.0:M11.1.0",
+      "America/Chicago":"CST6CDT,M3.2.0,M11.1.0",
       "America/Chihuahua":"CST6",
       "America/Costa_Rica":"CST6",
       "America/Creston":"MST7",
@@ -5421,57 +5507,57 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       "America/Danmarkshavn":"GMT0",
       "America/Dawson":"MST7",
       "America/Dawson_Creek":"MST7",
-      "America/Denver":"MST7MDT:M3.2.0:M11.1.0",
-      "America/Detroit":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Denver":"MST7MDT,M3.2.0,M11.1.0",
+      "America/Detroit":"EST5EDT,M3.2.0,M11.1.0",
       "America/Dominica":"AST4",
-      "America/Edmonton":"MST7MDT:M3.2.0:M11.1.0",
+      "America/Edmonton":"MST7MDT,M3.2.0,M11.1.0",
       "America/Eirunepe":"<-05>5",
       "America/El_Salvador":"CST6",
       "America/Fortaleza":"<-03>3",
       "America/Fort_Nelson":"MST7",
-      "America/Glace_Bay":"AST4ADT:M3.2.0:M11.1.0",
-      "America/Godthab":"<-02>2<-01>:M3.5.0/-1:M10.5.0/0",
-      "America/Goose_Bay":"AST4ADT:M3.2.0:M11.1.0",
-      "America/Grand_Turk":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Glace_Bay":"AST4ADT,M3.2.0,M11.1.0",
+      "America/Godthab":"<-02>2<-01>,M3.5.0/-1,M10.5.0/0",
+      "America/Goose_Bay":"AST4ADT,M3.2.0,M11.1.0",
+      "America/Grand_Turk":"EST5EDT,M3.2.0,M11.1.0",
       "America/Grenada":"AST4",
       "America/Guadeloupe":"AST4",
       "America/Guatemala":"CST6",
       "America/Guayaquil":"<-05>5",
       "America/Guyana":"<-04>4",
-      "America/Halifax":"AST4ADT:M3.2.0:M11.1.0",
-      "America/Havana":"CST5CDT:M3.2.0/0:M11.1.0/1",
+      "America/Halifax":"AST4ADT,M3.2.0,M11.1.0",
+      "America/Havana":"CST5CDT,M3.2.0/0,M11.1.0/1",
       "America/Hermosillo":"MST7",
-      "America/Indiana/Indianapolis":"EST5EDT:M3.2.0:M11.1.0",
-      "America/Indiana/Knox":"CST6CDT:M3.2.0:M11.1.0",
-      "America/Indiana/Marengo":"EST5EDT:M3.2.0:M11.1.0",
-      "America/Indiana/Petersburg":"EST5EDT:M3.2.0:M11.1.0",
-      "America/Indiana/Tell_City":"CST6CDT:M3.2.0:M11.1.0",
-      "America/Indiana/Vevay":"EST5EDT:M3.2.0:M11.1.0",
-      "America/Indiana/Vincennes":"EST5EDT:M3.2.0:M11.1.0",
-      "America/Indiana/Winamac":"EST5EDT:M3.2.0:M11.1.0",
-      "America/Inuvik":"MST7MDT:M3.2.0:M11.1.0",
-      "America/Iqaluit":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Indiana/Indianapolis":"EST5EDT,M3.2.0,M11.1.0",
+      "America/Indiana/Knox":"CST6CDT,M3.2.0,M11.1.0",
+      "America/Indiana/Marengo":"EST5EDT,M3.2.0,M11.1.0",
+      "America/Indiana/Petersburg":"EST5EDT,M3.2.0,M11.1.0",
+      "America/Indiana/Tell_City":"CST6CDT,M3.2.0,M11.1.0",
+      "America/Indiana/Vevay":"EST5EDT:M3.2.0,M11.1.0",
+      "America/Indiana/Vincennes":"EST5EDT,M3.2.0,M11.1.0",
+      "America/Indiana/Winamac":"EST5EDT,M3.2.0,M11.1.0",
+      "America/Inuvik":"MST7MDT,M3.2.0,M11.1.0",
+      "America/Iqaluit":"EST5EDT,M3.2.0,M11.1.0",
       "America/Jamaica":"EST5",
-      "America/Juneau":"AKST9AKDT:M3.2.0:M11.1.0",
-      "America/Kentucky/Louisville":"EST5EDT:M3.2.0:M11.1.0",
-      "America/Kentucky/Monticello":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Juneau":"AKST9AKDT,M3.2.0,M11.1.0",
+      "America/Kentucky/Louisville":"EST5EDT,M3.2.0,M11.1.0",
+      "America/Kentucky/Monticello":"EST5EDT,M3.2.0,M11.1.0",
       "America/Kralendijk":"AST4",
       "America/La_Paz":"<-04>4",
       "America/Lima":"<-05>5",
-      "America/Los_Angeles":"PST8PDT:M3.2.0:M11.1.0",
+      "America/Los_Angeles":"PST8PDT,M3.2.0,M11.1.0",
       "America/Lower_Princes":"AST4",
       "America/Maceio":"<-03>3",
       "America/Managua":"CST6",
       "America/Manaus":"<-04>4",
       "America/Marigot":"AST4",
       "America/Martinique":"AST4",
-      "America/Matamoros":"CST6CDT:M3.2.0:M11.1.0",
+      "America/Matamoros":"CST6CDT,M3.2.0,M11.1.0",
       "America/Mazatlan":"MST7",
-      "America/Menominee":"CST6CDT:M3.2.0:M11.1.0",
+      "America/Menominee":"CST6CDT,M3.2.0,M11.1.0",
       "America/Merida":"CST6",
-      "America/Metlakatla":"AKST9AKDT:M3.2.0:M11.1.0",
+      "America/Metlakatla":"AKST9AKDT,M3.2.0:M11.1.0",
       "America/Mexico_City":"CST6",
-      "America/Miquelon":"<-03>3<-02>:M3.2.0:M11.1.0",
+      "America/Miquelon":"<-03>3<-02>,M3.2.0,M11.1.0",
       "America/Moncton":"AST4ADT:M3.2.0:M11.1.0",
       "America/Monterrey":"CST6",
       "America/Montevideo":"<-03>3",
@@ -5482,62 +5568,56 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       "America/Nipigon":"EST5EDT:M3.2.0:M11.1.0",
       "America/Nome":"AKST9AKDT:M3.2.0:M11.1.0",
       "America/Noronha":"<-02>2",
-      "America/North_Dakota/Beulah":"CST6CDT:M3.2.0:M11.1.0",
-      "America/North_Dakota/Center":"CST6CDT:M3.2.0:M11.1.0",
-      "America/North_Dakota/New_Salem":"CST6CDT:M3.2.0:M11.1.0",
-      "America/Nuuk":"<-02>2<-01>:M3.5.0/-1:M10.5.0/0",
-      "America/Ojinaga":"CST6CDT:M3.2.0:M11.1.0",
+      "America/North_Dakota/Center":"CST6CDT,M3.2.0,M11.1.0",
+      "America/Nuuk":"<-02>2<-01>,M3.5.0/-1,M10.5.0/0",
+      "America/Ojinaga":"CST6CDT,M3.2.0,M11.1.0",
       "America/Panama":"EST5",
-      "America/Pangnirtung":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Pangnirtung":"EST5EDT,M3.2.0,M11.1.0",
       "America/Paramaribo":"<-03>3",
       "America/Phoenix":"MST7",
-      "America/Port-au-Prince":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Port-au-Prince":"EST5EDT,M3.2.0,M11.1.0",
       "America/Port_of_Spain":"AST4",
       "America/Porto_Velho":"<-04>4",
       "America/Puerto_Rico":"AST4",
       "America/Punta_Arenas":"<-03>3",
-      "America/Rainy_River":"CST6CDT:M3.2.0:M11.1.0",
-      "America/Rankin_Inlet":"CST6CDT:M3.2.0:M11.1.0",
+      "America/Rainy_River":"CST6CDT,M3.2.0,M11.1.0",
+      "America/Rankin_Inlet":"CST6CDT,M3.2.0,M11.1.0",
       "America/Recife":"<-03>3",
       "America/Regina":"CST6",
-      "America/Resolute":"CST6CDT:M3.2.0:M11.1.0",
+      "America/Resolute":"CST6CDT,M3.2.0,M11.1.0",
       "America/Rio_Branco":"<-05>5",
       "America/Santarem":"<-03>3",
-      "America/Santiago":"<-04>4<-03>:M9.1.6/24:M4.1.6/24",
+      "America/Santiago":"<-04>4<-03>,M9.1.6/24,M4.1.6/24",
       "America/Santo_Domingo":"AST4",
       "America/Sao_Paulo":"<-03>3",
-      "America/Scoresbysund":"<-02>2<-01>:M3.5.0/-1:M10.5.0/0",
-      "America/Sitka":"AKST9AKDT:M3.2.0:M11.1.0",
+      "America/Scoresbysund":"<-02>2<-01>,M3.5.0/-1,M10.5.0/0",
+      "America/Sitka":"AKST9AKDT,M3.2.0,M11.1.0",
       "America/St_Barthelemy":"AST4",
-      "America/St_Johns":"NST3:30NDT:M3.2.0:M11.1.0",
       "America/St_Kitts":"AST4",
       "America/St_Lucia":"AST4",
       "America/St_Thomas":"AST4",
       "America/St_Vincent":"AST4",
       "America/Swift_Current":"CST6",
       "America/Tegucigalpa":"CST6",
-      "America/Thule":"AST4ADT:M3.2.0:M11.1.0",
-      "America/Thunder_Bay":"EST5EDT:M3.2.0:M11.1.0",
-      "America/Tijuana":"PST8PDT:M3.2.0:M11.1.0",
-      "America/Toronto":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Thule":"AST4ADT,M3.2.0,M11.1.0",
+      "America/Thunder_Bay":"EST5EDT,M3.2.0,M11.1.0",
+      "America/Tijuana":"PST8PDT,M3.2.0,M11.1.0",
+      "America/Toronto":"EST5EDT,M3.2.0,M11.1.0",
       "America/Tortola":"AST4",
-      "America/Vancouver":"PST8PDT:M3.2.0:M11.1.0",
+      "America/Vancouver":"PST8PDT,M3.2.0,M11.1.0",
       "America/Whitehorse":"MST7",
-      "America/Winnipeg":"CST6CDT:M3.2.0:M11.1.0",
-      "America/Yakutat":"AKST9AKDT:M3.2.0:M11.1.0",
-      "America/Yellowknife":"MST7MDT:M3.2.0:M11.1.0",
+      "America/Winnipeg":"CST6CDT,M3.2.0,M11.1.0",
+      "America/Yakutat":"AKST9AKDT:M3.2.0,M11.1.0",
+      "America/Yellowknife":"MST7MDT,M3.2.0,M11.1.0",
       "Antarctica/Casey":"<+08>-8",
       "Antarctica/Davis":"<+07>-7",
       "Antarctica/DumontDUrville":"<+10>-10",
-      "Antarctica/Macquarie":"AEST-10AEDT:M10.1.0:M4.1.0/3",
+      "Antarctica/Macquarie":"AEST-10AEDT,M10.1.0,M4.1.0/3",
       "Antarctica/Mawson":"<+05>-5",
-      "Antarctica/McMurdo":"NZST-12NZDT:M9.5.0:M4.1.0/3",
       "Antarctica/Palmer":"<-03>3",
       "Antarctica/Rothera":"<-03>3",
       "Antarctica/Syowa":"<+03>-3",
-      "Antarctica/Troll":"<+00>0<+02>-2:M3.5.0/1:M10.5.0/3",
       "Antarctica/Vostok":"<+05>-5",
-      "Arctic/Longyearbyen":"CET-1CEST:M3.5.0:M10.5.0/3",
       "Asia/Aden":"<+03>-3",
       "Asia/Almaty":"<+05>-5",
       "Asia/Amman":"<+03>-3",
@@ -5551,7 +5631,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       "Asia/Baku":"<+04>-4",
       "Asia/Bangkok":"<+07>-7",
       "Asia/Barnaul":"<+07>-7",
-      "Asia/Beirut":"EET-2EEST:M3.5.0/0:M10.5.0/0",
+      "Asia/Beirut":"EET-2EEST,M3.5.0/0,M10.5.0/0",
       "Asia/Bishkek":"<+06>-6",
       "Asia/Brunei":"<+08>-8",
       "Asia/Chita":"<+09>-9",
@@ -5562,16 +5642,16 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       "Asia/Dili":"<+09>-9",
       "Asia/Dubai":"<+04>-4",
       "Asia/Dushanbe":"<+05>-5",
-      "Asia/Famagusta":"EET-2EEST:M3.5.0/3:M10.5.0/4",
-      "Asia/Gaza":"EET-2EEST:M3.4.4/50:M10.4.4/50",
-      "Asia/Hebron":"EET-2EEST:M3.4.4/50:M10.4.4/50",
+      "Asia/Famagusta":"EET-2EEST,M3.5.0/3,M10.5.0/4",
+      "Asia/Gaza":"EET-2EEST,M3.4.4/50,M10.4.4/50",
+      "Asia/Hebron":"EET-2EEST,M3.4.4/50,M10.4.4/50",
       "Asia/Ho_Chi_Minh":"<+07>-7",
       "Asia/Hong_Kong":"HKT-8",
       "Asia/Hovd":"<+07>-7",
       "Asia/Irkutsk":"<+08>-8",
       "Asia/Jakarta":"WIB-7",
       "Asia/Jayapura":"WIT-9",
-      "Asia/Jerusalem":"IST-2IDT:M3.4.4/26:M10.5.0",
+      "Asia/Jerusalem":"IST-2IDT,M3.4.4/26,M10.5.0",
       "Asia/Kabul":"<+0430>-4:30",
       "Asia/Kamchatka":"<+12>-12",
       "Asia/Karachi":"PKT-5",
@@ -5587,7 +5667,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       "Asia/Makassar":"WITA-8",
       "Asia/Manila":"PST-8",
       "Asia/Muscat":"<+04>-4",
-      "Asia/Nicosia":"EET-2EEST:M3.5.0/3:M10.5.0/4",
+      "Asia/Nicosia":"EET-2EEST,M3.5.0/3,M10.5.0/4",
       "Asia/Novokuznetsk":"<+07>-7",
       "Asia/Novosibirsk":"<+07>-7",
       "Asia/Omsk":"<+06>-6",
@@ -5620,88 +5700,87 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       "Asia/Yangon":"<+0630>-6:30",
       "Asia/Yekaterinburg":"<+05>-5",
       "Asia/Yerevan":"<+04>-4",
-      "Atlantic/Azores":"<-01>1<+00>:M3.5.0/0:M10.5.0/1",
-      "Atlantic/Bermuda":"AST4ADT:M3.2.0:M11.1.0",
-      "Atlantic/Canary":"WET0WEST:M3.5.0/1:M10.5.0",
+      "Atlantic/Azores":"<-01>1<+00>,M3.5.0/0,M10.5.0/1",
+      "Atlantic/Bermuda":"AST4ADT,M3.2.0,M11.1.0",
+      "Atlantic/Canary":"WET0WEST,M3.5.0/1,M10.5.0",
       "Atlantic/Cape_Verde":"<-01>1",
-      "Atlantic/Faroe":"WET0WEST:M3.5.0/1:M10.5.0",
-      "Atlantic/Madeira":"WET0WEST:M3.5.0/1:M10.5.0",
+      "Atlantic/Faroe":"WET0WEST,M3.5.0/1,M10.5.0",
+      "Atlantic/Madeira":"WET0WEST,M3.5.0/1,M10.5.0",
       "Atlantic/Reykjavik":"GMT0",
       "Atlantic/South_Georgia":"<-02>2",
       "Atlantic/Stanley":"<-03>3",
       "Atlantic/St_Helena":"GMT0",
-      "Australia/Adelaide":"ACST-9:30ACDT:M10.1.0:M4.1.0/3",
+      "Australia/Adelaide":"ACST-9,30ACDT,M10.1.0,M4.1.0/3",
       "Australia/Brisbane":"AEST-10",
-      "Australia/Broken_Hill":"ACST-9:30ACDT:M10.1.0:M4.1.0/3",
-      "Australia/Currie":"AEST-10AEDT:M10.1.0:M4.1.0/3",
+      "Australia/Currie":"AEST-10AEDT,M10.1.0,M4.1.0/3",
       "Australia/Darwin":"ACST-9:30",
       "Australia/Eucla":"<+0845>-8:45",
-      "Australia/Hobart":"AEST-10AEDT:M10.1.0:M4.1.0/3",
+      "Australia/Hobart":"AEST-10AEDT,M10.1.0,M4.1.0/3",
       "Australia/Lindeman":"AEST-10",
-      "Australia/Lord_Howe":"<+1030>-10:30<+11>-11:M10.1.0:M4.1.0",
-      "Australia/Melbourne":"AEST-10AEDT:M10.1.0:M4.1.0/3",
+      "Australia/Lord_Howe":"<+1030>-10,30<+11>-11,M10.1.0,M4.1.0",
+      "Australia/Melbourne":"AEST-10AEDT,M10.1.0,M4.1.0/3",
       "Australia/Perth":"AWST-8",
-      "Australia/Sydney":"AEST-10AEDT:M10.1.0:M4.1.0/3",
-      "Europe/Amsterdam":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Andorra":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Australia/Sydney":"AEST-10AEDT,M10.1.0,M4.1.0/3",
+      "Europe/Amsterdam":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Andorra":"CET-1CEST,M3.5.0,M10.5.0/3",
       "Europe/Astrakhan":"<+04>-4",
-      "Europe/Athens":"EET-2EEST:M3.5.0/3:M10.5.0/4",
-      "Europe/Belgrade":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Berlin":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Bratislava":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Brussels":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Bucharest":"EET-2EEST:M3.5.0/3:M10.5.0/4",
-      "Europe/Budapest":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Busingen":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Chisinau":"EET-2EEST:M3.5.0:M10.5.0/3",
-      "Europe/Copenhagen":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Dublin":"IST-1GMT0:M10.5.0:M3.5.0/1",
-      "Europe/Gibraltar":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Guernsey":"GMT0BST:M3.5.0/1:M10.5.0",
-      "Europe/Helsinki":"EET-2EEST:M3.5.0/3:M10.5.0/4",
-      "Europe/Isle_of_Man":"GMT0BST:M3.5.0/1:M10.5.0",
+      "Europe/Athens":"EET-2EEST,M3.5.0/3,M10.5.0/4",
+      "Europe/Belgrade":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Berlin":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Bratislava":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Brussels":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Bucharest":"EET-2EEST,M3.5.0/3,M10.5.0/4",
+      "Europe/Budapest":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Busingen":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Chisinau":"EET-2EEST,M3.5.0,M10.5.0/3",
+      "Europe/Copenhagen":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Dublin":"IST-1GMT0,M10.5.0,M3.5.0/1",
+      "Europe/Gibraltar":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Guernsey":"GMT0BST,M3.5.0/1,M10.5.0",
+      "Europe/Helsinki":"EET-2EEST,M3.5.0/3,M10.5.0/4",
+      "Europe/Isle_of_Man":"GMT0BST,M3.5.0/1,M10.5.0",
       "Europe/Istanbul":"<+03>-3",
-      "Europe/Jersey":"GMT0BST:M3.5.0/1:M10.5.0",
+      "Europe/Jersey":"GMT0BST,M3.5.0/1,M10.5.0",
       "Europe/Kaliningrad":"EET-2",
-      "Europe/Kiev":"EET-2EEST:M3.5.0/3:M10.5.0/4",
+      "Europe/Kiev":"EET-2EEST,M3.5.0/3,M10.5.0/4",
       "Europe/Kirov":"MSK-3",
-      "Europe/Lisbon":"WET0WEST:M3.5.0/1:M10.5.0",
-      "Europe/Ljubljana":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/London":"GMT0BST:M3.5.0/1:M10.5.0",
-      "Europe/Luxembourg":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Madrid":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Malta":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Mariehamn":"EET-2EEST:M3.5.0/3:M10.5.0/4",
+      "Europe/Lisbon":"WET0WEST,M3.5.0/1,M10.5.0",
+      "Europe/Ljubljana":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/London":"GMT0BST,M3.5.0/1,M10.5.0",
+      "Europe/Luxembourg":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Madrid":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Malta":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Mariehamn":"EET-2EEST,M3.5.0/3,M10.5.0/4",
       "Europe/Minsk":"<+03>-3",
-      "Europe/Monaco":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Monaco":"CET-1CEST,M3.5.0,M10.5.0/3",
       "Europe/Moscow":"MSK-3",
-      "Europe/Oslo":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Paris":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Podgorica":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Prague":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Riga":"EET-2EEST:M3.5.0/3:M10.5.0/4",
-      "Europe/Rome":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Oslo":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Paris":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Podgorica":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Prague":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Riga":"EET-2EEST,M3.5.0/3,M10.5.0/4",
+      "Europe/Rome":"CET-1CEST,M3.5.0,M10.5.0/3",
       "Europe/Samara":"<+04>-4",
-      "Europe/San_Marino":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Sarajevo":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/San_Marino":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Sarajevo":"CET-1CEST,M3.5.0,M10.5.0/3",
       "Europe/Saratov":"<+04>-4",
       "Europe/Simferopol":"MSK-3",
-      "Europe/Skopje":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Sofia":"EET-2EEST:M3.5.0/3:M10.5.0/4",
-      "Europe/Stockholm":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Tallinn":"EET-2EEST:M3.5.0/3:M10.5.0/4",
-      "Europe/Tirane":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Skopje":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Sofia":"EET-2EEST,M3.5.0/3,M10.5.0/4",
+      "Europe/Stockholm":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Tallinn":"EET-2EEST,M3.5.0/3,M10.5.0/4",
+      "Europe/Tirane":"CET-1CEST,M3.5.0,M10.5.0/3",
       "Europe/Ulyanovsk":"<+04>-4",
-      "Europe/Uzhgorod":"EET-2EEST:M3.5.0/3:M10.5.0/4",
-      "Europe/Vaduz":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Vatican":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Vienna":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Vilnius":"EET-2EEST:M3.5.0/3:M10.5.0/4",
+      "Europe/Uzhgorod":"EET-2EEST,M3.5.0/3,M10.5.0/4",
+      "Europe/Vaduz":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Vatican":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Vienna":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Vilnius":"EET-2EEST,M3.5.0/3,M10.5.0/4",
       "Europe/Volgograd":"MSK-3",
-      "Europe/Warsaw":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Zagreb":"CET-1CEST:M3.5.0:M10.5.0/3",
-      "Europe/Zaporozhye":"EET-2EEST:M3.5.0/3:M10.5.0/4",
-      "Europe/Zurich":"CET-1CEST:M3.5.0:M10.5.0/3",
+      "Europe/Warsaw":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Zagreb":"CET-1CEST,M3.5.0,M10.5.0/3",
+      "Europe/Zaporozhye":"EET-2EEST,M3.5.0/3,M10.5.0/4",
+      "Europe/Zurich":"CET-1CEST,M3.5.0,M10.5.0/3",
       "Indian/Antananarivo":"EAT-3",
       "Indian/Chagos":"<+06>-6",
       "Indian/Christmas":"<+07>-7",
@@ -5714,11 +5793,11 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       "Indian/Mayotte":"EAT-3",
       "Indian/Reunion":"<+04>-4",
       "Pacific/Apia":"<+13>-13",
-      "Pacific/Auckland":"NZST-12NZDT:M9.5.0:M4.1.0/3",
+      "Pacific/Auckland":"NZST-12NZDT,M9.5.0,M4.1.0/3",
       "Pacific/Bougainville":"<+11>-11",
-      "Pacific/Chatham":"<+1245>-12:45<+1345>:M9.5.0/2:45:M4.1.0/3:45",
+      "Pacific/Chatham":"<+1245>-12,45<+1345>,M9.5.0/2:45,M4.1.0/3:45",
       "Pacific/Chuuk":"<+10>-10",
-      "Pacific/Easter":"<-06>6<-05>:M9.1.6/22:M4.1.6/22",
+      "Pacific/Easter":"<-06>6<-05>,M9.1.6/22,M4.1.6/22",
       "Pacific/Efate":"<+11>-11",
       "Pacific/Enderbury":"<+13>-13",
       "Pacific/Fakaofo":"<+13>-13",
@@ -5737,7 +5816,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       "Pacific/Midway":"SST11",
       "Pacific/Nauru":"<+12>-12",
       "Pacific/Niue":"<-11>11",
-      "Pacific/Norfolk":"<+11>-11<+12>:M10.1.0:M4.1.0/3",
       "Pacific/Noumea":"<+11>-11",
       "Pacific/Pago_Pago":"SST11",
       "Pacific/Palau":"<+09>-9",
