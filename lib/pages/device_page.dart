@@ -843,7 +843,61 @@ class DevicePageState extends State<DevicePage> {
                     onPressed: (){
                       newDeviceId = foundDevicesIds![index];
                       deviceToAdd = foundDevices![index];
-                      claimDeviceScreen2();
+                      AlertDialog alert = AlertDialog(
+                        title: Text(AppLocalizations.of(context)!.connectWifiQ, style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 20),),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(AppLocalizations.of(context)!.connectWifiT),
+                            const SizedBox(height: 10,),
+                            OutlinedButton(
+                                onPressed: (){
+                                  Navigator.pop(context);
+                                  claimDeviceScreen2();
+                                },
+                                style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(width: 0),
+                                    foregroundColor: const Color(0xff0099F0),
+                                    backgroundColor: const Color(0xff0099F0),
+                                    minimumSize: const Size(60,50)
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(AppLocalizations.of(context)!.connect, style: const TextStyle(fontSize: 20,fontWeight: FontWeight.w400, color: Colors.white),),
+                                  ],
+                                )
+                            ),
+                            const SizedBox(height: 10,),
+                            OutlinedButton(
+                                onPressed: (){
+                                  Navigator.pop(context);
+                                  setState(() {
+                                    screenIndex = 13;
+                                  });
+                                },
+                                style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(width: 0),
+                                    foregroundColor: Colors.black,
+                                    backgroundColor: Colors.white,
+                                    minimumSize: const Size(60,50)
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(AppLocalizations.of(context)!.skip, style: const TextStyle(fontSize: 20,fontWeight: FontWeight.w400),),
+                                  ],
+                                )
+                            ),
+                          ],
+                        ),
+                      );
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context){
+                          return alert;
+                        },
+                      );
                     },
                     style: OutlinedButton.styleFrom(
                         side: const BorderSide(width: 0),
@@ -1085,7 +1139,7 @@ class DevicePageState extends State<DevicePage> {
                             });
                           },
                           child: ListView.separated(
-                            separatorBuilder: (context, index) => const SizedBox(height: 10,),
+                            separatorBuilder: (context, index) => const SizedBox(height: 0,),
                             padding: const EdgeInsets.only(bottom: 10),
                             itemCount: currentDevices2.length,
                             itemBuilder: (BuildContext context, int index) {
@@ -1096,7 +1150,7 @@ class DevicePageState extends State<DevicePage> {
                                 name: currentDevices2[index].values.elementAt(0).floor == "viewer" ?  "${currentDevices2[index].values.elementAt(0).label} (as Viewer)" : currentDevices2[index].values.elementAt(0).label!,
                                 isOnline: currentDevices2[index].values.elementAt(0).isOnline,
                                 lastSync: currentDevices2[index].values.elementAt(0).lastSync,
-                                radonValue: currentDevices2[index].values.elementAt(0).radon.toString(),
+                                radonValue: currentDevices2[index].values.elementAt(0).radon,
                                 unit: unit == "Bq/m³" ? "Bq/m³": "pCi/L",
                                 isViewer: currentDevices2[index].values.elementAt(0).floor == "viewer" ? true : false,
                                 isBtAvailable: currentDevices2[index].values.elementAt(0).isBtAvailable,

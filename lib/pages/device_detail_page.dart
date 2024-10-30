@@ -68,7 +68,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   bool useBluetoothData = false;
 
   bool changeDiagram = false;
-  bool showDiagramDots = true;
+  bool showDiagramDots = false;
   bool showAllData = false;
 
 
@@ -138,6 +138,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   String emailToRemove = "";
 
   //wifiScreen values
+  String currentWifiName = "Not connected";
   StreamSubscription<List<ScanResult>>? subscription;
   StreamSubscription<List<int>>? subscriptionToDevice;
   Map<String, int> foundAccessPoints = {};
@@ -158,6 +159,16 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   TextEditingController thresHoldController = TextEditingController();
   int selectedHours = 0;
   int selectedMinutes = 0;
+
+  //clockScreen values
+  String timezoneCountry = "None selected";
+  String timezoneCity = "None selected";
+  List<String> tzOfSelection = [];
+  List<DropdownMenuItem<String>> tzOfSelectionWidgets = [
+    DropdownMenuItem(child: Text("None selected"),value: "None selected",)
+  ];
+  String tzSelected = "";
+
 
   final MaterialStateProperty<Icon?> sliderIcon =
   MaterialStateProperty.resolveWith<Icon?>(
@@ -218,7 +229,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       });
       return;
     }
-    print(device.values.first.isOnline);
     if(!device.values.first.isOnline){
       useBluetoothData = true;
       try{
@@ -634,6 +644,11 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 if(dUnitData!=null) tzServer3 = dUnitData[0][1];
               }catch(e){
               }
+              try{
+                var dUnitData = telData["ssid"];
+                if(dUnitData!=null) currentWifiName = dUnitData[0][1];
+              }catch(e){
+              }
               List<dynamic> updateData = [];
               if(jsonDecode(data)["cmdId"]!=null && jsonDecode(data)["update"]!=null)updateData = jsonDecode(data)["update"];
               if(updateData.isNotEmpty) {
@@ -645,8 +660,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       radonHistory = radonValues;
                       radonHistoryTimestamps = [];
                       for (var element in radonHistory) {
-                        Tuple2<int, int> singleTimestamp = Tuple2<int, int>(
-                            element['ts'], int.parse(element['value']));
+                        Tuple2<int, int> singleTimestamp = Tuple2<int, int>(element['ts'], unit == "Bq/m³" ? int.parse(element['value']) : int.parse(element['value'])*27);
                         radonHistoryTimestamps.add(singleTimestamp);
                       }
                       radonCurrent = radonHistoryTimestamps.first.item2;
@@ -716,10 +730,122 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         ),
       );
     }catch(e){
-      logger.e(e);
-      Fluttertoast.showToast(
-          msg: "Failed to send data"
-      );
+    }
+    try{
+      showDialog(context: context, builder: (context) {
+        return Scaffold(
+            body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(AppLocalizations.of(context)!.searchingDevice),
+                    const SizedBox(height: 36,),
+                    const CircularProgressIndicator(color: Colors.black,),
+                  ],
+                )
+            )
+        );
+      });
+      if (Platform.isAndroid) {
+        await FlutterBluePlus.turnOn();
+      }
+      var locationEnabled = await location.serviceEnabled();
+      if(!locationEnabled){
+        var locationEnabled2 = await location.requestService();
+        if(!locationEnabled2){
+        }
+      }
+      var permissionGranted = await location.hasPermission();
+      if(permissionGranted == PermissionStatus.denied){
+        permissionGranted = await location.requestPermission();
+        if(permissionGranted != PermissionStatus.granted){
+        }
+      }
+      FlutterBluePlus.stopScan();
+      bool deviceFound = false;
+      subscription = FlutterBluePlus.scanResults.listen((results) async {
+        for (ScanResult r in results) {
+          if (!deviceFound) {
+            List<int> bluetoothAdvertisementData = [];
+            String bluetoothDeviceName = "";
+            if(r.advertisementData.manufacturerData.keys.isNotEmpty){
+              logger.d(r.advertisementData.manufacturerData);
+              if(r.advertisementData.manufacturerData.values.isNotEmpty){
+                bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
+              }
+              if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
+              if(bluetoothDeviceName == device.values.first.name){
+                radonValue = bluetoothAdvertisementData.elementAt(1).toString();
+                radonCurrent = bluetoothAdvertisementData.elementAt(1);
+                radonDaily = bluetoothAdvertisementData.elementAt(5);
+                currentAvgValue = bluetoothAdvertisementData.elementAt(5);
+                radonEver = bluetoothAdvertisementData.elementAt(9);
+                deviceFound = true;
+                FlutterBluePlus.stopScan();
+                subscription!.cancel();
+                btDevice = r.device;
+                await btDevice!.connect();
+                try{
+                  if (Platform.isAndroid) {
+                    await r.device.requestMtu(300);
+                  }
+                  bool loginSuccessful = false;
+                  List<BluetoothService> services = await r.device.discoverServices();
+                  for (var service in services){
+                    for(var characteristic in service.characteristics){
+                      if(characteristic.properties.notify){
+                        await characteristic.setNotifyValue(true);
+                        readCharacteristic = characteristic;
+                        subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                          String message = utf8.decode(data).trim();
+                          logger.d(utf8.decode(data));
+                          if(message == "" && !loginSuccessful){
+                          }
+                          if(message == 'LOGIN OK'){
+                            await writeCharacteristic!.write(utf8.encode('A04${d_led_fb.toInt()}'));
+                            await Future<void>.delayed( const Duration(milliseconds: 500));
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            Navigator.pop(context);
+                          }
+                        });
+                      }
+                      if(characteristic.properties.write){
+                        writeCharacteristic = characteristic;
+                        await Future<void>.delayed( const Duration(milliseconds: 300));
+                        if(!loginSuccessful){
+                          try{
+                            loginSuccessful = true;
+                            await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+                          }catch(e){
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            Navigator.pop(context);
+                          }
+                        }
+                      }
+                    }
+                  }
+                }catch(e){
+                  await btDevice!.disconnect(timeout: 1);
+                  btDevice!.removeBond();
+                  subscriptionToDevice?.cancel();
+                  Navigator.pop(context);
+                }
+              }
+            }
+          }
+        }
+      });
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
+      await Future<void>.delayed( const Duration(seconds: 4));
+      if(!deviceFound){
+        Navigator.pop(context);
+      }
+    }catch(e){
     }
     telemetryRunning = false;
   }
@@ -749,10 +875,138 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         ),
       );
     }catch(e){
-      logger.e(e);
-      Fluttertoast.showToast(
-          msg: "Failed to send data"
-      );
+    }
+    try{
+      showDialog(context: context, builder: (context) {
+        return Scaffold(
+            body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(AppLocalizations.of(context)!.searchingDevice),
+                    const SizedBox(height: 36,),
+                    const CircularProgressIndicator(color: Colors.black,),
+                  ],
+                )
+            )
+        );
+      });
+      if (Platform.isAndroid) {
+        await FlutterBluePlus.turnOn();
+      }
+      var locationEnabled = await location.serviceEnabled();
+      if(!locationEnabled){
+        var locationEnabled2 = await location.requestService();
+        if(!locationEnabled2){
+        }
+      }
+      var permissionGranted = await location.hasPermission();
+      if(permissionGranted == PermissionStatus.denied){
+        permissionGranted = await location.requestPermission();
+        if(permissionGranted != PermissionStatus.granted){
+        }
+      }
+      FlutterBluePlus.stopScan();
+      bool deviceFound = false;
+      subscription = FlutterBluePlus.scanResults.listen((results) async {
+        for (ScanResult r in results) {
+          if (!deviceFound) {
+            List<int> bluetoothAdvertisementData = [];
+            String bluetoothDeviceName = "";
+            if(r.advertisementData.manufacturerData.keys.isNotEmpty){
+              logger.d(r.advertisementData.manufacturerData);
+              if(r.advertisementData.manufacturerData.values.isNotEmpty){
+                bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
+              }
+              if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
+              if(bluetoothDeviceName == device.values.first.name){
+                radonValue = bluetoothAdvertisementData.elementAt(1).toString();
+                radonCurrent = bluetoothAdvertisementData.elementAt(1);
+                radonDaily = bluetoothAdvertisementData.elementAt(5);
+                currentAvgValue = bluetoothAdvertisementData.elementAt(5);
+                radonEver = bluetoothAdvertisementData.elementAt(9);
+                deviceFound = true;
+                FlutterBluePlus.stopScan();
+                subscription!.cancel();
+                btDevice = r.device;
+                await btDevice!.connect();
+                try{
+                  if (Platform.isAndroid) {
+                    await r.device.requestMtu(300);
+                  }
+                  bool loginSuccessful = false;
+                  List<BluetoothService> services = await r.device.discoverServices();
+                  for (var service in services){
+                    for(var characteristic in service.characteristics){
+                      if(characteristic.properties.notify){
+                        await characteristic.setNotifyValue(true);
+                        readCharacteristic = characteristic;
+                        characteristic.lastValueStream.timeout(
+                            Duration(seconds: 5),
+                            onTimeout: (list)async{
+                              await btDevice!.disconnect(timeout: 1);
+                              btDevice!.removeBond();
+                              subscriptionToDevice?.cancel();
+                              loaded = true;
+                              setState(() {
+                                Navigator.pop(context);
+                                screenIndex = 1;
+                              });
+                              Fluttertoast.showToast(
+                                  msg: "Error"
+                              );
+                            }
+                        );
+                        subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                          String message = utf8.decode(data).trim();
+                          logger.d(utf8.decode(data));
+                          if(message == "" && !loginSuccessful){
+                          }
+                          if(message == 'LOGIN OK'){
+                            await writeCharacteristic!.write(utf8.encode('A05${d_led_tb.toInt()}'));
+                            await Future<void>.delayed( const Duration(milliseconds: 500));
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            Navigator.pop(context);
+                          }
+                        });
+                      }
+                      if(characteristic.properties.write){
+                        writeCharacteristic = characteristic;
+                        await Future<void>.delayed( const Duration(milliseconds: 300));
+                        if(!loginSuccessful){
+                          try{
+                            loginSuccessful = true;
+                            await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+                          }catch(e){
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            Navigator.pop(context);
+                          }
+                        }
+                      }
+                    }
+                  }
+                }catch(e){
+                  await btDevice!.disconnect(timeout: 1);
+                  btDevice!.removeBond();
+                  subscriptionToDevice?.cancel();
+                  Navigator.pop(context);
+                }
+              }
+            }
+          }
+        }
+      });
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
+      await Future<void>.delayed( const Duration(seconds: 4));
+      if(!deviceFound){
+        Navigator.pop(context);
+      }
+    }catch(e){
     }
     telemetryRunning = false;
   }
@@ -795,6 +1049,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       );
     }
   }
+
   displayOnOff(bool value) async{
     int intValue = 0;
     if(value) intValue = 1;
@@ -820,10 +1075,138 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         ),
       );
     }catch(e){
-      logger.e(e);
-      Fluttertoast.showToast(
-          msg: "Failed to send data"
-      );
+    }
+    try{
+      showDialog(context: context, builder: (context) {
+        return Scaffold(
+            body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(AppLocalizations.of(context)!.searchingDevice),
+                    const SizedBox(height: 36,),
+                    const CircularProgressIndicator(color: Colors.black,),
+                  ],
+                )
+            )
+        );
+      });
+      if (Platform.isAndroid) {
+        await FlutterBluePlus.turnOn();
+      }
+      var locationEnabled = await location.serviceEnabled();
+      if(!locationEnabled){
+        var locationEnabled2 = await location.requestService();
+        if(!locationEnabled2){
+        }
+      }
+      var permissionGranted = await location.hasPermission();
+      if(permissionGranted == PermissionStatus.denied){
+        permissionGranted = await location.requestPermission();
+        if(permissionGranted != PermissionStatus.granted){
+        }
+      }
+      FlutterBluePlus.stopScan();
+      bool deviceFound = false;
+      subscription = FlutterBluePlus.scanResults.listen((results) async {
+        for (ScanResult r in results) {
+          if (!deviceFound) {
+            List<int> bluetoothAdvertisementData = [];
+            String bluetoothDeviceName = "";
+            if(r.advertisementData.manufacturerData.keys.isNotEmpty){
+              logger.d(r.advertisementData.manufacturerData);
+              if(r.advertisementData.manufacturerData.values.isNotEmpty){
+                bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
+              }
+              if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
+              if(bluetoothDeviceName == device.values.first.name){
+                radonValue = bluetoothAdvertisementData.elementAt(1).toString();
+                radonCurrent = bluetoothAdvertisementData.elementAt(1);
+                radonDaily = bluetoothAdvertisementData.elementAt(5);
+                currentAvgValue = bluetoothAdvertisementData.elementAt(5);
+                radonEver = bluetoothAdvertisementData.elementAt(9);
+                deviceFound = true;
+                FlutterBluePlus.stopScan();
+                subscription!.cancel();
+                btDevice = r.device;
+                await btDevice!.connect();
+                try{
+                  if (Platform.isAndroid) {
+                    await r.device.requestMtu(300);
+                  }
+                  bool loginSuccessful = false;
+                  List<BluetoothService> services = await r.device.discoverServices();
+                  for (var service in services){
+                    for(var characteristic in service.characteristics){
+                      if(characteristic.properties.notify){
+                        await characteristic.setNotifyValue(true);
+                        readCharacteristic = characteristic;
+                        characteristic.lastValueStream.timeout(
+                            Duration(seconds: 5),
+                            onTimeout: (list)async{
+                              await btDevice!.disconnect(timeout: 1);
+                              btDevice!.removeBond();
+                              subscriptionToDevice?.cancel();
+                              loaded = true;
+                              setState(() {
+                                screenIndex = 1;
+                                Navigator.pop(context);
+                              });
+                              Fluttertoast.showToast(
+                                  msg: "Error"
+                              );
+                            }
+                        );
+                        subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                          String message = utf8.decode(data).trim();
+                          logger.d(utf8.decode(data));
+                          if(message == "" && !loginSuccessful){
+                          }
+                          if(message == 'LOGIN OK'){
+                            await writeCharacteristic!.write(utf8.encode('A03${intValue}'));
+                            await Future<void>.delayed( const Duration(milliseconds: 500));
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            Navigator.pop(context);
+                          }
+                        });
+                      }
+                      if(characteristic.properties.write){
+                        writeCharacteristic = characteristic;
+                        await Future<void>.delayed( const Duration(milliseconds: 300));
+                        if(!loginSuccessful){
+                          try{
+                            loginSuccessful = true;
+                            await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+                          }catch(e){
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            Navigator.pop(context);
+                          }
+                        }
+                      }
+                    }
+                  }
+                }catch(e){
+                  await btDevice!.disconnect(timeout: 1);
+                  btDevice!.removeBond();
+                  subscriptionToDevice?.cancel();
+                  Navigator.pop(context);
+                }
+              }
+            }
+          }
+        }
+      });
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
+      await Future<void>.delayed( const Duration(seconds: 4));
+      if(!deviceFound){
+        Navigator.pop(context);
+      }
+    }catch(e){
     }
   }
 
@@ -852,10 +1235,138 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         ),
       );
     }catch(e){
-      logger.e(e);
-      Fluttertoast.showToast(
-          msg: "Failed to send data"
-      );
+    }
+    try{
+      showDialog(context: context, builder: (context) {
+        return Scaffold(
+            body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(AppLocalizations.of(context)!.searchingDevice),
+                    const SizedBox(height: 36,),
+                    const CircularProgressIndicator(color: Colors.black,),
+                  ],
+                )
+            )
+        );
+      });
+      if (Platform.isAndroid) {
+        await FlutterBluePlus.turnOn();
+      }
+      var locationEnabled = await location.serviceEnabled();
+      if(!locationEnabled){
+        var locationEnabled2 = await location.requestService();
+        if(!locationEnabled2){
+        }
+      }
+      var permissionGranted = await location.hasPermission();
+      if(permissionGranted == PermissionStatus.denied){
+        permissionGranted = await location.requestPermission();
+        if(permissionGranted != PermissionStatus.granted){
+        }
+      }
+      FlutterBluePlus.stopScan();
+      bool deviceFound = false;
+      subscription = FlutterBluePlus.scanResults.listen((results) async {
+        for (ScanResult r in results) {
+          if (!deviceFound) {
+            List<int> bluetoothAdvertisementData = [];
+            String bluetoothDeviceName = "";
+            if(r.advertisementData.manufacturerData.keys.isNotEmpty){
+              logger.d(r.advertisementData.manufacturerData);
+              if(r.advertisementData.manufacturerData.values.isNotEmpty){
+                bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
+              }
+              if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
+              if(bluetoothDeviceName == device.values.first.name){
+                radonValue = bluetoothAdvertisementData.elementAt(1).toString();
+                radonCurrent = bluetoothAdvertisementData.elementAt(1);
+                radonDaily = bluetoothAdvertisementData.elementAt(5);
+                currentAvgValue = bluetoothAdvertisementData.elementAt(5);
+                radonEver = bluetoothAdvertisementData.elementAt(9);
+                deviceFound = true;
+                FlutterBluePlus.stopScan();
+                subscription!.cancel();
+                btDevice = r.device;
+                await btDevice!.connect();
+                try{
+                  if (Platform.isAndroid) {
+                    await r.device.requestMtu(300);
+                  }
+                  bool loginSuccessful = false;
+                  List<BluetoothService> services = await r.device.discoverServices();
+                  for (var service in services){
+                    for(var characteristic in service.characteristics){
+                      if(characteristic.properties.notify){
+                        await characteristic.setNotifyValue(true);
+                        readCharacteristic = characteristic;
+                        characteristic.lastValueStream.timeout(
+                            Duration(seconds: 5),
+                            onTimeout: (list)async{
+                              await btDevice!.disconnect(timeout: 1);
+                              btDevice!.removeBond();
+                              subscriptionToDevice?.cancel();
+                              loaded = true;
+                              setState(() {
+                                screenIndex = 1;
+                                Navigator.pop(context);
+                              });
+                              Fluttertoast.showToast(
+                                  msg: "Error"
+                              );
+                            }
+                        );
+                        subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                          String message = utf8.decode(data).trim();
+                          logger.d(utf8.decode(data));
+                          if(message == "" && !loginSuccessful){
+                          }
+                          if(message == 'LOGIN OK'){
+                            await writeCharacteristic!.write(utf8.encode('A02${intValue}'));
+                            await Future<void>.delayed( const Duration(milliseconds: 500));
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            Navigator.pop(context);
+                          }
+                        });
+                      }
+                      if(characteristic.properties.write){
+                        writeCharacteristic = characteristic;
+                        await Future<void>.delayed( const Duration(milliseconds: 300));
+                        if(!loginSuccessful){
+                          try{
+                            loginSuccessful = true;
+                            await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+                          }catch(e){
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            Navigator.pop(context);
+                          }
+                        }
+                      }
+                    }
+                  }
+                }catch(e){
+                  await btDevice!.disconnect(timeout: 1);
+                  btDevice!.removeBond();
+                  subscriptionToDevice?.cancel();
+                  Navigator.pop(context);
+                }
+              }
+            }
+          }
+        }
+      });
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
+      await Future<void>.delayed( const Duration(seconds: 4));
+      if(!deviceFound){
+        Navigator.pop(context);
+      }
+    }catch(e){
     }
   }
 
@@ -882,10 +1393,124 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         ),
       );
     }catch(e){
-      logger.e(e);
-      Fluttertoast.showToast(
-          msg: "Failed to send data"
-      );
+    }
+    try{
+      showDialog(context: context, builder: (context) {
+        return Scaffold(
+            body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(AppLocalizations.of(context)!.searchingDevice),
+                    const SizedBox(height: 36,),
+                    const CircularProgressIndicator(color: Colors.black,),
+                  ],
+                )
+            )
+        );
+      });
+      if (Platform.isAndroid) {
+        await FlutterBluePlus.turnOn();
+      }
+      var locationEnabled = await location.serviceEnabled();
+      if(!locationEnabled){
+        var locationEnabled2 = await location.requestService();
+        if(!locationEnabled2){
+        }
+      }
+      var permissionGranted = await location.hasPermission();
+      if(permissionGranted == PermissionStatus.denied){
+        permissionGranted = await location.requestPermission();
+        if(permissionGranted != PermissionStatus.granted){
+        }
+      }
+      FlutterBluePlus.stopScan();
+      bool deviceFound = false;
+      subscription = FlutterBluePlus.scanResults.listen((results) async {
+        for (ScanResult r in results) {
+          if (!deviceFound) {
+            List<int> bluetoothAdvertisementData = [];
+            String bluetoothDeviceName = "";
+            if(r.advertisementData.manufacturerData.keys.isNotEmpty){
+              logger.d(r.advertisementData.manufacturerData);
+              if(r.advertisementData.manufacturerData.values.isNotEmpty){
+                bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
+              }
+              if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
+              if(bluetoothDeviceName == device.values.first.name){
+                radonValue = bluetoothAdvertisementData.elementAt(1).toString();
+                radonCurrent = bluetoothAdvertisementData.elementAt(1);
+                radonDaily = bluetoothAdvertisementData.elementAt(5);
+                currentAvgValue = bluetoothAdvertisementData.elementAt(5);
+                radonEver = bluetoothAdvertisementData.elementAt(9);
+                deviceFound = true;
+                FlutterBluePlus.stopScan();
+                subscription!.cancel();
+                btDevice = r.device;
+                await btDevice!.connect();
+                try{
+                  if (Platform.isAndroid) {
+                    await r.device.requestMtu(300);
+                  }
+                  bool loginSuccessful = false;
+                  List<BluetoothService> services = await r.device.discoverServices();
+                  for (var service in services){
+                    for(var characteristic in service.characteristics){
+                      if(characteristic.properties.notify){
+                        await characteristic.setNotifyValue(true);
+                        readCharacteristic = characteristic;
+
+                        subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                          String message = utf8.decode(data).trim();
+                          logger.d(utf8.decode(data));
+                          if(message == "" && !loginSuccessful){
+                          }
+                          if(message == 'LOGIN OK'){
+                            await writeCharacteristic!.write(utf8.encode('A11${value}'));
+                            await Future<void>.delayed( const Duration(milliseconds: 500));
+                            logger.d("hello");
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            Navigator.pop(context);
+                          }
+                        });
+                      }
+                      if(characteristic.properties.write){
+                        writeCharacteristic = characteristic;
+                        await Future<void>.delayed( const Duration(milliseconds: 500));
+                        if(!loginSuccessful){
+                          try{
+                            loginSuccessful = true;
+                            await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+                          }catch(e){
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            Navigator.pop(context);
+                          }
+                        }
+                      }
+                    }
+                  }
+                }catch(e){
+                  Navigator.pop(context);
+                  await btDevice!.disconnect(timeout: 1);
+                  btDevice!.removeBond();
+                  subscriptionToDevice?.cancel();
+                }
+              }
+            }
+          }
+        }
+      });
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
+      await Future<void>.delayed( const Duration(seconds: 4));
+      if(!deviceFound){
+        Navigator.pop(context);
+      }
+    }catch(e){
     }
   }
 
@@ -912,10 +1537,138 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         ),
       );
     }catch(e){
-      logger.e(e);
-      Fluttertoast.showToast(
-          msg: "Failed to send data"
-      );
+    }
+    try{
+      showDialog(context: context, builder: (context) {
+        return Scaffold(
+            body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(AppLocalizations.of(context)!.searchingDevice),
+                    const SizedBox(height: 36,),
+                    const CircularProgressIndicator(color: Colors.black,),
+                  ],
+                )
+            )
+        );
+      });
+      if (Platform.isAndroid) {
+        await FlutterBluePlus.turnOn();
+      }
+      var locationEnabled = await location.serviceEnabled();
+      if(!locationEnabled){
+        var locationEnabled2 = await location.requestService();
+        if(!locationEnabled2){
+        }
+      }
+      var permissionGranted = await location.hasPermission();
+      if(permissionGranted == PermissionStatus.denied){
+        permissionGranted = await location.requestPermission();
+        if(permissionGranted != PermissionStatus.granted){
+        }
+      }
+      FlutterBluePlus.stopScan();
+      bool deviceFound = false;
+      subscription = FlutterBluePlus.scanResults.listen((results) async {
+        for (ScanResult r in results) {
+          if (!deviceFound) {
+            List<int> bluetoothAdvertisementData = [];
+            String bluetoothDeviceName = "";
+            if(r.advertisementData.manufacturerData.keys.isNotEmpty){
+              logger.d(r.advertisementData.manufacturerData);
+              if(r.advertisementData.manufacturerData.values.isNotEmpty){
+                bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
+              }
+              if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
+              if(bluetoothDeviceName == device.values.first.name){
+                radonValue = bluetoothAdvertisementData.elementAt(1).toString();
+                radonCurrent = bluetoothAdvertisementData.elementAt(1);
+                radonDaily = bluetoothAdvertisementData.elementAt(5);
+                currentAvgValue = bluetoothAdvertisementData.elementAt(5);
+                radonEver = bluetoothAdvertisementData.elementAt(9);
+                deviceFound = true;
+                FlutterBluePlus.stopScan();
+                subscription!.cancel();
+                btDevice = r.device;
+                await btDevice!.connect();
+                try{
+                  if (Platform.isAndroid) {
+                    await r.device.requestMtu(300);
+                  }
+                  bool loginSuccessful = false;
+                  List<BluetoothService> services = await r.device.discoverServices();
+                  for (var service in services){
+                    for(var characteristic in service.characteristics){
+                      if(characteristic.properties.notify){
+                        await characteristic.setNotifyValue(true);
+                        readCharacteristic = characteristic;
+                        characteristic.lastValueStream.timeout(
+                            Duration(seconds: 5),
+                            onTimeout: (list)async{
+                              await btDevice!.disconnect(timeout: 1);
+                              btDevice!.removeBond();
+                              subscriptionToDevice?.cancel();
+                              loaded = true;
+                              setState(() {
+                                screenIndex = 1;
+                                Navigator.pop(context);
+                              });
+                              Fluttertoast.showToast(
+                                  msg: "Error"
+                              );
+                            }
+                        );
+                        subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                          String message = utf8.decode(data).trim();
+                          logger.d(utf8.decode(data));
+                          if(message == "" && !loginSuccessful){
+                          }
+                          if(message == 'LOGIN OK'){
+                            await writeCharacteristic!.write(utf8.encode('A10${value}'));
+                            await Future<void>.delayed( const Duration(milliseconds: 500));
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            Navigator.pop(context);
+                          }
+                        });
+                      }
+                      if(characteristic.properties.write){
+                        writeCharacteristic = characteristic;
+                        await Future<void>.delayed( const Duration(milliseconds: 300));
+                        if(!loginSuccessful){
+                          try{
+                            loginSuccessful = true;
+                            await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+                          }catch(e){
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            Navigator.pop(context);
+                          }
+                        }
+                      }
+                    }
+                  }
+                }catch(e){
+                  await btDevice!.disconnect(timeout: 1);
+                  btDevice!.removeBond();
+                  subscriptionToDevice?.cancel();
+                  Navigator.pop(context);
+                }
+              }
+            }
+          }
+        }
+      });
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
+      await Future<void>.delayed( const Duration(seconds: 4));
+      if(!deviceFound){
+        Navigator.pop(context);
+      }
+    }catch(e){
     }
   }
 
@@ -942,10 +1695,138 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         ),
       );
     }catch(e){
-      logger.e(e);
-      Fluttertoast.showToast(
-          msg: "Failed to send data"
-      );
+    }
+    try{
+      showDialog(context: context, builder: (context) {
+        return Scaffold(
+            body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(AppLocalizations.of(context)!.searchingDevice),
+                    const SizedBox(height: 36,),
+                    const CircularProgressIndicator(color: Colors.black,),
+                  ],
+                )
+            )
+        );
+      });
+      if (Platform.isAndroid) {
+        await FlutterBluePlus.turnOn();
+      }
+      var locationEnabled = await location.serviceEnabled();
+      if(!locationEnabled){
+        var locationEnabled2 = await location.requestService();
+        if(!locationEnabled2){
+        }
+      }
+      var permissionGranted = await location.hasPermission();
+      if(permissionGranted == PermissionStatus.denied){
+        permissionGranted = await location.requestPermission();
+        if(permissionGranted != PermissionStatus.granted){
+        }
+      }
+      FlutterBluePlus.stopScan();
+      bool deviceFound = false;
+      subscription = FlutterBluePlus.scanResults.listen((results) async {
+        for (ScanResult r in results) {
+          if (!deviceFound) {
+            List<int> bluetoothAdvertisementData = [];
+            String bluetoothDeviceName = "";
+            if(r.advertisementData.manufacturerData.keys.isNotEmpty){
+              logger.d(r.advertisementData.manufacturerData);
+              if(r.advertisementData.manufacturerData.values.isNotEmpty){
+                bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
+              }
+              if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
+              if(bluetoothDeviceName == device.values.first.name){
+                radonValue = bluetoothAdvertisementData.elementAt(1).toString();
+                radonCurrent = bluetoothAdvertisementData.elementAt(1);
+                radonDaily = bluetoothAdvertisementData.elementAt(5);
+                currentAvgValue = bluetoothAdvertisementData.elementAt(5);
+                radonEver = bluetoothAdvertisementData.elementAt(9);
+                deviceFound = true;
+                FlutterBluePlus.stopScan();
+                subscription!.cancel();
+                btDevice = r.device;
+                await btDevice!.connect();
+                try{
+                  if (Platform.isAndroid) {
+                    await r.device.requestMtu(300);
+                  }
+                  bool loginSuccessful = false;
+                  List<BluetoothService> services = await r.device.discoverServices();
+                  for (var service in services){
+                    for(var characteristic in service.characteristics){
+                      if(characteristic.properties.notify){
+                        await characteristic.setNotifyValue(true);
+                        readCharacteristic = characteristic;
+                        characteristic.lastValueStream.timeout(
+                            Duration(seconds: 5),
+                            onTimeout: (list)async{
+                              await btDevice!.disconnect(timeout: 1);
+                              btDevice!.removeBond();
+                              subscriptionToDevice?.cancel();
+                              loaded = true;
+                              setState(() {
+                                screenIndex = 1;
+                                Navigator.pop(context);
+                              });
+                              Fluttertoast.showToast(
+                                  msg: "Error"
+                              );
+                            }
+                        );
+                        subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                          String message = utf8.decode(data).trim();
+                          logger.d(utf8.decode(data));
+                          if(message == "" && !loginSuccessful){
+                          }
+                          if(message == 'LOGIN OK'){
+                            await writeCharacteristic!.write(utf8.encode('A15${value}'));
+                            await Future<void>.delayed( const Duration(milliseconds: 500));
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            Navigator.pop(context);
+                          }
+                        });
+                      }
+                      if(characteristic.properties.write){
+                        writeCharacteristic = characteristic;
+                        await Future<void>.delayed( const Duration(milliseconds: 300));
+                        if(!loginSuccessful){
+                          try{
+                            loginSuccessful = true;
+                            await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+                          }catch(e){
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            Navigator.pop(context);
+                          }
+                        }
+                      }
+                    }
+                  }
+                }catch(e){
+                  await btDevice!.disconnect(timeout: 1);
+                  btDevice!.removeBond();
+                  subscriptionToDevice?.cancel();
+                  Navigator.pop(context);
+                }
+              }
+            }
+          }
+        }
+      });
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
+      await Future<void>.delayed( const Duration(seconds: 4));
+      if(!deviceFound){
+        Navigator.pop(context);
+      }
+    }catch(e){
     }
   }
 
@@ -972,10 +1853,138 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         ),
       );
     }catch(e){
-      logger.e(e);
-      Fluttertoast.showToast(
-          msg: "Failed to send data"
-      );
+    }
+    try{
+      showDialog(context: context, builder: (context) {
+        return Scaffold(
+            body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(AppLocalizations.of(context)!.searchingDevice),
+                    const SizedBox(height: 36,),
+                    const CircularProgressIndicator(color: Colors.black,),
+                  ],
+                )
+            )
+        );
+      });
+      if (Platform.isAndroid) {
+        await FlutterBluePlus.turnOn();
+      }
+      var locationEnabled = await location.serviceEnabled();
+      if(!locationEnabled){
+        var locationEnabled2 = await location.requestService();
+        if(!locationEnabled2){
+        }
+      }
+      var permissionGranted = await location.hasPermission();
+      if(permissionGranted == PermissionStatus.denied){
+        permissionGranted = await location.requestPermission();
+        if(permissionGranted != PermissionStatus.granted){
+        }
+      }
+      FlutterBluePlus.stopScan();
+      bool deviceFound = false;
+      subscription = FlutterBluePlus.scanResults.listen((results) async {
+        for (ScanResult r in results) {
+          if (!deviceFound) {
+            List<int> bluetoothAdvertisementData = [];
+            String bluetoothDeviceName = "";
+            if(r.advertisementData.manufacturerData.keys.isNotEmpty){
+              logger.d(r.advertisementData.manufacturerData);
+              if(r.advertisementData.manufacturerData.values.isNotEmpty){
+                bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
+              }
+              if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
+              if(bluetoothDeviceName == device.values.first.name){
+                radonValue = bluetoothAdvertisementData.elementAt(1).toString();
+                radonCurrent = bluetoothAdvertisementData.elementAt(1);
+                radonDaily = bluetoothAdvertisementData.elementAt(5);
+                currentAvgValue = bluetoothAdvertisementData.elementAt(5);
+                radonEver = bluetoothAdvertisementData.elementAt(9);
+                deviceFound = true;
+                FlutterBluePlus.stopScan();
+                subscription!.cancel();
+                btDevice = r.device;
+                await btDevice!.connect();
+                try{
+                  if (Platform.isAndroid) {
+                    await r.device.requestMtu(300);
+                  }
+                  bool loginSuccessful = false;
+                  List<BluetoothService> services = await r.device.discoverServices();
+                  for (var service in services){
+                    for(var characteristic in service.characteristics){
+                      if(characteristic.properties.notify){
+                        await characteristic.setNotifyValue(true);
+                        readCharacteristic = characteristic;
+                        characteristic.lastValueStream.timeout(
+                            Duration(seconds: 5),
+                            onTimeout: (list)async{
+                              await btDevice!.disconnect(timeout: 1);
+                              btDevice!.removeBond();
+                              subscriptionToDevice?.cancel();
+                              loaded = true;
+                              setState(() {
+                                screenIndex = 1;
+                                Navigator.pop(context);
+                              });
+                              Fluttertoast.showToast(
+                                  msg: "Error"
+                              );
+                            }
+                        );
+                        subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                          String message = utf8.decode(data).trim();
+                          logger.d(utf8.decode(data));
+                          if(message == "" && !loginSuccessful){
+                          }
+                          if(message == 'LOGIN OK'){
+                            await writeCharacteristic!.write(utf8.encode('A03${value}'));
+                            await Future<void>.delayed( const Duration(milliseconds: 500));
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            Navigator.pop(context);
+                          }
+                        });
+                      }
+                      if(characteristic.properties.write){
+                        writeCharacteristic = characteristic;
+                        await Future<void>.delayed( const Duration(milliseconds: 300));
+                        if(!loginSuccessful){
+                          try{
+                            loginSuccessful = true;
+                            await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+                          }catch(e){
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            Navigator.pop(context);
+                          }
+                        }
+                      }
+                    }
+                  }
+                }catch(e){
+                  await btDevice!.disconnect(timeout: 1);
+                  btDevice!.removeBond();
+                  subscriptionToDevice?.cancel();
+                  Navigator.pop(context);
+                }
+              }
+            }
+          }
+        }
+      });
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
+      await Future<void>.delayed( const Duration(seconds: 4));
+      if(!deviceFound){
+        Navigator.pop(context);
+      }
+    }catch(e){
     }
   }
 
@@ -1002,10 +2011,138 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         ),
       );
     }catch(e){
-      logger.e(e);
-      Fluttertoast.showToast(
-          msg: "Failed to send data"
-      );
+    }
+    try{
+      showDialog(context: context, builder: (context) {
+        return Scaffold(
+            body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(AppLocalizations.of(context)!.searchingDevice),
+                    const SizedBox(height: 36,),
+                    const CircularProgressIndicator(color: Colors.black,),
+                  ],
+                )
+            )
+        );
+      });
+      if (Platform.isAndroid) {
+        await FlutterBluePlus.turnOn();
+      }
+      var locationEnabled = await location.serviceEnabled();
+      if(!locationEnabled){
+        var locationEnabled2 = await location.requestService();
+        if(!locationEnabled2){
+        }
+      }
+      var permissionGranted = await location.hasPermission();
+      if(permissionGranted == PermissionStatus.denied){
+        permissionGranted = await location.requestPermission();
+        if(permissionGranted != PermissionStatus.granted){
+        }
+      }
+      FlutterBluePlus.stopScan();
+      bool deviceFound = false;
+      subscription = FlutterBluePlus.scanResults.listen((results) async {
+        for (ScanResult r in results) {
+          if (!deviceFound) {
+            List<int> bluetoothAdvertisementData = [];
+            String bluetoothDeviceName = "";
+            if(r.advertisementData.manufacturerData.keys.isNotEmpty){
+              logger.d(r.advertisementData.manufacturerData);
+              if(r.advertisementData.manufacturerData.values.isNotEmpty){
+                bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
+              }
+              if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
+              if(bluetoothDeviceName == device.values.first.name){
+                radonValue = bluetoothAdvertisementData.elementAt(1).toString();
+                radonCurrent = bluetoothAdvertisementData.elementAt(1);
+                radonDaily = bluetoothAdvertisementData.elementAt(5);
+                currentAvgValue = bluetoothAdvertisementData.elementAt(5);
+                radonEver = bluetoothAdvertisementData.elementAt(9);
+                deviceFound = true;
+                FlutterBluePlus.stopScan();
+                subscription!.cancel();
+                btDevice = r.device;
+                await btDevice!.connect();
+                try{
+                  if (Platform.isAndroid) {
+                    await r.device.requestMtu(300);
+                  }
+                  bool loginSuccessful = false;
+                  List<BluetoothService> services = await r.device.discoverServices();
+                  for (var service in services){
+                    for(var characteristic in service.characteristics){
+                      if(characteristic.properties.notify){
+                        await characteristic.setNotifyValue(true);
+                        readCharacteristic = characteristic;
+                        characteristic.lastValueStream.timeout(
+                            Duration(seconds: 5),
+                            onTimeout: (list)async{
+                              await btDevice!.disconnect(timeout: 1);
+                              btDevice!.removeBond();
+                              subscriptionToDevice?.cancel();
+                              loaded = true;
+                              setState(() {
+                                screenIndex = 1;
+                                Navigator.pop(context);
+                              });
+                              Fluttertoast.showToast(
+                                  msg: "Error"
+                              );
+                            }
+                        );
+                        subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                          String message = utf8.decode(data).trim();
+                          logger.d(utf8.decode(data));
+                          if(message == "" && !loginSuccessful){
+                          }
+                          if(message == 'LOGIN OK'){
+                            await writeCharacteristic!.write(utf8.encode('A17${value}'));
+                            await Future<void>.delayed( const Duration(milliseconds: 500));
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            Navigator.pop(context);
+                          }
+                        });
+                      }
+                      if(characteristic.properties.write){
+                        writeCharacteristic = characteristic;
+                        await Future<void>.delayed( const Duration(milliseconds: 300));
+                        if(!loginSuccessful){
+                          try{
+                            loginSuccessful = true;
+                            await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+                          }catch(e){
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            Navigator.pop(context);
+                          }
+                        }
+                      }
+                    }
+                  }
+                }catch(e){
+                  await btDevice!.disconnect(timeout: 1);
+                  btDevice!.removeBond();
+                  subscriptionToDevice?.cancel();
+                  Navigator.pop(context);
+                }
+              }
+            }
+          }
+        }
+      });
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
+      await Future<void>.delayed( const Duration(seconds: 4));
+      if(!deviceFound){
+        Navigator.pop(context);
+      }
+    }catch(e){
     }
   }
 
@@ -1032,10 +2169,296 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         ),
       );
     }catch(e){
-      logger.e(e);
-      Fluttertoast.showToast(
-          msg: "Failed to send data"
+    }
+    try{
+      showDialog(context: context, builder: (context) {
+        return Scaffold(
+            body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(AppLocalizations.of(context)!.searchingDevice),
+                    const SizedBox(height: 36,),
+                    const CircularProgressIndicator(color: Colors.black,),
+                  ],
+                )
+            )
+        );
+      });
+      if (Platform.isAndroid) {
+        await FlutterBluePlus.turnOn();
+      }
+      var locationEnabled = await location.serviceEnabled();
+      if(!locationEnabled){
+        var locationEnabled2 = await location.requestService();
+        if(!locationEnabled2){
+        }
+      }
+      var permissionGranted = await location.hasPermission();
+      if(permissionGranted == PermissionStatus.denied){
+        permissionGranted = await location.requestPermission();
+        if(permissionGranted != PermissionStatus.granted){
+        }
+      }
+      FlutterBluePlus.stopScan();
+      bool deviceFound = false;
+      subscription = FlutterBluePlus.scanResults.listen((results) async {
+        for (ScanResult r in results) {
+          if (!deviceFound) {
+            List<int> bluetoothAdvertisementData = [];
+            String bluetoothDeviceName = "";
+            if(r.advertisementData.manufacturerData.keys.isNotEmpty){
+              logger.d(r.advertisementData.manufacturerData);
+              if(r.advertisementData.manufacturerData.values.isNotEmpty){
+                bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
+              }
+              if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
+              if(bluetoothDeviceName == device.values.first.name){
+                radonValue = bluetoothAdvertisementData.elementAt(1).toString();
+                radonCurrent = bluetoothAdvertisementData.elementAt(1);
+                radonDaily = bluetoothAdvertisementData.elementAt(5);
+                currentAvgValue = bluetoothAdvertisementData.elementAt(5);
+                radonEver = bluetoothAdvertisementData.elementAt(9);
+                deviceFound = true;
+                FlutterBluePlus.stopScan();
+                subscription!.cancel();
+                btDevice = r.device;
+                await btDevice!.connect();
+                try{
+                  if (Platform.isAndroid) {
+                    await r.device.requestMtu(300);
+                  }
+                  bool loginSuccessful = false;
+                  List<BluetoothService> services = await r.device.discoverServices();
+                  for (var service in services){
+                    for(var characteristic in service.characteristics){
+                      if(characteristic.properties.notify){
+                        await characteristic.setNotifyValue(true);
+                        readCharacteristic = characteristic;
+                        characteristic.lastValueStream.timeout(
+                            Duration(seconds: 5),
+                            onTimeout: (list)async{
+                              await btDevice!.disconnect(timeout: 1);
+                              btDevice!.removeBond();
+                              subscriptionToDevice?.cancel();
+                              loaded = true;
+                              setState(() {
+                                screenIndex = 1;
+                                Navigator.pop(context);
+                              });
+                              Fluttertoast.showToast(
+                                  msg: "Error"
+                              );
+                            }
+                        );
+                        subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                          String message = utf8.decode(data).trim();
+                          logger.d(utf8.decode(data));
+                          if(message == "" && !loginSuccessful){
+                          }
+                          if(message == 'LOGIN OK'){
+                            await writeCharacteristic!.write(utf8.encode('A06${value}'));
+                            await Future<void>.delayed( const Duration(milliseconds: 500));
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            Navigator.pop(context);
+                          }
+                        });
+                      }
+                      if(characteristic.properties.write){
+                        writeCharacteristic = characteristic;
+                        await Future<void>.delayed( const Duration(milliseconds: 300));
+                        if(!loginSuccessful){
+                          try{
+                            loginSuccessful = true;
+                            await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+                          }catch(e){
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            Navigator.pop(context);
+                          }
+                        }
+                      }
+                    }
+                  }
+                }catch(e){
+                  await btDevice!.disconnect(timeout: 1);
+                  btDevice!.removeBond();
+                  subscriptionToDevice?.cancel();
+                  Navigator.pop(context);
+                }
+              }
+            }
+          }
+        }
+      });
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
+      await Future<void>.delayed( const Duration(seconds: 4));
+      if(!deviceFound){
+        Navigator.pop(context);
+      }
+    }catch(e){
+    }
+  }
+
+  void setDeviceUnit(int value) async{
+    String id = device.keys.elementAt(0);
+    dio.options.headers['content-Type'] = 'application/json';
+    dio.options.headers['Accept'] = "application/json";
+    dio.options.headers['Authorization'] = "Bearer $token";
+    try{
+      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+            data: {
+              "refreshToken": refreshToken
+            });
+        token = loginResponse.data["token"];
+        refreshToken = loginResponse.data["refreshToken"];
+      }
+      dio.options.headers['Authorization'] = "Bearer $token";
+      dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
+        data: jsonEncode(
+            {
+              "u_unit": value,
+            }
+        ),
       );
+    }catch(e){
+    }
+    try{
+      showDialog(context: context, builder: (context) {
+        return Scaffold(
+            body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(AppLocalizations.of(context)!.searchingDevice),
+                    const SizedBox(height: 36,),
+                    const CircularProgressIndicator(color: Colors.black,),
+                  ],
+                )
+            )
+        );
+      });
+      if (Platform.isAndroid) {
+        await FlutterBluePlus.turnOn();
+      }
+      var locationEnabled = await location.serviceEnabled();
+      if(!locationEnabled){
+        var locationEnabled2 = await location.requestService();
+        if(!locationEnabled2){
+        }
+      }
+      var permissionGranted = await location.hasPermission();
+      if(permissionGranted == PermissionStatus.denied){
+        permissionGranted = await location.requestPermission();
+        if(permissionGranted != PermissionStatus.granted){
+        }
+      }
+      FlutterBluePlus.stopScan();
+      bool deviceFound = false;
+      subscription = FlutterBluePlus.scanResults.listen((results) async {
+        for (ScanResult r in results) {
+          if (!deviceFound) {
+            List<int> bluetoothAdvertisementData = [];
+            String bluetoothDeviceName = "";
+            if(r.advertisementData.manufacturerData.keys.isNotEmpty){
+              logger.d(r.advertisementData.manufacturerData);
+              if(r.advertisementData.manufacturerData.values.isNotEmpty){
+                bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
+              }
+              if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
+              if(bluetoothDeviceName == device.values.first.name){
+                radonValue = bluetoothAdvertisementData.elementAt(1).toString();
+                radonCurrent = bluetoothAdvertisementData.elementAt(1);
+                radonDaily = bluetoothAdvertisementData.elementAt(5);
+                currentAvgValue = bluetoothAdvertisementData.elementAt(5);
+                radonEver = bluetoothAdvertisementData.elementAt(9);
+                deviceFound = true;
+                FlutterBluePlus.stopScan();
+                subscription!.cancel();
+                btDevice = r.device;
+                await btDevice!.connect();
+                try{
+                  if (Platform.isAndroid) {
+                    await r.device.requestMtu(300);
+                  }
+                  bool loginSuccessful = false;
+                  List<BluetoothService> services = await r.device.discoverServices();
+                  for (var service in services){
+                    for(var characteristic in service.characteristics){
+                      if(characteristic.properties.notify){
+                        await characteristic.setNotifyValue(true);
+                        readCharacteristic = characteristic;
+                        characteristic.lastValueStream.timeout(
+                            Duration(seconds: 5),
+                            onTimeout: (list)async{
+                              await btDevice!.disconnect(timeout: 1);
+                              btDevice!.removeBond();
+                              subscriptionToDevice?.cancel();
+                              loaded = true;
+                              setState(() {
+                                screenIndex = 1;
+                                Navigator.pop(context);
+                              });
+                              Fluttertoast.showToast(
+                                  msg: "Error"
+                              );
+                            }
+                        );
+                        subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                          String message = utf8.decode(data).trim();
+                          logger.d(utf8.decode(data));
+                          if(message == "" && !loginSuccessful){
+                          }
+                          if(message == 'LOGIN OK'){
+                            await writeCharacteristic!.write(utf8.encode('A01${value}'));
+                            await Future<void>.delayed( const Duration(milliseconds: 500));
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            Navigator.pop(context);
+                          }
+                        });
+                      }
+                      if(characteristic.properties.write){
+                        writeCharacteristic = characteristic;
+                        await Future<void>.delayed( const Duration(milliseconds: 300));
+                        if(!loginSuccessful){
+                          try{
+                            loginSuccessful = true;
+                            await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+                          }catch(e){
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            Navigator.pop(context);
+                          }
+                        }
+                      }
+                    }
+                  }
+                }catch(e){
+                  await btDevice!.disconnect(timeout: 1);
+                  btDevice!.removeBond();
+                  subscriptionToDevice?.cancel();
+                  Navigator.pop(context);
+                }
+              }
+            }
+          }
+        }
+      });
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
+      await Future<void>.delayed( const Duration(seconds: 4));
+      if(!deviceFound){
+        Navigator.pop(context);
+      }
+    }catch(e){
     }
   }
 
@@ -1044,7 +2467,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       return a.item1.compareTo(b.item1);
     });
     radonHistoryTimestamps = radonHistoryTimestamps.reversed.toList();
-    print(radonHistoryTimestamps);
     int startTimeseries =  selectedNumberOfDays == 0 ? radonHistoryTimestamps.last.item1 : requestMsSinceEpoch - (Duration(days: selectedNumberOfDays).inMilliseconds * stepsIntoPast);
     List<ChartData> spots = [];
     radonValuesTimeseries = [];
@@ -1131,7 +2553,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       int currentSpots = 0;
       int i = 0;
       while( requestMsSinceEpoch - (Duration(days: selectedNumberOfDays).inMilliseconds * (stepsIntoPast-1)) - k*step >= startTimeseries ){
-        while(i<spots.length && spots[i].x.millisecondsSinceEpoch <= requestMsSinceEpoch - (Duration(days: selectedNumberOfDays).inMilliseconds * (stepsIntoPast-1)) - k*step && spots[i].x.millisecondsSinceEpoch >= requestMsSinceEpoch - (Duration(days: selectedNumberOfDays).inMilliseconds * (stepsIntoPast-1)) - (k+1)*step){
+        while(i<spots.length && spots[i].x.millisecondsSinceEpoch <= requestMsSinceEpoch - (Duration(days: selectedNumberOfDays).inMilliseconds * (stepsIntoPast-1)) - k*step && spots[i].x.millisecondsSinceEpoch > requestMsSinceEpoch - (Duration(days: selectedNumberOfDays).inMilliseconds * (stepsIntoPast-1)) - (k+1)*step){
           currentSum+= spots[i].y!;
           currentSpots +=1;
           i++;
@@ -1936,7 +3358,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                   },
                                   child: Row(
                                     children: [
-                                      Text("Load history with",style: TextStyle(color: const Color(0xff0099F0)),),
+                                      Text(AppLocalizations.of(context)!.loadHistoryWith,style: TextStyle(color: const Color(0xff0099F0)),),
                                       Icon(Icons.bluetooth,color: const Color(0xff0099F0),)
                                     ],
                                   )
@@ -1945,7 +3367,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           ),
                           Row(
                             children: [
-                              IconButton(
+                              /*IconButton(
                                   visualDensity: VisualDensity.compact,
                                   onPressed: (){
                                     setState(() {
@@ -1954,7 +3376,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                   },
                                   icon: Icon(Icons.circle_outlined,color: showDiagramDots ? const Color(0xff0099F0) : Colors.grey,),
                                 tooltip: "Diagram tooltips",
-                              ),
+                              ),*/
                               const SizedBox(width: 5,),
                               IconButton(
                                   visualDensity: VisualDensity.compact,
@@ -2123,7 +3545,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                     }
                                 ),
                                 alignment: BarChartAlignment.spaceAround,
-                                maxY: max(currentMaxAvgValue.toDouble()+100, 400),
+                                maxY: currentMaxValue > 50 ? max(currentMaxValue.toDouble()+100, 300) : 150,
                                 barGroups: chartBars,
                                 borderData: FlBorderData(
                                     show: false
@@ -2138,19 +3560,28 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             ),
                             primaryYAxis: NumericAxis(
                                 minimum: 0,
-                                maximum: max(currentMaxValue.toDouble()+100, 450),
+                                maximum: currentMaxValue > 50 ? max(currentMaxValue.toDouble()+100, 300) : 150,
                                 axisLine: AxisLine(width: 0),
                                 edgeLabelPlacement: EdgeLabelPlacement.shift,
                                 majorTickLines: MajorTickLines(size: 0)
                             ),
-                            series: getSplineSeries(max(currentMaxValue.toDouble()+100, 450)),
+                            series: getSplineSeries(currentMaxValue > 50 ? max(currentMaxValue.toDouble()+100, 300) : 150),
                             tooltipBehavior: TooltipBehavior(
-                                enable: showAllData ? false : true,
+                                enable: false,
                                 format: "point.x  point.y ${unit}",
                                 decimalPlaces: 0,
                                 header: "",
                                 animationDuration: 0,
-                              canShowMarker: false
+                                canShowMarker: false
+                            ),
+                            trackballBehavior: TrackballBehavior(
+                              enable: true,
+                              tooltipSettings: InteractiveTooltip(
+                                enable: true,
+                                canShowMarker: false,
+                                format: "point.x  point.y ${unit}",
+                                decimalPlaces: 0,
+                              )
                             ),
                           )
                         ),
@@ -2164,7 +3595,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   children: [
                     Padding(
                       padding: EdgeInsets.only(right: changeDiagram ? 30 : 40),
-                      child: changeDiagram ? Text("*Values shown are averages per "+ (selectedNumberOfDays == 1 ? "hour" : selectedNumberOfDays == 2 ? "2 hours" : selectedNumberOfDays == 7 ? "6 hours" : selectedNumberOfDays == 30 ? "day" : ""), style: TextStyle(fontSize: 12, color: Colors.grey),) : showAllData ? Text("*Values shown are real values per 10mins", style: TextStyle(fontSize: 12, color: Colors.grey),) : Text("*Values shown are averages per "+ (selectedNumberOfDays == 1 ? "hour" : selectedNumberOfDays == 2 ? "hour" : selectedNumberOfDays == 7 ? "hour" : selectedNumberOfDays == 30 ? "6 hours" : "day"), style: TextStyle(fontSize: 12, color: Colors.grey),),
+                      child: changeDiagram ? Text(AppLocalizations.of(context)!.valuesShownAre + (selectedNumberOfDays == 1 ? AppLocalizations.of(context)!.hour : selectedNumberOfDays == 2 ? "2 ${AppLocalizations.of(context)!.hours}" : selectedNumberOfDays == 7 ? "6 ${AppLocalizations.of(context)!.hours}" : selectedNumberOfDays == 30 ? AppLocalizations.of(context)!.day : ""), style: TextStyle(fontSize: 12, color: Colors.grey),) : showAllData ? Text(AppLocalizations.of(context)!.valuesShownAre10min, style: TextStyle(fontSize: 12, color: Colors.grey),) : Text(AppLocalizations.of(context)!.valuesShownAre + (selectedNumberOfDays == 1 ? AppLocalizations.of(context)!.hour : selectedNumberOfDays == 2 ? AppLocalizations.of(context)!.hour : selectedNumberOfDays == 7 ? AppLocalizations.of(context)!.hour : selectedNumberOfDays == 30 ? "6 ${AppLocalizations.of(context)!.hours}" : AppLocalizations.of(context)!.day), style: TextStyle(fontSize: 12, color: Colors.grey),),
                     ),
                   ]
                 ),
@@ -2407,7 +3838,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    IconButton(
+                    /*IconButton(
                         visualDensity: VisualDensity.compact,
                         onPressed: (){
                           setState(() {
@@ -2415,7 +3846,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           });
                         },
                         icon: Icon(Icons.circle_outlined,color: showDiagramDots ? const Color(0xff0099F0) : Colors.grey, size: 22,)
-                    ),
+                    ),*/
                     const SizedBox(width: 10,),
                     IconButton(
                         visualDensity: VisualDensity.compact,
@@ -2506,7 +3937,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             }
                         ),
                         alignment: BarChartAlignment.spaceAround,
-                        maxY: max(currentMaxAvgValue.toDouble()+100, 400),
+                        maxY: currentMaxValue > 50 ? max(currentMaxValue.toDouble()+100, 300) : 150,
                         barGroups: chartBars,
                         borderData: FlBorderData(
                             show: false
@@ -2521,18 +3952,29 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     ),
                     primaryYAxis: NumericAxis(
                         minimum: 0,
-                        maximum: max(currentMaxValue.toDouble()+50, 350),
+                        maximum: currentMaxValue > 50 ? max(currentMaxValue.toDouble()+100, 300) : 150,
                         axisLine: AxisLine(width: 0),
                         edgeLabelPlacement: EdgeLabelPlacement.shift,
                         majorTickLines: MajorTickLines(size: 0)
                     ),
-                    series: getSplineSeries(max(currentMaxValue.toDouble()+50, 350)),
+                    series: getSplineSeries(currentMaxValue > 50 ? max(currentMaxValue.toDouble()+100, 300) : 150),
                     tooltipBehavior: TooltipBehavior(
-                        enable: showAllData ? false : true,
+                        enable: false,
                         format: "point.x  point.y ${unit}",
                         decimalPlaces: 0,
                         header: "",
                         animationDuration: 0
+                    ),
+                    trackballBehavior: TrackballBehavior(
+                        enable: true,
+                        tooltipSettings: InteractiveTooltip(
+                          enable: true,
+                          color: Color(0xff0099F0),
+                          borderColor: Color(0xff0099F0),
+                          canShowMarker: false,
+                          format: "point.x  point.y ${unit}",
+                          decimalPlaces: 0,
+                        )
                     ),
                   )
                 ),
@@ -2832,7 +4274,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       const SizedBox(width: 16,),
                       const Icon(Icons.access_time),
                       const SizedBox(width: 14,),
-                      Text("Clock & Date",style: const TextStyle(fontSize: 20.0, fontWeight: FontWeight.w400,), textAlign: TextAlign.center),
+                      Text(AppLocalizations.of(context)!.clockAndDate,style: const TextStyle(fontSize: 20.0, fontWeight: FontWeight.w400,), textAlign: TextAlign.center),
                     ],
                   ),
 
@@ -2840,11 +4282,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               ),
             ),
           ),
+
           GestureDetector(
             onTap: (){
-              setState(() {
-                connectWithBluetooth();
-              });
+              checkConnectedWifi();
             },
             child: Container(
               height: 50,
@@ -2928,6 +4369,214 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     );
   }
 
+  checkConnectedWifi() async{
+    showDialog(context: context, barrierDismissible: false, builder: (context) {
+      return PopScope(
+        canPop: false,
+        child: Scaffold(
+            body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(AppLocalizations.of(context)!.searchingDevice),
+                    const SizedBox(height: 36,),
+                    const CircularProgressIndicator(color: Colors.black,),
+                  ],
+                )
+            )
+        ),
+      );
+    });
+    try{
+      if (Platform.isAndroid) {
+        await FlutterBluePlus.turnOn();
+      }
+      var locationEnabled = await location.serviceEnabled();
+      if (!locationEnabled) {
+        var locationEnabled2 = await location.requestService();
+        if (!locationEnabled2) {}
+      }
+      var permissionGranted = await location.hasPermission();
+      if (permissionGranted == PermissionStatus.denied) {
+        permissionGranted = await location.requestPermission();
+        if (permissionGranted != PermissionStatus.granted) {}
+      }
+      FlutterBluePlus.stopScan();
+      bool deviceFound = false;
+      subscription = FlutterBluePlus.scanResults.listen((results) async {
+        for (ScanResult r in results) {
+          if (!deviceFound) {
+            List<int> bluetoothAdvertisementData = [];
+            String bluetoothDeviceName = "";
+            if (r.advertisementData.manufacturerData.keys.isNotEmpty) {
+              logger.d(r.advertisementData.manufacturerData);
+              if (r.advertisementData.manufacturerData.values.isNotEmpty) {
+                bluetoothAdvertisementData =
+                    r.advertisementData.manufacturerData.values.first;
+              }
+              if (r.advertisementData.manufacturerData.keys.first == 3503)
+                bluetoothDeviceName +=
+                    utf8.decode(bluetoothAdvertisementData.sublist(15, 23));
+              if (bluetoothDeviceName == device.values.first.name) {
+                deviceFound = true;
+                FlutterBluePlus.stopScan();
+                subscription!.cancel();
+                btDevice = r.device;
+                await btDevice!.connect();
+                try {
+                  if (Platform.isAndroid) {
+                    await r.device.requestMtu(300);
+                  }
+                  bool loginSuccessful = false;
+                  List<BluetoothService> services = await r.device
+                      .discoverServices();
+                  for (var service in services) {
+                    for (var characteristic in service.characteristics) {
+                      if (characteristic.properties.notify) {
+                        await characteristic.setNotifyValue(true);
+                        readCharacteristic = characteristic;
+                        characteristic.lastValueStream.timeout(
+                            Duration(seconds: 5),
+                            onTimeout: (list)async{
+                              await btDevice!.disconnect(timeout: 1);
+                              btDevice!.removeBond();
+                              subscriptionToDevice?.cancel();
+                              loaded = true;
+                              setState(() {
+                                screenIndex = 1;
+                                Navigator.pop(context);
+                              });
+                              Fluttertoast.showToast(
+                                  msg: "Error"
+                              );
+                            }
+                        );
+                        subscriptionToDevice =
+                            characteristic.lastValueStream.listen((data) async {
+                              String message = utf8.decode(data).trim();
+                              logger.d(utf8.decode(data));
+                              if (message == "" && !loginSuccessful) {}
+                              if (message == 'LOGIN OK') {
+                                await writeCharacteristic!.write(
+                                    utf8.encode('ValsRead'));
+                                await Future<void>.delayed(
+                                    const Duration(milliseconds: 200));
+                                await btDevice!.disconnect(timeout: 1);
+                                btDevice!.removeBond();
+                                subscriptionToDevice?.cancel();
+                                loaded = true;
+                                setState(() {
+                                  screenIndex = 21;
+                                });
+                              }
+                              if (message.length >= 2 && message.substring(0, 2) == "|A") {
+                                var bluetoothCurrentValuesAsString = message.split("|")[1];
+                                var bluetoothCurrentvalues = bluetoothCurrentValuesAsString.split(",");
+                                currentWifiName = bluetoothCurrentvalues[15].substring(3);
+                              }
+                            });
+                      }
+                      if (characteristic.properties.write) {
+                        writeCharacteristic = characteristic;
+                        await Future<void>.delayed(
+                            const Duration(milliseconds: 300));
+                        if (!loginSuccessful) {
+                          try {
+                            loginSuccessful = true;
+                            await writeCharacteristic!.write(utf8.encode(
+                                'k47t58W43Lds8'));
+                          } catch (e) {}
+                        }
+                      }
+                    }
+                  }
+                } catch (e) {
+                  Navigator.pop(context);
+                  await btDevice!.disconnect(timeout: 1);
+                  btDevice!.removeBond();
+                  subscriptionToDevice?.cancel();
+                  setState(() {
+                    screenIndex = 1;
+                  });
+                }
+              }
+            }
+          }
+        }
+      });
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
+      await Future<void>.delayed(const Duration(seconds: 4));
+      if (!deviceFound) {
+        Navigator.pop(context);
+        Fluttertoast.showToast(
+            msg: "The device wasn't found1"
+        );
+      }
+      /*if (btDevice!= null && btDevice!.isConnected) {
+        Navigator.pop(context);
+        Fluttertoast.showToast(
+            msg: "The device wasn't found2"
+        );
+      }*/
+      Navigator.pop(context);
+    }catch(e){
+      Navigator.pop(context);
+      Fluttertoast.showToast(
+          msg: "The device wasn't found3"
+      );
+    }
+    setState(() {
+      screenIndex = 211;
+    });
+  }
+
+
+  deviceWifiScreen(){
+    return Scaffold(
+      appBar: AppBar(
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        backgroundColor: Colors.white,
+        titleSpacing: 0,
+        iconTheme: const IconThemeData(
+          color: Colors.black,
+        ),
+        title: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black),
+              onPressed: (){
+                setState(() {
+                  screenIndex = 2;
+                });
+              },
+            ),
+            Text(AppLocalizations.of(context)!.wifiT,style: const TextStyle(color: Colors.black,fontSize: 20,fontWeight: FontWeight.w400),),
+          ],
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("${AppLocalizations.of(context)!.currentWifi}: ${currentWifiName}", style: TextStyle(fontSize: 16),),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                OutlinedButton(
+                    onPressed: connectWithBluetooth,
+                    child: Text(AppLocalizations.of(context)!.connectToWifi, style: TextStyle(color: Color(0xff0099f0)),)
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   deviceLightsScreen(){
     return Scaffold(
@@ -3022,9 +4671,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 changeLEDBrightness();
               },
               onChanged: (value){
+                setState(() {
+                  d_led_tb = value.round().toDouble();
+                });
               },
             ),
-            Text("Indicator animation",style: const TextStyle(fontSize: 12),),
+            Text(AppLocalizations.of(context)!.indicatorAnimation,style: const TextStyle(fontSize: 12),),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -3052,7 +4704,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text("Animation off", style: TextStyle(color: displayAnimation != 0 ?  const Color(0xff0099F0) : Colors.white),),
+                          Text(AppLocalizations.of(context)!.animationOff, style: TextStyle(color: displayAnimation != 0 ?  const Color(0xff0099F0) : Colors.white),),
                         ],
                       )
                   ),
@@ -3081,7 +4733,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text("Animation on", style: TextStyle(color: displayAnimation != 1 ?  const Color(0xff0099F0) : Colors.white),),
+                          Text(AppLocalizations.of(context)!.animationOn, style: TextStyle(color: displayAnimation != 1 ?  const Color(0xff0099F0) : Colors.white),),
                         ],
                       )
                   ),
@@ -3149,6 +4801,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 changeDisplayBrightness();
               },
               onChanged: (value){
+                setState(() {
+                  d_led_fb = value.round().toDouble();
+                });
               },
             ),
             Text(AppLocalizations.of(context)!.displayType,style: const TextStyle(fontSize: 12),),
@@ -3243,7 +4898,71 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 ),
               ],
             ),
+            SizedBox(height: 10,),
+            Text(AppLocalizations.of(context)!.unit,style: const TextStyle(fontSize: 12),),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                SizedBox(
+                  width: 160,
+                  child: OutlinedButton(
+                      onPressed: () async{
+                        try {
+                          final result = await InternetAddress.lookup('example.com');
+                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                          }
+                        } on SocketException catch (_) {
+                          Fluttertoast.showToast(
+                              msg: AppLocalizations.of(context)!.noInternetT
+                          );
+                          return;
+                        }
+                        setDeviceUnit(1);
+                        d_unit = 1;
+                        setState(() {
 
+                        });
+                      },
+                      style: OutlinedButton.styleFrom(backgroundColor: d_unit != 1 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text("Bq/m³", style: TextStyle(color: d_unit != 1 ?  const Color(0xff0099F0) : Colors.white),),
+                        ],
+                      )
+                  ),
+                ),
+                SizedBox(
+                  width: 160,
+                  child: OutlinedButton(
+                      onPressed: () async{
+                        try {
+                          final result = await InternetAddress.lookup('example.com');
+                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                          }
+                        } on SocketException catch (_) {
+                          Fluttertoast.showToast(
+                              msg: AppLocalizations.of(context)!.noInternetT
+                          );
+                          return;
+                        }
+                        setDeviceUnit(0);
+                        d_unit = 0;
+                        setState(() {
+
+                        });
+                      },
+                      style: OutlinedButton.styleFrom(backgroundColor: d_unit != 0 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text("pCi/L", style: TextStyle(color: d_unit != 0 ?  const Color(0xff0099F0) : Colors.white),),
+                        ],
+                      )
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -3277,7 +4996,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 });
               },
             ),
-            Text("CLOCK & DATE",style: const TextStyle(color: Colors.black,fontSize: 20,fontWeight: FontWeight.w400),),
+            Text(AppLocalizations.of(context)!.clockAndDateT,style: const TextStyle(color: Colors.black,fontSize: 20,fontWeight: FontWeight.w400),),
           ],
         ),
       ),
@@ -3286,7 +5005,11 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(children: [Text("Clock-Type")]),
+            Row(
+                children: [
+                  Text(AppLocalizations.of(context)!.clockType)
+                ]
+            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -3371,97 +5094,374 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text("Date", style: TextStyle(color: clockType != 3 ?  const Color(0xff0099F0) : Colors.white),),
+                          Text(AppLocalizations.of(context)!.date, style: TextStyle(color: clockType != 3 ?  const Color(0xff0099F0) : Colors.white),),
                         ],
                       )
                   ),
                 ),
               ],
             ),
-            SizedBox(
-              height: 30,
+            const SizedBox(
+              height: 40,
             ),
-            Text("Timezone - current: ${currentTZ}",),
-            SizedBox(
-              height: 300,
-              child: Scrollbar(
-                interactive: true,
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: tzLocations.length,
-                  itemBuilder: (context, index) {
-                    return ListTile(
-                      title: Text(tzLocations[index],style: TextStyle(fontSize: 12),),
-                      onTap: (){
-                        AlertDialog alert = AlertDialog(
-                          title: Text("Set ${tzLocations[index]} as timezone?", style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 20),),
-                          content: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const SizedBox(height: 10,),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: OutlinedButton(
-                                      onPressed: () async{
-                                        try {
-                                          final result = await InternetAddress.lookup('example.com');
-                                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                                          }
-                                        } on SocketException catch (_) {
-                                          Fluttertoast.showToast(
-                                              msg: AppLocalizations.of(context)!.noInternetT
-                                          );
-                                          return;
-                                        }
-                                        setTimezone(tzCodes[index]);
-                                        currentTZ = tzCodes[index];
-                                        Navigator.pop(context);
-                                        setState(() {
-                                        });
-                                      },
-                                      style: OutlinedButton.styleFrom(backgroundColor: const Color(0xff0099f0),minimumSize: const Size(100, 50)),
-                                      child: Text(AppLocalizations.of(context)!.confirm,style: const TextStyle(color: Colors.white)),
-                                    ),
-                                  ),
-                                ],
+            Text("${AppLocalizations.of(context)!.timezoneCurrent} ${currentTZ}",),
+            const SizedBox(
+              height: 20,
+            ),
+            Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(AppLocalizations.of(context)!.selectTimezone),
+                    SizedBox(
+                      width: 230,
+                      height: 50,
+                      child: InputDecorator(
+                        decoration: InputDecoration(
+                          enabledBorder: OutlineInputBorder(
+                              borderSide: BorderSide(
+                                  color: Colors.black,
+                                  width: 0.5
                               ),
-                              const SizedBox(height: 10,),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: OutlinedButton(
-                                      onPressed: (){
-                                        Navigator.pop(context);
-                                      },
-                                      style: OutlinedButton.styleFrom(backgroundColor: const Color(0xff0099f0),minimumSize: const Size(100, 50)),
-                                      child: Text(AppLocalizations.of(context)!.cancel,style: const TextStyle(color: Colors.black)),
-                                    ),
-                                  ),
-                                ],
+                              borderRadius: BorderRadius.all(Radius.circular(8))
+                          ),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton(
+                            value: timezoneCountry,
+                            items: [
+                              DropdownMenuItem(
+                                  value: "None selected",
+                                  child: Text("None selected")
+                              ),
+                              DropdownMenuItem<String>(
+                                  value: "Africa",
+                                  child: Text("Africa")
+                              ),
+                              DropdownMenuItem<String>(
+                                  value: "America",
+                                  child: Text("America")
+                              ),
+                              DropdownMenuItem<String>(
+                                  value: "Antarctica",
+                                  child: Text("Antarctica")
+                              ),
+                              DropdownMenuItem<String>(
+                                  value: "Asia",
+                                  child: Text("Asia")
+                              ),
+                              DropdownMenuItem<String>(
+                                  value: "Australia",
+                                  child: Text("Australia")
+                              ),
+                              DropdownMenuItem<String>(
+                                  value: "Europe",
+                                  child: Text("Europe")
+                              ),
+                              DropdownMenuItem<String>(
+                                  value: "Indian",
+                                  child: Text("Indian")
+                              ),
+                              DropdownMenuItem<String>(
+                                  value: "Pacific",
+                                  child: Text("Pacific")
+                              ),
+                              DropdownMenuItem<String>(
+                                  value: "Etc",
+                                  child: Text("ETC")
                               ),
                             ],
+                            style: TextStyle(color: Colors.black),
+                            borderRadius: BorderRadius.all(Radius.circular(8)),
+                            onChanged: (obj){
+                              tzOfSelection = List.of(tzLocations.where((location){
+                                print(location);
+                                return location.split("/")[0] == obj.toString();
+                              }));
+                              tzOfSelectionWidgets = [];
+                              tzOfSelectionWidgets = [
+                                DropdownMenuItem(
+                                    value: "None selected",
+                                    child: Text("None selected")
+                                )
+                              ];
+                              tzOfSelection.forEach((element){
+                                tzOfSelectionWidgets.add(
+                                    DropdownMenuItem(
+                                        value: element.split("/").sublist(1).join("-"),
+                                        child: Text(element.split("/").sublist(1).join("-"))
+                                    )
+                                );
+                              });
+                              timezoneCountry = obj.toString();
+                              setState(() {
+                              });
+                            },
                           ),
-                        );
-                        showDialog(
-                          context: context,
-                          builder: (BuildContext context){
-                            return alert;
-                          },
-                        );
-                      },
-                    );
-                  },
+                        ),
+                      ),
+                    ),
+                  ]
                 ),
-              ),
+                SizedBox(
+                  height: 10,
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    SizedBox(
+                    ),
+                    SizedBox(
+                        width: 230,
+                        height: 50,
+                        child: InputDecorator(
+                          decoration: InputDecoration(
+                            enabledBorder: OutlineInputBorder(
+                                borderSide: BorderSide(
+                                    color: Colors.black,
+                                  width: 0.5
+                                ),
+
+                                borderRadius: BorderRadius.all(Radius.circular(8))
+                            ),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton(
+                                style: TextStyle(color: Colors.black),
+                                items: tzOfSelectionWidgets,
+                                onChanged: (obj){
+                                  timezoneCity = obj.toString();
+                                  setState(() {
+                                  });
+                                },
+                                value: timezoneCity
+                            ),
+                          ),
+                        )
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
+            const SizedBox(
+              height: 20,
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                OutlinedButton(
+                    onPressed: (){
+                      AlertDialog alert = AlertDialog(
+                        title: Text("${AppLocalizations.of(context)!.set} ${tzSelected} ${AppLocalizations.of(context)!.asTimezone}", style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 20),),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(height: 10,),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () async{
+                                      try {
+                                        final result = await InternetAddress.lookup('example.com');
+                                        if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                                        }
+                                      } on SocketException catch (_) {
+                                        Fluttertoast.showToast(
+                                            msg: AppLocalizations.of(context)!.noInternetT
+                                        );
+                                        return;
+                                      }
+                                      setTimezone(tzCodes.firstWhere((element){
+                                        return element.contains(tzSelected);
+                                      }));
+                                      currentTZ = (tzCodes.firstWhere((element){
+                                        return element.contains(tzSelected);
+                                      }));
+                                      try{
+                                        showDialog(context: context, builder: (context) {
+                                          return Scaffold(
+                                              body: Center(
+                                                  child: Column(
+                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                                    children: [
+                                                      Text(AppLocalizations.of(context)!.searchingDevice),
+                                                      const SizedBox(height: 36,),
+                                                      const CircularProgressIndicator(color: Colors.black,),
+                                                    ],
+                                                  )
+                                              )
+                                          );
+                                        });
+                                        if (Platform.isAndroid) {
+                                          await FlutterBluePlus.turnOn();
+                                        }
+                                        var locationEnabled = await location.serviceEnabled();
+                                        if(!locationEnabled){
+                                          var locationEnabled2 = await location.requestService();
+                                          if(!locationEnabled2){
+                                          }
+                                        }
+                                        var permissionGranted = await location.hasPermission();
+                                        if(permissionGranted == PermissionStatus.denied){
+                                          permissionGranted = await location.requestPermission();
+                                          if(permissionGranted != PermissionStatus.granted){
+                                          }
+                                        }
+                                        FlutterBluePlus.stopScan();
+                                        bool deviceFound = false;
+                                        subscription = FlutterBluePlus.scanResults.listen((results) async {
+                                          for (ScanResult r in results) {
+                                            if (!deviceFound) {
+                                              List<int> bluetoothAdvertisementData = [];
+                                              String bluetoothDeviceName = "";
+                                              if(r.advertisementData.manufacturerData.keys.isNotEmpty){
+                                                logger.d(r.advertisementData.manufacturerData);
+                                                if(r.advertisementData.manufacturerData.values.isNotEmpty){
+                                                  bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
+                                                }
+                                                if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
+                                                if(bluetoothDeviceName == device.values.first.name){
+                                                  radonValue = bluetoothAdvertisementData.elementAt(1).toString();
+                                                  radonCurrent = bluetoothAdvertisementData.elementAt(1);
+                                                  radonDaily = bluetoothAdvertisementData.elementAt(5);
+                                                  currentAvgValue = bluetoothAdvertisementData.elementAt(5);
+                                                  radonEver = bluetoothAdvertisementData.elementAt(9);
+                                                  deviceFound = true;
+                                                  FlutterBluePlus.stopScan();
+                                                  subscription!.cancel();
+                                                  btDevice = r.device;
+                                                  await btDevice!.connect();
+                                                  try{
+                                                    if (Platform.isAndroid) {
+                                                      await r.device.requestMtu(300);
+                                                    }
+                                                    bool loginSuccessful = false;
+                                                    List<BluetoothService> services = await r.device.discoverServices();
+                                                    for (var service in services){
+                                                      for(var characteristic in service.characteristics){
+                                                        if(characteristic.properties.notify){
+                                                          await characteristic.setNotifyValue(true);
+                                                          readCharacteristic = characteristic;
+                                                          characteristic.lastValueStream.timeout(
+                                                              Duration(seconds: 5),
+                                                              onTimeout: (list)async{
+                                                                await btDevice!.disconnect(timeout: 1);
+                                                                btDevice!.removeBond();
+                                                                subscriptionToDevice?.cancel();
+                                                                loaded = true;
+                                                                setState(() {
+                                                                  screenIndex = 1;
+                                                                });
+                                                                Fluttertoast.showToast(
+                                                                    msg: "Error"
+                                                                );
+                                                              }
+                                                          );
+                                                          subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                                                            String message = utf8.decode(data).trim();
+                                                            logger.d(utf8.decode(data));
+                                                            if(message == "" && !loginSuccessful){
+                                                            }
+                                                            if(message == 'LOGIN OK'){
+                                                              await writeCharacteristic!.write(utf8.encode('A18${(tzCodes.firstWhere((element){
+                                                                return element.contains(tzSelected);
+                                                              }))}'));
+                                                            }
+                                                          });
+                                                        }
+                                                        if(characteristic.properties.write){
+                                                          writeCharacteristic = characteristic;
+                                                          await Future<void>.delayed( const Duration(milliseconds: 300));
+                                                          if(!loginSuccessful){
+                                                            try{
+                                                              loginSuccessful = true;
+                                                              await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+                                                            }catch(e){
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  }catch(e){
+                                                    chartSpots = getCurrentSpots();
+                                                    chartBars = getCurrentBars();
+                                                    List<int> barSizes = [];
+                                                    chartBars.forEach((bar) {
+                                                      barSizes.add(bar.barRods.first.toY.toInt());
+                                                    });
+                                                    currentAvgValue = bluetoothAdvertisementData.elementAt(5);
+                                                    await btDevice!.disconnect(timeout: 1);
+                                                    btDevice!.removeBond();
+                                                    subscriptionToDevice?.cancel();
+                                                    loaded = true;
+                                                    setState(() {
+                                                      screenIndex = 1;
+                                                    });
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        });
+                                        FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
+                                        await Future<void>.delayed( const Duration(seconds: 4));
+                                        if(!deviceFound){
+                                          Navigator.pop(context);
+                                          Fluttertoast.showToast(
+                                              msg: "The device wasn't found"
+                                          );
+                                        }
+                                      }catch(e){
+                                      }
+                                      Navigator.pop(context);
+                                      setState(() {
+                                      });
+                                    },
+                                    style: OutlinedButton.styleFrom(backgroundColor: const Color(0xff0099f0),minimumSize: const Size(100, 50)),
+                                    child: Text(AppLocalizations.of(context)!.confirm,style: const TextStyle(color: Colors.white)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10,),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: (){
+                                      Navigator.pop(context);
+                                    },
+                                    style: OutlinedButton.styleFrom(backgroundColor: const Color(0xff0099f0),minimumSize: const Size(100, 50)),
+                                    child: Text(AppLocalizations.of(context)!.cancel,style: const TextStyle(color: Colors.black)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context){
+                          return alert;
+                        },
+                      );
+                    },
+                    child: Text("Apply selected timezone")
+                ),
+              ],
             ),
             SizedBox(
-              height: 10,
+              height: 20,
             ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                Text("Change NTP server:",style: TextStyle(fontSize: 12)),
+                Text(AppLocalizations.of(context)!.changeNtpServer,style: TextStyle(fontSize: 12)),
                 SizedBox(
                   width: 10,
                 ),
@@ -3502,15 +5502,19 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text("Apply", style: TextStyle(color: const Color(0xff0099F0),)),
+                          Text(AppLocalizations.of(context)!.apply, style: const TextStyle(color: Color(0xff0099F0),)),
                         ],
                       )
                   ),
                 ),
               ],
             ),
-            SizedBox(height: 30,),
-            Row(children: [Text("Summer-Winter time enabled")]),
+            SizedBox(height: 40,),
+            Row(
+                children: [
+                  Text(AppLocalizations.of(context)!.winterSummerTime)
+                ]
+            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -3538,7 +5542,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text("Without change", style: TextStyle(color: mezType != 0 ?  const Color(0xff0099F0) : Colors.white),),
+                          Text(AppLocalizations.of(context)!.withoutChange, style: TextStyle(color: mezType != 0 ?  const Color(0xff0099F0) : Colors.white),),
                         ],
                       )
                   ),
@@ -3567,7 +5571,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text("With change", style: TextStyle(color: mezType != 1 ?  const Color(0xff0099F0) : Colors.white),),
+                          Text(AppLocalizations.of(context)!.withChange, style: TextStyle(color: mezType != 1 ?  const Color(0xff0099F0) : Colors.white),),
                         ],
                       )
                   ),
@@ -3802,6 +5806,22 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 if(characteristic.properties.notify){
                   await characteristic.setNotifyValue(true);
                   readCharacteristic = characteristic;
+                  characteristic.lastValueStream.timeout(
+                      Duration(seconds: 5),
+                      onTimeout: (list)async{
+                        await btDevice!.disconnect(timeout: 1);
+                        btDevice!.removeBond();
+                        subscriptionToDevice?.cancel();
+                        loaded = true;
+                        setState(() {
+                          screenIndex = 1;
+                          Navigator.pop(context);
+                        });
+                        Fluttertoast.showToast(
+                            msg: "Error"
+                        );
+                      }
+                  );
                   subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
                     String message = utf8.decode(data).trim();
                     logger.d(utf8.decode(data));
@@ -3957,6 +5977,21 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     if(characteristic.properties.notify){
                       await characteristic.setNotifyValue(true);
                       readCharacteristic = characteristic;
+                      characteristic.lastValueStream.timeout(
+                          Duration(seconds: 3),
+                          onTimeout: (list)async{
+                            await btDevice!.disconnect(timeout: 1);
+                            btDevice!.removeBond();
+                            subscriptionToDevice?.cancel();
+                            loaded = true;
+                            setState(() {
+                            screenIndex = 1;
+                            });
+                            Fluttertoast.showToast(
+                                msg: "Error"
+                            );
+                          }
+                      );
                       subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
                         String message = utf8.decode(data).trim();
                         logger.d(utf8.decode(data));
@@ -3965,7 +6000,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         if(message == 'LOGIN OK'){
                           loginSuccessful = true;
                           await writeCharacteristic!.write(utf8.encode('ValsRead'));
-                          await Future<void>.delayed( const Duration(milliseconds: 100));
+                          await Future<void>.delayed( const Duration(milliseconds: 200));
                           if(useBtGraph){
                             readGraph = true;
                             await writeCharacteristic!.write(utf8.encode('READGRAPH'));
@@ -3993,12 +6028,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         if(message.length >= 2 && message.substring(0,2)=="|A"){
                           var bluetoothCurrentValuesAsString = message.split("|")[1];
                           var bluetoothCurrentvalues = bluetoothCurrentValuesAsString.split(",");
-                          unit = bluetoothCurrentvalues[0].substring(3) == "1" ? "Bq/m³": "pCi/L";
+                          d_unit = int.parse(bluetoothCurrentvalues[0].substring(3));
                           d_led_t = bluetoothCurrentvalues[1].substring(3) == "1";
                           d_led_f = bluetoothCurrentvalues[2].substring(3) == "1";
                           d_led_fb = double.parse(bluetoothCurrentvalues[3].substring(3));
                           d_led_tb = double.parse(bluetoothCurrentvalues[4].substring(3));
-                          d_unit = int.parse(bluetoothCurrentvalues[10].substring(3));
+                          currentWifiName = bluetoothCurrentvalues[16].substring(3);
                         }
                         if(readGraph){
                           var bluetoothRadonHistory = message.split(";");
@@ -4011,7 +6046,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                               int day = int.parse(dateString.split(".")[2]);
                               int hour = int.parse(timestamp.split(" ")[1].split(",")[0]);
                               int radon = int.parse(timestamp.split(" ")[1].split(",")[1]);
-                              Tuple2<int,int> singleTimestamp = Tuple2<int,int> (DateTime(year,month,day,hour).millisecondsSinceEpoch,radon);
+                              Tuple2<int,int> singleTimestamp = Tuple2<int,int> (DateTime(year,month,day,hour).millisecondsSinceEpoch, unit == "Bq/m³" ? radon : radon*27);
                               radonHistoryTimestamps.add(singleTimestamp);
                             }catch(e){
                             }
@@ -4024,9 +6059,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             List<int> barSizes = [];
                             chartBars.forEach((bar) {
                               barSizes.add(bar.barRods.first.toY.toInt());
-                            });
-                            chartSpots.forEach((bar) {
-                              print(bar.y);
                             });
                             currentMaxAvgValue = ((barSizes.reduce(max) / 100).ceil()) * 100;
                             await btDevice!.disconnect(timeout: 1);
@@ -4061,6 +6093,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   barSizes.add(bar.barRods.first.toY.toInt());
                 });
                 currentAvgValue = bluetoothAdvertisementData.elementAt(5);
+                Navigator.pop(context);
                 await btDevice!.disconnect(timeout: 1);
                 btDevice!.removeBond();
                 subscriptionToDevice?.cancel();
@@ -4115,7 +6148,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   const SizedBox(height: 5,),
                   GooglePlaceAutoCompleteTextField(
                     textEditingController: deviceLocationController,
-                    googleAPIKey: "AIzaSyDbedbD3jc34d-eYRUw1PC-vT4sPFeBdMQ",
+                    googleAPIKey: "AIzaSyAxry8f1YCKcXgQh6LOgCESzckFyryAgXE",
                     inputDecoration: InputDecoration(
                       enabledBorder: const OutlineInputBorder(
                         borderSide: BorderSide(width: 2,color: Colors.black),
@@ -4175,10 +6208,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           );
                           return;
                         }
-                        renameDevice();
+                        changeLocation();
                       },
                       style: OutlinedButton.styleFrom(backgroundColor: const Color(0xff0099f0),minimumSize: const Size(100, 50)),
-                      child: Text(AppLocalizations.of(context)!.rename,style: const TextStyle(color: Colors.white)),
+                      child: Text(AppLocalizations.of(context)!.apply,style: const TextStyle(color: Colors.white)),
                     ),
                   ),
                 ],
@@ -4215,7 +6248,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       );
       return;
     }
-    Navigator.pop(context);
     setState(() {
       screenIndex = 1;
     });
@@ -5389,6 +7421,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       case 1: return deviceDetailScreen(isWide);
       case 2: return deviceSettingsScreen();
       case 20: return deviceLightsScreen();
+      case 211: return deviceWifiScreen();
       case 21: return deviceWifiSelectScreen();
       case 22: return deviceWifiPasswordScreen();
       case 24: return changeLocationScreen();
@@ -5532,7 +7565,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       "America/Indiana/Marengo":"EST5EDT,M3.2.0,M11.1.0",
       "America/Indiana/Petersburg":"EST5EDT,M3.2.0,M11.1.0",
       "America/Indiana/Tell_City":"CST6CDT,M3.2.0,M11.1.0",
-      "America/Indiana/Vevay":"EST5EDT:M3.2.0,M11.1.0",
+      "America/Indiana/Vevay":"EST5EDT,M3.2.0,M11.1.0",
       "America/Indiana/Vincennes":"EST5EDT,M3.2.0,M11.1.0",
       "America/Indiana/Winamac":"EST5EDT,M3.2.0,M11.1.0",
       "America/Inuvik":"MST7MDT,M3.2.0,M11.1.0",
@@ -5555,18 +7588,18 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       "America/Mazatlan":"MST7",
       "America/Menominee":"CST6CDT,M3.2.0,M11.1.0",
       "America/Merida":"CST6",
-      "America/Metlakatla":"AKST9AKDT,M3.2.0:M11.1.0",
+      "America/Metlakatla":"AKST9AKDT,M3.2.0,M11.1.0",
       "America/Mexico_City":"CST6",
       "America/Miquelon":"<-03>3<-02>,M3.2.0,M11.1.0",
-      "America/Moncton":"AST4ADT:M3.2.0:M11.1.0",
+      "America/Moncton":"AST4ADT,M3.2.0,M11.1.0",
       "America/Monterrey":"CST6",
       "America/Montevideo":"<-03>3",
-      "America/Montreal":"EST5EDT:M3.2.0:M11.1.0",
+      "America/Montreal":"EST5EDT,M3.2.0,M11.1.0",
       "America/Montserrat":"AST4",
-      "America/Nassau":"EST5EDT:M3.2.0:M11.1.0",
-      "America/New_York":"EST5EDT:M3.2.0:M11.1.0",
-      "America/Nipigon":"EST5EDT:M3.2.0:M11.1.0",
-      "America/Nome":"AKST9AKDT:M3.2.0:M11.1.0",
+      "America/Nassau":"EST5EDT,M3.2.0,M11.1.0",
+      "America/New_York":"EST5EDT,M3.2.0,M11.1.0",
+      "America/Nipigon":"EST5EDT,M3.2.0,M11.1.0",
+      "America/Nome":"AKST9AKDT,M3.2.0,M11.1.0",
       "America/Noronha":"<-02>2",
       "America/North_Dakota/Center":"CST6CDT,M3.2.0,M11.1.0",
       "America/Nuuk":"<-02>2<-01>,M3.5.0/-1,M10.5.0/0",
@@ -5636,7 +7669,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       "Asia/Brunei":"<+08>-8",
       "Asia/Chita":"<+09>-9",
       "Asia/Choibalsan":"<+08>-8",
-      "Asia/Colombo":"<+0530>-5:30",
+      "Asia/Colombo":"<+0530>-5,30",
       "Asia/Damascus":"<+03>-3",
       "Asia/Dhaka":"<+06>-6",
       "Asia/Dili":"<+09>-9",
@@ -5655,7 +7688,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       "Asia/Kabul":"<+0430>-4:30",
       "Asia/Kamchatka":"<+12>-12",
       "Asia/Karachi":"PKT-5",
-      "Asia/Kathmandu":"<+0545>-5:45",
+      "Asia/Kathmandu":"<+0545>-5,45",
       "Asia/Khandyga":"<+09>-9",
       "Asia/Kolkata":"IST-5:30",
       "Asia/Krasnoyarsk":"<+07>-7",
@@ -5687,7 +7720,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       "Asia/Taipei":"CST-8",
       "Asia/Tashkent":"<+05>-5",
       "Asia/Tbilisi":"<+04>-4",
-      "Asia/Tehran":"<+0330>-3:30",
+      "Asia/Tehran":"<+0330>-3,30",
       "Asia/Thimphu":"<+06>-6",
       "Asia/Tokyo":"JST-9",
       "Asia/Tomsk":"<+07>-7",
@@ -5697,7 +7730,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       "Asia/Vientiane":"<+07>-7",
       "Asia/Vladivostok":"<+10>-10",
       "Asia/Yakutsk":"<+09>-9",
-      "Asia/Yangon":"<+0630>-6:30",
+      "Asia/Yangon":"<+0630>-6,30",
       "Asia/Yekaterinburg":"<+05>-5",
       "Asia/Yerevan":"<+04>-4",
       "Atlantic/Azores":"<-01>1<+00>,M3.5.0/0,M10.5.0/1",
@@ -5713,8 +7746,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       "Australia/Adelaide":"ACST-9,30ACDT,M10.1.0,M4.1.0/3",
       "Australia/Brisbane":"AEST-10",
       "Australia/Currie":"AEST-10AEDT,M10.1.0,M4.1.0/3",
-      "Australia/Darwin":"ACST-9:30",
-      "Australia/Eucla":"<+0845>-8:45",
+      "Australia/Darwin":"ACST-9,30",
+      "Australia/Eucla":"<+0845>-8,45",
       "Australia/Hobart":"AEST-10AEDT,M10.1.0,M4.1.0/3",
       "Australia/Lindeman":"AEST-10",
       "Australia/Lord_Howe":"<+1030>-10,30<+11>-11,M10.1.0,M4.1.0",
@@ -5784,7 +7817,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       "Indian/Antananarivo":"EAT-3",
       "Indian/Chagos":"<+06>-6",
       "Indian/Christmas":"<+07>-7",
-      "Indian/Cocos":"<+0630>-6:30",
+      "Indian/Cocos":"<+0630>-6,30",
       "Indian/Comoro":"EAT-3",
       "Indian/Kerguelen":"<+05>-5",
       "Indian/Mahe":"<+04>-4",
@@ -5812,7 +7845,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       "Pacific/Kosrae":"<+11>-11",
       "Pacific/Kwajalein":"<+12>-12",
       "Pacific/Majuro":"<+12>-12",
-      "Pacific/Marquesas":"<-0930>9:30",
+      "Pacific/Marquesas":"<-0930>9,30",
       "Pacific/Midway":"SST11",
       "Pacific/Nauru":"<+12>-12",
       "Pacific/Niue":"<-11>11",

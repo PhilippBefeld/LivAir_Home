@@ -87,21 +87,13 @@ class SignInPageState extends State<SignInPage> {
         token = response.data['token'];
         dio.options.headers['Authorization'] = "Bearer $token";
 
-        var isVerifiedData = await dio.get('https://dashboard.livair.io/api/livAir/isVerified/${emailController.text}');
-        if(isVerifiedData.data == "true"){
-          enterConfirmationCode();
-          return;
-        }
-        var languageData = await dio.get('https://dashboard.livair.io/api/livAir/language',options: Options(responseType: ResponseType.plain));
-        if(languageData.data != "english"){
-          MVP.of(context)!.setLocale(const Locale.fromSubtags(languageCode: 'de'));
-        }
-        if(!await storage.containsKey(key: 'language')){
-          storage.write(key: 'language', value: languageData.data);
-        }else{
-          if(await storage.read(key: 'language') != languageData.data){
-            storage.write(key: 'language', value: languageData.data);
+        try{
+          var isVerifiedData = await dio.get('https://dashboard.livair.io/api/livAir/isVerified/${emailController.text}');
+          if(isVerifiedData.data == "true"){
+            enterConfirmationCode();
+            return;
           }
+        }catch(e){
         }
         var unitData = await dio.get('https://dashboard.livair.io/api/livAir/units',options: Options(responseType: ResponseType.plain));
         if(!await storage.containsKey(key: 'unit')){
@@ -111,7 +103,8 @@ class SignInPageState extends State<SignInPage> {
             storage.write(key: 'unit', value: unitData.data);
           }
         }
-      }on DioError catch(e){
+        var languageData = await dio.get('https://dashboard.livair.io/api/livAir/language',options: Options(responseType: ResponseType.plain));
+      }catch(e){
         logger.e(e);
       }
       Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/login',
@@ -441,7 +434,7 @@ class SignInPageState extends State<SignInPage> {
                             ],
                           ),
                           const SizedBox(height: 30,),
-                          Padding(
+                          /*Padding(
                             padding: const EdgeInsets.fromLTRB(5.0,0,5,0),
                             child: GestureDetector(
                               onTap: googleSignIn,
@@ -455,7 +448,7 @@ class SignInPageState extends State<SignInPage> {
                                 onTap: null,
                                 child: const Image(image: AssetImage('lib/images/SignInWithFacebook.png'),color: null,)
                             ),
-                          ),
+                          ),*/
                           const SizedBox(height: 50,),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.start,

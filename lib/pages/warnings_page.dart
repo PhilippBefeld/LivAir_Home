@@ -491,7 +491,7 @@ class WarningsPageState extends State<WarningsPage>{
                     },
                     name: labels[deviceIndex],
                     isOnline: areOnline[deviceIndex],
-                    radonValue: "-1",
+                    radonValue: -1,
                     lastSync: -1,
                     unit: unit == "Bq/m³" ? "Bq/m³": "pCi/L",
                     isViewer: false,

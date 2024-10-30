@@ -953,7 +953,7 @@ class ProfilePageState extends State<ProfilePage>{
                 refreshToken = loginResponse.data["refreshToken"];
               }
               dio.options.headers['Authorization'] = "Bearer $token";
-              dio.post('https://dashboard.livair.io/api/livAir/language/english');
+              print(await dio.post('https://dashboard.livair.io/api/livAir/language/english'));
               setState(() {
                 MVP.of(context)!.setLocale(const Locale.fromSubtags(languageCode: 'en'));
                 language = "english";
@@ -1004,7 +1004,7 @@ class ProfilePageState extends State<ProfilePage>{
               refreshToken = loginResponse.data["refreshToken"];
             }
             dio.options.headers['Authorization'] = "Bearer $token";
-            dio.post('https://dashboard.livair.io/api/livAir/language/german');
+            print(await dio.post('https://dashboard.livair.io/api/livAir/language/german'));
             setState(() {
               MVP.of(context)!.setLocale(const Locale.fromSubtags(languageCode: 'de'));
               language = "german";

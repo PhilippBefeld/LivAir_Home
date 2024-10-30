@@ -264,7 +264,7 @@ class SignUpPageState extends State<SignUpPage>{
                           ],
                         ),
                         const SizedBox(height: 30,),
-                        Padding(
+                        /*Padding(
                           padding: const EdgeInsets.fromLTRB(5.0,0,5,0),
                           child: GestureDetector(
                               onTap: googleSignUp,
@@ -278,7 +278,7 @@ class SignUpPageState extends State<SignUpPage>{
                               onTap: null,
                               child: const Image(image: AssetImage('lib/images/SignInWithFacebook.png'),color: null,)
                           ),
-                        ),
+                        ),*/
                         const SizedBox(height: 50,),
                         MyTextField(
                           onChanged: null,
