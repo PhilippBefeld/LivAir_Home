@@ -803,7 +803,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           if(message == "" && !loginSuccessful){
                           }
                           if(message == 'LOGIN OK'){
-                            await writeCharacteristic!.write(utf8.encode('A04${d_led_fb.toInt()}'));
+                            await writeCharacteristic!.write(utf8.encode('S04:${d_led_fb.toInt()}'));
                             await Future<void>.delayed( const Duration(milliseconds: 500));
                             await btDevice!.disconnect(timeout: 1);
                             btDevice!.removeBond();
@@ -964,7 +964,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           if(message == "" && !loginSuccessful){
                           }
                           if(message == 'LOGIN OK'){
-                            await writeCharacteristic!.write(utf8.encode('A05${d_led_tb.toInt()}'));
+                            await writeCharacteristic!.write(utf8.encode('S05:${d_led_tb.toInt()}'));
                             await Future<void>.delayed( const Duration(milliseconds: 500));
                             await btDevice!.disconnect(timeout: 1);
                             btDevice!.removeBond();
@@ -1164,7 +1164,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           if(message == "" && !loginSuccessful){
                           }
                           if(message == 'LOGIN OK'){
-                            await writeCharacteristic!.write(utf8.encode('A03${intValue}'));
+                            await writeCharacteristic!.write(utf8.encode('S03:${intValue}'));
                             await Future<void>.delayed( const Duration(milliseconds: 500));
                             await btDevice!.disconnect(timeout: 1);
                             btDevice!.removeBond();
@@ -1324,7 +1324,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           if(message == "" && !loginSuccessful){
                           }
                           if(message == 'LOGIN OK'){
-                            await writeCharacteristic!.write(utf8.encode('A02${intValue}'));
+                            await writeCharacteristic!.write(utf8.encode('S02:${intValue}'));
                             await Future<void>.delayed( const Duration(milliseconds: 500));
                             await btDevice!.disconnect(timeout: 1);
                             btDevice!.removeBond();
@@ -1467,7 +1467,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           if(message == "" && !loginSuccessful){
                           }
                           if(message == 'LOGIN OK'){
-                            await writeCharacteristic!.write(utf8.encode('A11${value}'));
+                            await writeCharacteristic!.write(utf8.encode('S11:${value}'));
                             await Future<void>.delayed( const Duration(milliseconds: 500));
                             logger.d("hello");
                             await btDevice!.disconnect(timeout: 1);
@@ -1626,7 +1626,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           if(message == "" && !loginSuccessful){
                           }
                           if(message == 'LOGIN OK'){
-                            await writeCharacteristic!.write(utf8.encode('A10${value}'));
+                            await writeCharacteristic!.write(utf8.encode('S10:${value}'));
                             await Future<void>.delayed( const Duration(milliseconds: 500));
                             await btDevice!.disconnect(timeout: 1);
                             btDevice!.removeBond();
@@ -1784,7 +1784,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           if(message == "" && !loginSuccessful){
                           }
                           if(message == 'LOGIN OK'){
-                            await writeCharacteristic!.write(utf8.encode('A15${value}'));
+                            await writeCharacteristic!.write(utf8.encode('S15:${value}'));
                             await Future<void>.delayed( const Duration(milliseconds: 500));
                             await btDevice!.disconnect(timeout: 1);
                             btDevice!.removeBond();
@@ -1942,7 +1942,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           if(message == "" && !loginSuccessful){
                           }
                           if(message == 'LOGIN OK'){
-                            await writeCharacteristic!.write(utf8.encode('A03${value}'));
+                            await writeCharacteristic!.write(utf8.encode('S31:${value}'));
                             await Future<void>.delayed( const Duration(milliseconds: 500));
                             await btDevice!.disconnect(timeout: 1);
                             btDevice!.removeBond();
@@ -2100,7 +2100,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           if(message == "" && !loginSuccessful){
                           }
                           if(message == 'LOGIN OK'){
-                            await writeCharacteristic!.write(utf8.encode('A17${value}'));
+                            await writeCharacteristic!.write(utf8.encode('S17:${value}'));
                             await Future<void>.delayed( const Duration(milliseconds: 500));
                             await btDevice!.disconnect(timeout: 1);
                             btDevice!.removeBond();
@@ -2258,7 +2258,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           if(message == "" && !loginSuccessful){
                           }
                           if(message == 'LOGIN OK'){
-                            await writeCharacteristic!.write(utf8.encode('A06${value}'));
+                            await writeCharacteristic!.write(utf8.encode('S06:${value}'));
                             await Future<void>.delayed( const Duration(milliseconds: 500));
                             await btDevice!.disconnect(timeout: 1);
                             btDevice!.removeBond();
@@ -2416,7 +2416,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           if(message == "" && !loginSuccessful){
                           }
                           if(message == 'LOGIN OK'){
-                            await writeCharacteristic!.write(utf8.encode('A01${value}'));
+                            await writeCharacteristic!.write(utf8.encode('S01:${value}'));
                             await Future<void>.delayed( const Duration(milliseconds: 500));
                             await btDevice!.disconnect(timeout: 1);
                             btDevice!.removeBond();
@@ -5280,143 +5280,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                       currentTZ = (tzCodes.firstWhere((element){
                                         return element.contains(tzSelected);
                                       }));
-                                      try{
-                                        showDialog(context: context, builder: (context) {
-                                          return Scaffold(
-                                              body: Center(
-                                                  child: Column(
-                                                    mainAxisAlignment: MainAxisAlignment.center,
-                                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                                    children: [
-                                                      Text(AppLocalizations.of(context)!.searchingDevice),
-                                                      const SizedBox(height: 36,),
-                                                      const CircularProgressIndicator(color: Colors.black,),
-                                                    ],
-                                                  )
-                                              )
-                                          );
-                                        });
-                                        if (Platform.isAndroid) {
-                                          await FlutterBluePlus.turnOn();
-                                        }
-                                        var locationEnabled = await location.serviceEnabled();
-                                        if(!locationEnabled){
-                                          var locationEnabled2 = await location.requestService();
-                                          if(!locationEnabled2){
-                                          }
-                                        }
-                                        var permissionGranted = await location.hasPermission();
-                                        if(permissionGranted == PermissionStatus.denied){
-                                          permissionGranted = await location.requestPermission();
-                                          if(permissionGranted != PermissionStatus.granted){
-                                          }
-                                        }
-                                        FlutterBluePlus.stopScan();
-                                        bool deviceFound = false;
-                                        subscription = FlutterBluePlus.scanResults.listen((results) async {
-                                          for (ScanResult r in results) {
-                                            if (!deviceFound) {
-                                              List<int> bluetoothAdvertisementData = [];
-                                              String bluetoothDeviceName = "";
-                                              if(r.advertisementData.manufacturerData.keys.isNotEmpty){
-                                                logger.d(r.advertisementData.manufacturerData);
-                                                if(r.advertisementData.manufacturerData.values.isNotEmpty){
-                                                  bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
-                                                }
-                                                if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
-                                                if(bluetoothDeviceName == device.values.first.name){
-                                                  radonValue = bluetoothAdvertisementData.elementAt(1).toString();
-                                                  radonCurrent = bluetoothAdvertisementData.elementAt(1);
-                                                  radonDaily = bluetoothAdvertisementData.elementAt(5);
-                                                  currentAvgValue = bluetoothAdvertisementData.elementAt(5);
-                                                  radonEver = bluetoothAdvertisementData.elementAt(9);
-                                                  deviceFound = true;
-                                                  FlutterBluePlus.stopScan();
-                                                  subscription!.cancel();
-                                                  btDevice = r.device;
-                                                  await btDevice!.connect();
-                                                  try{
-                                                    if (Platform.isAndroid) {
-                                                      await r.device.requestMtu(300);
-                                                    }
-                                                    bool loginSuccessful = false;
-                                                    List<BluetoothService> services = await r.device.discoverServices();
-                                                    for (var service in services){
-                                                      for(var characteristic in service.characteristics){
-                                                        if(characteristic.properties.notify){
-                                                          await characteristic.setNotifyValue(true);
-                                                          readCharacteristic = characteristic;
-                                                          characteristic.lastValueStream.timeout(
-                                                              Duration(seconds: 5),
-                                                              onTimeout: (list)async{
-                                                                await btDevice!.disconnect(timeout: 1);
-                                                                btDevice!.removeBond();
-                                                                subscriptionToDevice?.cancel();
-                                                                loaded = true;
-                                                                setState(() {
-                                                                  screenIndex = 1;
-                                                                });
-                                                                Fluttertoast.showToast(
-                                                                    msg: "Error"
-                                                                );
-                                                              }
-                                                          );
-                                                          subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
-                                                            String message = utf8.decode(data).trim();
-                                                            logger.d(utf8.decode(data));
-                                                            if(message == "" && !loginSuccessful){
-                                                            }
-                                                            if(message == 'LOGIN OK'){
-                                                              await writeCharacteristic!.write(utf8.encode('A18${(tzCodes.firstWhere((element){
-                                                                return element.contains(tzSelected);
-                                                              }))}'));
-                                                            }
-                                                          });
-                                                        }
-                                                        if(characteristic.properties.write){
-                                                          writeCharacteristic = characteristic;
-                                                          await Future<void>.delayed( const Duration(milliseconds: 300));
-                                                          if(!loginSuccessful){
-                                                            try{
-                                                              loginSuccessful = true;
-                                                              await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
-                                                            }catch(e){
-                                                            }
-                                                          }
-                                                        }
-                                                      }
-                                                    }
-                                                  }catch(e){
-                                                    chartSpots = getCurrentSpots();
-                                                    chartBars = getCurrentBars();
-                                                    List<int> barSizes = [];
-                                                    chartBars.forEach((bar) {
-                                                      barSizes.add(bar.barRods.first.toY.toInt());
-                                                    });
-                                                    currentAvgValue = bluetoothAdvertisementData.elementAt(5);
-                                                    await btDevice!.disconnect(timeout: 1);
-                                                    btDevice!.removeBond();
-                                                    subscriptionToDevice?.cancel();
-                                                    loaded = true;
-                                                    setState(() {
-                                                      screenIndex = 1;
-                                                    });
-                                                  }
-                                                }
-                                              }
-                                            }
-                                          }
-                                        });
-                                        FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
-                                        await Future<void>.delayed( const Duration(seconds: 4));
-                                        if(!deviceFound){
-                                          Navigator.pop(context);
-                                          Fluttertoast.showToast(
-                                              msg: "The device wasn't found"
-                                          );
-                                        }
-                                      }catch(e){
-                                      }
                                       Navigator.pop(context);
                                       setState(() {
                                       });
