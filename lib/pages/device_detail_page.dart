@@ -1634,6 +1634,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             Navigator.pop(context);
                           }
                         });
+
                       }
                       if(characteristic.properties.write){
                         writeCharacteristic = characteristic;
@@ -3494,7 +3495,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                 barTouchData: BarTouchData(
                                   enabled: true,
                                   touchTooltipData: BarTouchTooltipData(
-                                    tooltipBgColor: Colors.white,
                                     tooltipPadding: const EdgeInsets.all(1),
                                     tooltipMargin: 1,
                                     tooltipBorder: const BorderSide(color: Colors.black),
@@ -3887,7 +3887,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         barTouchData: BarTouchData(
                             enabled: true,
                             touchTooltipData: BarTouchTooltipData(
-                                tooltipBgColor: Colors.white,
                                 tooltipPadding: const EdgeInsets.all(1),
                                 tooltipMargin: 1,
                                 getTooltipItem: (
