@@ -641,7 +641,7 @@ class DevicePageState extends State<DevicePage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text("Searching for Wifi access points"),
+                    Text(AppLocalizations.of(context)!.searchingAP),
                     const SizedBox(height: 36,),
                     const CircularProgressIndicator(color: Colors.black,),
                   ],
@@ -689,7 +689,7 @@ class DevicePageState extends State<DevicePage> {
                     screenIndex = 0;
                   });
                   Fluttertoast.showToast(
-                      msg: "No access points found"
+                      msg: AppLocalizations.of(context)!.deviceSuccConnected
                   );
                 }
                 Navigator.pop(context);
@@ -705,7 +705,7 @@ class DevicePageState extends State<DevicePage> {
                 screenIndex = 13;
               });
               Fluttertoast.showToast(
-                  msg: "Device successfully connected"
+                  msg: AppLocalizations.of(context)!.deviceSuccConnected
               );
             }
           });
@@ -797,7 +797,7 @@ class DevicePageState extends State<DevicePage> {
     subscription.cancel();
     if(foundDevices!.isEmpty){
       Fluttertoast.showToast(
-          msg: "No devices found"
+          msg: AppLocalizations.of(context)!.noDevicesFound
       );
     }
     Navigator.pop(context);
