@@ -267,5 +267,18 @@
     "failedSendData": "Failed to send data",
     "failedLoadData": "Failed to load data",
     "noDataOnline": "No data online yet",
-    "noDevicesFound": "No devices were found"
+    "noDevicesFound": "No devices were found",
+    "loadingOverBT": "Loading data over\n Bluetooth",
+    "loadingData": "Loading data",
+    "physID": "Physical ID",
+    "plsEnterAddress": "Please enter an anddress",
+    "invalidAddress": "Invalid format. Use XXX.XXX.XXX.",
+    "groupAddress1": "Group address 1",
+    "groupAddress2": "Group address 2",
+    "groupAddress3": "Group address 3",
+    "groupAddress4": "Group address 4",
+    "bootTime": "Booting time",
+    "send": "send",
+    "deact": "Deact.",
+    "deviceWillRestart": "The device will restart\nafter applying the changes."
 }

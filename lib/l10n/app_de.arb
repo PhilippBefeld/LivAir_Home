@@ -259,6 +259,7 @@
     "prefix": "Präfix",
     "mqttOnOff": "MQTT an/Aus",
     "deviceSuccConnected": "Gerät erfolgreich verbunden",
+    "noAPFound": "Keine Verbindung gefunden",
     "searchingAP": "Suche nach WLAN Verbindungen",
     "deviceNotFound": "Gerät nicht gefunden",
     "sendSettWithBT": "Sende Einstellungen mit Bluetooth\n- Nur Offline-Geräte -",
@@ -266,5 +267,18 @@
     "failedSendData": "Konnte Daten nicht senden",
     "failedLoadData": "Konnte Daten nicht laden",
     "noDataOnline": "Keine Daten bis jetzt",
-    "noDevicesFound": "Keine Geräte gefunden"
+    "noDevicesFound": "Keine Geräte gefunden",
+    "loadingOverBT": "Lade Daten über\n Bluetooth",
+    "loadingData": "Lade Daten",
+    "physID": "Physikalische ID",
+    "plsEnterAddress": "Bitte Adresse eingeben",
+    "invalidAddress": "Falsches Format. Bsp.: XXX.XXX.XXX.",
+    "groupAddress1": "Gruppenadresse 1",
+    "groupAddress2": "Gruppenadresse 2",
+    "groupAddress3": "Gruppenadresse 3",
+    "groupAddress4": "Gruppenadresse 4",
+    "bootTime": "Boot Dauer",
+    "send": "Senden",
+    "deact": "Deakt.",
+    "deviceWillRestart": "Gerät startet neu\nnach der Änderung."
 }

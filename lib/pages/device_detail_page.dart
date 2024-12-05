@@ -175,6 +175,18 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   //knx screen values
   bool knxProgMode = false;
   bool knxOnOff = false;
+  TextEditingController knxPhysAddress = TextEditingController();
+  String? knxPhysIDError;
+  TextEditingController knxGroup1 = TextEditingController();
+  TextEditingController knxGroup2 = TextEditingController();
+  TextEditingController knxGroup3 = TextEditingController();
+  TextEditingController knxGroup4 = TextEditingController();
+  String? knxGroupError1;
+  String? knxGroupError2;
+  String? knxGroupError3;
+  String? knxGroupError4;
+  String knxParam0 = "";
+  String knxParam1 = "";
 
   //Cloud screen values
   bool cloudOnOff = false;
@@ -252,6 +264,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       });
       return;
     }
+
     if(!device.values.first.isOnline){
       useBluetoothData = true;
       try{
@@ -275,10 +288,14 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       });
       return;
     }
+
     currentMaxAvgValue = 0;
     currentMaxAvgValueSpots= 0;
     futureFuncRunning = true;
+
+    currentTZ = await storage.read(key: 'timezone') ?? "";
     unit = await storage.read(key: 'unit');
+
     radonValue = AppLocalizations.of(context)!.noRadonValues;
     String id = device.keys.elementAt(0);
     try{
@@ -649,7 +666,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               }
               try{
                 var dUnitData = telData["u_timezone"];
-                if(dUnitData!=null) currentTZ = dUnitData[0][1];
+                //if(dUnitData!=null) currentTZ = dUnitData[0][1];
               }catch(e){
               }
               try{
@@ -865,8 +882,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           }
         }
       });
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
-      await Future<void>.delayed( const Duration(seconds: 4));
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
+      await Future<void>.delayed( const Duration(seconds: 3));
       if(!deviceFound){
         Navigator.pop(context);
       }
@@ -968,23 +985,23 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       if(characteristic.properties.notify){
                         await characteristic.setNotifyValue(true);
                         readCharacteristic = characteristic;
-                        readCharacteristic!.lastValueStream.timeout(
-                            Duration(seconds: 5),
+                        readCharacteristic = characteristic;
+                        subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
+                            Duration(seconds: 1),
                             onTimeout: (list)async{
                               await btDevice!.disconnect(timeout: 1);
                               btDevice!.removeBond();
                               subscriptionToDevice?.cancel();
                               loaded = true;
                               setState(() {
-                                Navigator.pop(context);
                                 screenIndex = 1;
+                                Navigator.pop(context);
                               });
                               Fluttertoast.showToast(
                                   msg: "Error"
                               );
                             }
-                        );
-                        subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                        ).listen((data) async{
                           String message = utf8.decode(data).trim();
                           logger.d(utf8.decode(data));
                           if(message == "" && !loginSuccessful){
@@ -1027,8 +1044,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           }
         }
       });
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
-      await Future<void>.delayed( const Duration(seconds: 4));
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
+      await Future<void>.delayed( const Duration(seconds: 3));
       if(!deviceFound){
         Navigator.pop(context);
       }
@@ -1169,8 +1186,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       if(characteristic.properties.notify){
                         await characteristic.setNotifyValue(true);
                         readCharacteristic = characteristic;
-                        readCharacteristic!.lastValueStream.timeout(
-                            Duration(seconds: 5),
+                        readCharacteristic = characteristic;
+                        subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
+                            Duration(seconds: 1),
                             onTimeout: (list)async{
                               await btDevice!.disconnect(timeout: 1);
                               btDevice!.removeBond();
@@ -1184,8 +1202,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                   msg: "Error"
                               );
                             }
-                        );
-                        subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                        ).listen((data) async{
                           String message = utf8.decode(data).trim();
                           logger.d(utf8.decode(data));
                           if(message == "" && !loginSuccessful){
@@ -1228,8 +1245,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           }
         }
       });
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
-      await Future<void>.delayed( const Duration(seconds: 4));
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
+      await Future<void>.delayed( const Duration(seconds: 3));
       if(!deviceFound){
         Navigator.pop(context);
       }
@@ -1330,8 +1347,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       if(characteristic.properties.notify){
                         await characteristic.setNotifyValue(true);
                         readCharacteristic = characteristic;
-                        readCharacteristic!.lastValueStream.timeout(
-                            Duration(seconds: 5),
+                        readCharacteristic = characteristic;
+                        subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
+                            Duration(seconds: 1),
                             onTimeout: (list)async{
                               await btDevice!.disconnect(timeout: 1);
                               btDevice!.removeBond();
@@ -1345,8 +1363,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                   msg: "Error"
                               );
                             }
-                        );
-                        subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                        ).listen((data) async{
                           String message = utf8.decode(data).trim();
                           logger.d(utf8.decode(data));
                           if(message == "" && !loginSuccessful){
@@ -1389,8 +1406,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           }
         }
       });
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
-      await Future<void>.delayed( const Duration(seconds: 4));
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
+      await Future<void>.delayed( const Duration(seconds: 3));
       if(!deviceFound){
         Navigator.pop(context);
       }
@@ -1534,8 +1551,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           }
         }
       });
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
-      await Future<void>.delayed( const Duration(seconds: 4));
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
+      await Future<void>.delayed( const Duration(seconds: 3));
       if(!deviceFound){
         Navigator.pop(context);
       }
@@ -1634,8 +1651,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       if(characteristic.properties.notify){
                         await characteristic.setNotifyValue(true);
                         readCharacteristic = characteristic;
-                        readCharacteristic!.lastValueStream.timeout(
-                            Duration(seconds: 5),
+                        subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
+                            Duration(seconds: 1),
                             onTimeout: (list)async{
                               await btDevice!.disconnect(timeout: 1);
                               btDevice!.removeBond();
@@ -1649,8 +1666,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                   msg: "Error"
                               );
                             }
-                        );
-                        subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                        ).listen((data) async{
                           String message = utf8.decode(data).trim();
                           logger.d(utf8.decode(data));
                           if(message == "" && !loginSuccessful){
@@ -1694,8 +1710,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           }
         }
       });
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
-      await Future<void>.delayed( const Duration(seconds: 4));
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
+      await Future<void>.delayed( const Duration(seconds: 3));
       if(!deviceFound){
         Navigator.pop(context);
       }
@@ -1794,8 +1810,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       if(characteristic.properties.notify){
                         await characteristic.setNotifyValue(true);
                         readCharacteristic = characteristic;
-                        readCharacteristic!.lastValueStream.timeout(
-                            Duration(seconds: 5),
+                        subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
+                            Duration(seconds: 1),
                             onTimeout: (list)async{
                               await btDevice!.disconnect(timeout: 1);
                               btDevice!.removeBond();
@@ -1809,8 +1825,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                   msg: "Error"
                               );
                             }
-                        );
-                        subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                        ).listen((data) async{
                           String message = utf8.decode(data).trim();
                           logger.d(utf8.decode(data));
                           if(message == "" && !loginSuccessful){
@@ -1853,8 +1868,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           }
         }
       });
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
-      await Future<void>.delayed( const Duration(seconds: 4));
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
+      await Future<void>.delayed( const Duration(seconds: 3));
       if(!deviceFound){
         Navigator.pop(context);
       }
@@ -1953,8 +1968,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       if(characteristic.properties.notify){
                         await characteristic.setNotifyValue(true);
                         readCharacteristic = characteristic;
-                        readCharacteristic!.lastValueStream.timeout(
-                            Duration(seconds: 5),
+                        readCharacteristic = characteristic;
+                        subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
+                            Duration(seconds: 1),
                             onTimeout: (list)async{
                               await btDevice!.disconnect(timeout: 1);
                               btDevice!.removeBond();
@@ -1968,8 +1984,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                   msg: "Error"
                               );
                             }
-                        );
-                        subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                        ).listen((data) async{
                           String message = utf8.decode(data).trim();
                           logger.d(utf8.decode(data));
                           if(message == "" && !loginSuccessful){
@@ -2012,8 +2027,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           }
         }
       });
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
-      await Future<void>.delayed( const Duration(seconds: 4));
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
+      await Future<void>.delayed( const Duration(seconds: 3));
       if(!deviceFound){
         Navigator.pop(context);
       }
@@ -2112,8 +2127,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       if(characteristic.properties.notify){
                         await characteristic.setNotifyValue(true);
                         readCharacteristic = characteristic;
-                        readCharacteristic!.lastValueStream.timeout(
-                            Duration(seconds: 5),
+                        subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
+                            Duration(seconds: 1),
                             onTimeout: (list)async{
                               await btDevice!.disconnect(timeout: 1);
                               btDevice!.removeBond();
@@ -2127,8 +2142,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                   msg: "Error"
                               );
                             }
-                        );
-                        subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                        ).listen((data) async{
                           String message = utf8.decode(data).trim();
                           logger.d(utf8.decode(data));
                           if(message == "" && !loginSuccessful){
@@ -2171,8 +2185,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           }
         }
       });
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
-      await Future<void>.delayed( const Duration(seconds: 4));
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
+      await Future<void>.delayed( const Duration(seconds: 3));
       if(!deviceFound){
         Navigator.pop(context);
       }
@@ -2271,8 +2285,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       if(characteristic.properties.notify){
                         await characteristic.setNotifyValue(true);
                         readCharacteristic = characteristic;
-                        readCharacteristic!.lastValueStream.timeout(
-                            Duration(seconds: 5),
+                        subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
+                            Duration(seconds: 1),
                             onTimeout: (list)async{
                               await btDevice!.disconnect(timeout: 1);
                               btDevice!.removeBond();
@@ -2286,8 +2300,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                   msg: "Error"
                               );
                             }
-                        );
-                        subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                        ).listen((data) async{
                           String message = utf8.decode(data).trim();
                           logger.d(utf8.decode(data));
                           if(message == "" && !loginSuccessful){
@@ -2330,8 +2343,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           }
         }
       });
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
-      await Future<void>.delayed( const Duration(seconds: 4));
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
+      await Future<void>.delayed( const Duration(seconds: 3));
       if(!deviceFound){
         Navigator.pop(context);
       }
@@ -2430,8 +2443,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       if(characteristic.properties.notify){
                         await characteristic.setNotifyValue(true);
                         readCharacteristic = characteristic;
-                        readCharacteristic!.lastValueStream.timeout(
-                            Duration(seconds: 5),
+                        readCharacteristic = characteristic;
+                        subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
+                            Duration(seconds: 1),
                             onTimeout: (list)async{
                               await btDevice!.disconnect(timeout: 1);
                               btDevice!.removeBond();
@@ -2445,8 +2459,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                   msg: "Error"
                               );
                             }
-                        );
-                        subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                        ).listen((data) async{
                           String message = utf8.decode(data).trim();
                           logger.d(utf8.decode(data));
                           if(message == "" && !loginSuccessful){
@@ -2489,8 +2502,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           }
         }
       });
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
-      await Future<void>.delayed( const Duration(seconds: 4));
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
+      await Future<void>.delayed( const Duration(seconds: 3));
       if(!deviceFound){
         Navigator.pop(context);
       }
@@ -4428,9 +4441,13 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           ),
           GestureDetector(
             onTap: ()async{
-              sendBTLine(["G54","G55"]);
               setState(() {
                 screenIndex = 26;
+              });
+              await sendBTLine(["G54","G55","G56","G57","G58","G59"]);
+              print(knxParam1);
+              setState(() {
+
               });
             },
             child: Container(
@@ -4457,9 +4474,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           ),
           GestureDetector(
             onTap: ()async{
-              sendBTLine(["G63","G64","G65","G66","G67"]);
               setState(() {
                 screenIndex = 27;
+              });
+              await sendBTLine(["G63","G64","G65","G66","G67"]);
+              setState(() {
+
               });
             },
             child: Container(
@@ -4487,9 +4507,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           ),
           GestureDetector(
             onTap: ()async{
-              sendBTLine(["G70","G71","G72","G73","G74","G75"]);
               setState((){
                 screenIndex = 28;
+              });
+              await sendBTLine(["G70","G71","G72","G73","G74","G75"]);
+              setState(() {
+
               });
             },
             child: Container(
@@ -4586,8 +4609,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       if (characteristic.properties.notify) {
                         await characteristic.setNotifyValue(true);
                         readCharacteristic = characteristic;
-                        readCharacteristic!.lastValueStream.timeout(
-                            Duration(seconds: 5),
+                        subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
+                            Duration(seconds: 1),
                             onTimeout: (list)async{
                               await btDevice!.disconnect(timeout: 1);
                               btDevice!.removeBond();
@@ -4601,9 +4624,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                   msg: "Error"
                               );
                             }
-                        );
-                        subscriptionToDevice =
-                            characteristic.lastValueStream.listen((data) async {
+                        ).listen((data) async {
                               String message = utf8.decode(data).trim();
                               logger.d(utf8.decode(data));
                               if (message == "" && !loginSuccessful) {}
@@ -4655,8 +4676,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           }
         }
       });
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
-      await Future<void>.delayed(const Duration(seconds: 4));
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
+      await Future<void>.delayed(const Duration(seconds: 3));
       if (!deviceFound) {
         Navigator.pop(context);
         Fluttertoast.showToast(
@@ -5486,6 +5507,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                       currentTZ = (tzLocations.firstWhere((element){
                                         return element.contains(tzSelected);
                                       }));
+                                      storage.write(key: 'timezone', value: currentTZ);
                                       Navigator.pop(context);
                                       setState(() {
                                       });
@@ -5684,66 +5706,546 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           ],
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            OutlinedButton(
-              onPressed: (){
-
-                sendBTLine(["G54"]);
-                //sendBTLine("S33:1");
-              },
-              style: OutlinedButton.styleFrom(
-                  backgroundColor: const Color(0xff0099f0),
-                  disabledBackgroundColor: Colors.grey
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              OutlinedButton(
+                onPressed: (){
+        
+                  sendBTLine(["G54"]);
+                  //sendBTLine("S33:1");
+                },
+                style: OutlinedButton.styleFrom(
+                    backgroundColor: const Color(0xff0099f0),
+                    disabledBackgroundColor: Colors.grey
+                ),
+                child: Text(AppLocalizations.of(context)!.bootKNX,style: const TextStyle(color: Colors.white)),
               ),
-              child: Text(AppLocalizations.of(context)!.bootKNX,style: const TextStyle(color: Colors.white)),
-            ),
-            SizedBox(
-              height: 30,
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(AppLocalizations.of(context)!.knxOnOff),
-                Switch(
-                    value: knxOnOff,
-                    onChanged: (value)async{
-                      knxOnOff = value;
-                      if(value) await sendBTLine(["S33:1"]);
-                      else await sendBTLine(["S33:0"]);
-                      setState(() {
+              SizedBox(
+                height: 30,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(AppLocalizations.of(context)!.knxOnOff),
+                  Switch(
+                      value: knxOnOff,
+                      onChanged: (value)async{
+                        AlertDialog alert = AlertDialog(
+                          title: Text(AppLocalizations.of(context)!.mqttOnOff, style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 20),),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(AppLocalizations.of(context)!.deviceWillRestart),
+                              SizedBox(
+                                height: 30,
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: OutlinedButton(
+                                          onPressed:() async{
+                                            if(!knxOnOff) await sendBTLine(["S54:1"]);
+                                            else await sendBTLine(["S54:0"]);
+                                            setState(() {
 
-                      });
-                    },
-                  activeTrackColor: Colors.green,
-                  inactiveThumbColor: Colors.white,
-                  inactiveTrackColor: Colors.red,
+                                            });
+                                          },
+                                          style: OutlinedButton.styleFrom(
+                                              backgroundColor: const Color(0xff0099f0),
+                                              disabledBackgroundColor: Colors.grey,
+                                              minimumSize: Size(100, 50)
+                                          ),
+                                          child: Text(AppLocalizations.of(context)!.apply,style: const TextStyle(color: Colors.white)),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(
+                                    height: 10,
+                                  ),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: OutlinedButton(
+                                          onPressed: (){
+                                            Navigator.pop(context);
+                                            setState(() {
+
+                                            });
+                                          },
+                                          style: OutlinedButton.styleFrom(backgroundColor: Colors.white,minimumSize: Size(100, 50)),
+                                          child: Text(AppLocalizations.of(context)!.cancel,style: const TextStyle(color: Colors.black)),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context){
+                            return alert;
+                          },
+                        );
+                      },
+                    activeTrackColor: Colors.green,
+                    inactiveThumbColor: Colors.white,
+                    inactiveTrackColor: Colors.red,
+                  ),
+                ],
+              ),
+              SizedBox(
+                height: 20,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(AppLocalizations.of(context)!.knxProgMode),
+                  Switch(
+                      value: knxProgMode,
+                      onChanged: (value){
+                        knxProgMode = value;
+                        sendBTLine(["S35"]);
+                      },
+                    activeTrackColor: Colors.green,
+                    inactiveThumbColor: Colors.white,
+                    inactiveTrackColor: Colors.red,
+                  ),
+                ],
+              ),
+              SizedBox(
+                height: 30,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: TextField(
+                      controller: knxPhysAddress,
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.of(context)!.physID,
+                        floatingLabelStyle: TextStyle(color: Colors.black),
+                        floatingLabelBehavior: FloatingLabelBehavior.always,
+                        enabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        disabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        fillColor: Colors.white,
+                        filled: true,
+                    
+                        hintText: AppLocalizations.of(context)!.physID,
+                        hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                        errorText: knxPhysIDError
+                      ),
+                      onChanged: (text){
+                        setState(() {
+                          if (text.isEmpty) {
+                            knxPhysIDError = AppLocalizations.of(context)!.plsEnterAddress;
+                          } else if (!RegExp(r'^\d{1,3}\.\d{1,3}\.\d{1,3}$').hasMatch(knxPhysAddress.text)) {
+                            knxPhysIDError = AppLocalizations.of(context)!.invalidAddress;
+                          } else {
+                            knxPhysIDError = null;
+                          }
+                        });
+                      },
+                    ),
+                  ),
+                  
+                ],
+              ),
+              SizedBox(
+                height: 10,
+              ),
+              OutlinedButton(
+                onPressed: knxOnOff ? (){
+                  if(!knxOnOff)return;
+                  sendBTLine(["S36:${knxPhysAddress.text}"]);
+                } : null,
+                style: OutlinedButton.styleFrom(
+                    backgroundColor: const Color(0xff0099f0),
+                    disabledBackgroundColor: Colors.grey
                 ),
-              ],
-            ),
-            SizedBox(
-              height: 20,
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(AppLocalizations.of(context)!.knxProgMode),
-                Switch(
-                    value: knxProgMode,
-                    onChanged: (value){
-                      knxProgMode = value;
-                      sendBTLine(["S35"]);
-                    },
-                  activeTrackColor: Colors.green,
-                  inactiveThumbColor: Colors.white,
-                  inactiveTrackColor: Colors.red,
+                child: Text(AppLocalizations.of(context)!.apply,style: const TextStyle(color: Colors.white)),
+              ),
+              SizedBox(
+                height: 30,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: TextField(
+                      controller: knxGroup1,
+                      decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.groupAddress1,
+                          floatingLabelStyle: TextStyle(color: Colors.black),
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
+                          enabledBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          focusedBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          disabledBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          fillColor: Colors.white,
+                          filled: true,
+                    
+                          hintText: AppLocalizations.of(context)!.groupAddress1,
+                          hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                          errorText: knxGroupError1
+                      ),
+                      onChanged: (text){
+                        setState(() {
+                          if (text.isEmpty) {
+                            knxGroupError1 = null;
+                          } else if (!RegExp(r'^\d{1,3}\.\d{1,3}\.\d{1,3}$').hasMatch(knxGroup1.text)) {
+                            knxGroupError1 = AppLocalizations.of(context)!.invalidAddress;
+                          } else {
+                            knxGroupError1 = null;
+                          }
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(
+                height: 20,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: TextField(
+                      controller: knxGroup2,
+                      decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.groupAddress2,
+                          floatingLabelStyle: TextStyle(color: Colors.black),
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
+                          enabledBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          focusedBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          disabledBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          fillColor: Colors.white,
+                          filled: true,
+        
+                          hintText: AppLocalizations.of(context)!.groupAddress2,
+                          hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                          errorText: knxGroupError2
+                      ),
+                      onChanged: (text){
+                        setState(() {
+                          if (text.isEmpty) {
+                            knxGroupError2 = null;
+                          } else if (!RegExp(r'^\d{1,3}\.\d{1,3}\.\d{1,3}$').hasMatch(knxGroup2.text)) {
+                            knxGroupError2 = AppLocalizations.of(context)!.invalidAddress;
+                          } else {
+                            knxGroupError2 = null;
+                          }
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(
+                height: 20,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: TextField(
+                      controller: knxGroup3,
+                      decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.groupAddress3,
+                          floatingLabelStyle: TextStyle(color: Colors.black),
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
+                          enabledBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          focusedBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          disabledBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          fillColor: Colors.white,
+                          filled: true,
+        
+                          hintText: AppLocalizations.of(context)!.groupAddress3,
+                          hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                          errorText: knxGroupError3
+                      ),
+                      onChanged: (text){
+                        setState(() {
+                          if (text.isEmpty) {
+                            knxGroupError3 = null;
+                          } else if (!RegExp(r'^\d{1,3}\.\d{1,3}\.\d{1,3}$').hasMatch(knxGroup3.text)) {
+                            knxGroupError3 = AppLocalizations.of(context)!.invalidAddress;
+                          } else {
+                            knxGroupError3 = null;
+                          }
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(
+                height: 20,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: TextField(
+                      controller: knxGroup4,
+                      decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.groupAddress4,
+                          floatingLabelStyle: TextStyle(color: Colors.black),
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
+                          enabledBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          focusedBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          disabledBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          fillColor: Colors.white,
+                          filled: true,
+        
+                          hintText: AppLocalizations.of(context)!.groupAddress4,
+                          hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                          errorText: knxGroupError4
+                      ),
+                      onChanged: (text){
+                        setState(() {
+                          if (text.isEmpty) {
+                            knxGroupError4 = null;
+                          } else if (!RegExp(r'^\d{1,3}\.\d{1,3}\.\d{1,3}$').hasMatch(knxGroup4.text)) {
+                            knxGroupError4 = AppLocalizations.of(context)!.invalidAddress;
+                          } else {
+                            knxGroupError4 = null;
+                          }
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(
+                height: 20,
+              ),
+              OutlinedButton(
+                onPressed: knxOnOff ? (){
+                  if(knxGroupError1!=null || knxGroupError2!=null || knxGroupError3!=null || knxGroupError4!=null) return;
+                  if(!knxOnOff)return;
+                  sendBTLine(["S37:${knxGroup1.text}&${knxGroup2.text}&${knxGroup3.text}&${knxGroup4.text}"]);
+                } : null,
+                style: OutlinedButton.styleFrom(
+                    backgroundColor: const Color(0xff0099f0),
+                    disabledBackgroundColor: Colors.grey
                 ),
-              ],
-            ),
-          ],
+                child: Text(AppLocalizations.of(context)!.apply,style: const TextStyle(color: Colors.white)),
+              ),
+              SizedBox(
+                height: 30,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Text(AppLocalizations.of(context)!.bootTime),
+                ],
+              ),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    OutlinedButton(
+                      onPressed: knxOnOff ? (){
+                        if(!knxOnOff)return;
+                        knxParam0 = "0";
+                        sendBTLine(["S38:0"]);
+                      } : null,
+                      style: OutlinedButton.styleFrom(
+                          backgroundColor: knxParam0 == "0" ? const Color(0xff0099f0) : Colors.grey,
+                          disabledBackgroundColor: Colors.grey
+                      ),
+                      child: Text("5s",style: TextStyle(color: Colors.white)),
+                    ),
+                    SizedBox(
+                      width: 10,
+                    ),
+                    OutlinedButton(
+                      onPressed: knxOnOff ? (){
+                        if(!knxOnOff)return;
+                        knxParam0 = "1";
+                        sendBTLine(["S38:1"]);
+                      } : null,
+                      style: OutlinedButton.styleFrom(
+                          backgroundColor: knxParam0 == "1" ? const Color(0xff0099f0) : Colors.grey,
+                          disabledBackgroundColor: Colors.grey
+                      ),
+                      child: Text("10s",style: const TextStyle(color: Colors.white)),
+                    ),
+                    SizedBox(
+                      width: 10,
+                    ),
+                    OutlinedButton(
+                      onPressed: knxOnOff ? (){
+                        if(!knxOnOff)return;
+                        knxParam0 = "2";
+                        sendBTLine(["S38:2"]);
+                      } : null,
+                      style: OutlinedButton.styleFrom(
+                          backgroundColor: knxParam0 == "2" ? const Color(0xff0099f0) : Colors.grey,
+                          disabledBackgroundColor: Colors.grey
+                      ),
+                      child: Text("15s",style: const TextStyle(color: Colors.white)),
+                    ),
+                    SizedBox(
+                      width: 10,
+                    ),
+                    OutlinedButton(
+                      onPressed: knxOnOff ? (){
+                        if(!knxOnOff)return;
+                        knxParam0 = "3";
+                        sendBTLine(["S38:3"]);
+                      } : null,
+                      style: OutlinedButton.styleFrom(
+                          backgroundColor: knxParam0 == "3" ? const Color(0xff0099f0) : Colors.grey,
+                          disabledBackgroundColor: Colors.grey
+                      ),
+                      child: Text("20s",style: const TextStyle(color: Colors.white)),
+                    ),
+                    SizedBox(
+                      width: 10,
+                    ),
+                    OutlinedButton(
+                      onPressed: knxOnOff ? (){
+                        if(!knxOnOff)return;
+                        knxParam0 = "4";
+                        sendBTLine(["S38:4"]);
+                      } : null,
+                      style: OutlinedButton.styleFrom(
+                          backgroundColor: knxParam0 == "4" ? const Color(0xff0099f0) : Colors.grey,
+                          disabledBackgroundColor: Colors.grey
+                      ),
+                      child: Text("25s",style: const TextStyle(color: Colors.white)),
+                    ),
+                    SizedBox(
+                      width: 10,
+                    ),
+                    OutlinedButton(
+                      onPressed: knxOnOff ? (){
+                        if(!knxOnOff)return;
+                        knxParam0 = "5";
+                        sendBTLine(["S38:5"]);
+                      } : null,
+                      style: OutlinedButton.styleFrom(
+                          backgroundColor: knxParam0 == "5" ? const Color(0xff0099f0) : Colors.grey,
+                          disabledBackgroundColor: Colors.grey
+                      ),
+                      child: Text("30s",style: const TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(
+                height: 30,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Text(AppLocalizations.of(context)!.send),
+                ],
+              ),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    OutlinedButton(
+                      onPressed: knxOnOff ? (){
+                        sendBTLine(["S39:0"]);
+                      } : null,
+                      style: OutlinedButton.styleFrom(
+                          backgroundColor: knxParam1 == "0" ? const Color(0xff0099f0) : Colors.grey,
+                          disabledBackgroundColor: Colors.grey
+                      ),
+                      child: Text(AppLocalizations.of(context)!.deact,style: const TextStyle(color: Colors.white)),
+                    ),
+                    SizedBox(
+                      width: 10,
+                    ),
+                    OutlinedButton(
+                      onPressed: knxOnOff ? (){
+                        if(!knxOnOff)return;
+                        sendBTLine(["S39:1"]);
+                      } : null,
+                      style: OutlinedButton.styleFrom(
+                          backgroundColor: knxParam1 == "1" ? const Color(0xff0099f0) : Colors.grey,
+                          disabledBackgroundColor: Colors.grey
+                      ),
+                      child: Text("1min",style: const TextStyle(color: Colors.white)),
+                    ),
+                    SizedBox(
+                      width: 10,
+                    ),
+                    OutlinedButton(
+                      onPressed: knxOnOff ? (){
+                        if(!knxOnOff)return;
+                        sendBTLine(["S39:2"]);
+                      } : null,
+                      style: OutlinedButton.styleFrom(
+                          backgroundColor: knxParam1 == "2" ? const Color(0xff0099f0) : Colors.grey,
+                          disabledBackgroundColor: Colors.grey
+                      ),
+                      child: Text("10min",style: const TextStyle(color: Colors.white)),
+                    ),
+                    SizedBox(
+                      width: 10,
+                    ),
+                    OutlinedButton(
+                      onPressed: knxOnOff ? (){
+                        if(!knxOnOff)return;
+                        sendBTLine(["S39:3"]);
+                      } : null,
+                      style: OutlinedButton.styleFrom(
+                          backgroundColor: knxParam1 == "3" ? const Color(0xff0099f0) : Colors.grey,
+                          disabledBackgroundColor: Colors.grey
+                      ),
+                      child: Text("60min",style: const TextStyle(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       )
     );
@@ -5789,13 +6291,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               children: [
                 Text(AppLocalizations.of(context)!.cloudOnOff),
                 Switch(
-                  value: mqttOnOff,
-                  onChanged: (value){
-                    mqttOnOff = value;
-                    if(mqttOnOff) {
-                      sendBTLine(["S40:1"]);
+                  value: cloudOnOff,
+                  onChanged: (value) async{
+                    if(!cloudOnOff) {
+                      await sendBTLine(["S66:1"]);
                     } else {
-                      sendBTLine(["S40:0"]);
+                      await sendBTLine(["S66:0"]);
                     }
                     setState(() {
 
@@ -5811,10 +6312,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               height: 30,
             ),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                SizedBox(
-                  width: 200,
+                Flexible(
                   child: TextField(
                     controller: cloudServer,
                     decoration: InputDecoration(
@@ -5838,6 +6337,14 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     ),
                   ),
                 ),
+              ],
+            ),
+            SizedBox(
+              height: 10,
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
                 OutlinedButton(
                   onPressed: cloudOnOff ? (){
                     if(!cloudOnOff)return;
@@ -5855,12 +6362,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               height: 20,
             ),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                SizedBox(
-                  width: 200,
+                Flexible(
                   child: TextField(
-                      controller: cloudPage,
+                    controller: cloudPage,
                     decoration: InputDecoration(
                       labelText: AppLocalizations.of(context)!.page,
                       floatingLabelStyle: TextStyle(color: Colors.black),
@@ -5882,6 +6387,14 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     ),
                   ),
                 ),
+              ],
+            ),
+            SizedBox(
+              height: 10,
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
                 OutlinedButton(
                   onPressed: cloudOnOff ? (){
                     if(!cloudOnOff)return;
@@ -5899,10 +6412,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               height: 20,
             ),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                SizedBox(
-                  width: 200,
+                Flexible(
                   child: TextField(
                     controller: cloudPaChain,
                     decoration: InputDecoration(
@@ -5926,6 +6437,14 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     ),
                   ),
                 ),
+              ],
+            ),
+            SizedBox(
+              height: 10,
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
                 OutlinedButton(
                   onPressed: cloudOnOff ? (){
                     if(!cloudOnOff)return;
@@ -5943,10 +6462,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               height: 20,
             ),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                SizedBox(
-                  width: 200,
+                Flexible(
                   child: TextField(
                     controller: cloudPage,
                     decoration: InputDecoration(
@@ -5970,6 +6487,14 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     ),
                   ),
                 ),
+              ],
+            ),
+            SizedBox(
+              height: 10,
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
                 OutlinedButton(
                   onPressed: cloudOnOff ? (){
                     if(!cloudOnOff)return;
@@ -5988,6 +6513,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       )
     );
   }
+
   deviceMQTTScreen() {
     return Scaffold(
       appBar: AppBar(
@@ -6030,15 +6556,72 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 Switch(
                     value: mqttOnOff,
                     onChanged: (value){
-                      mqttOnOff = value;
-                      if(mqttOnOff) {
-                        sendBTLine(["S40:1"]);
-                      } else {
-                        sendBTLine(["S40:0"]);
-                      }
-                      setState(() {
-
-                      });
+                      AlertDialog alert = AlertDialog(
+                        title: Text(AppLocalizations.of(context)!.mqttOnOff, style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 20),),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(AppLocalizations.of(context)!.deviceWillRestart),
+                            SizedBox(
+                              height: 30,
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton(
+                                        onPressed:() async{
+                                          if(!mqttOnOff) {
+                                            await sendBTLine(["S70:1"]);
+                                          } else {
+                                            await sendBTLine(["S70:0"]);
+                                          }
+                                          setState(() {
+                                      
+                                          });
+                                        },
+                                        style: OutlinedButton.styleFrom(
+                                            backgroundColor: const Color(0xff0099f0),
+                                            disabledBackgroundColor: Colors.grey,
+                                            minimumSize: Size(100, 50)
+                                        ),
+                                        child: Text(AppLocalizations.of(context)!.apply,style: const TextStyle(color: Colors.white)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(
+                                  height: 10,
+                                ),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton(
+                                        onPressed: (){
+                                          Navigator.pop(context);
+                                          setState(() {
+                                      
+                                          });
+                                        },
+                                        style: OutlinedButton.styleFrom(backgroundColor: Colors.white,minimumSize: Size(100, 50)),
+                                        child: Text(AppLocalizations.of(context)!.cancel,style: const TextStyle(color: Colors.black)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context){
+                          return alert;
+                        },
+                      );
                     },
                   activeTrackColor: Colors.green,
                   inactiveTrackColor: Colors.red,
@@ -6050,12 +6633,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               height: 30,
             ),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                SizedBox(
-                  width: 200,
+                Flexible(
                   child: TextField(
-                      controller: mqttClient,
+                    controller: mqttClient,
                     decoration: InputDecoration(
                       labelText: "Client",
                       floatingLabelStyle: TextStyle(color: Colors.black),
@@ -6078,10 +6659,15 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     enabled: mqttOnOff,
                   ),
                 ),
+              ],
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
                 OutlinedButton(
                   onPressed: mqttOnOff ? (){
                     if(!mqttOnOff)return;
-                    sendBTLine(["S41:${mqttClient.text}"]);
+                    sendBTLine(["S71:${mqttClient.text}"]);
                   } : null,
                   style: OutlinedButton.styleFrom(
                       backgroundColor: const Color(0xff0099f0),
@@ -6095,12 +6681,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               height: 20,
             ),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                SizedBox(
-                  width: 200,
+                Flexible(
                   child: TextField(
-                      controller: mqttServer,
+                    controller: mqttServer,
                     decoration: InputDecoration(
                       labelText: "Server",
                       floatingLabelStyle: TextStyle(color: Colors.black),
@@ -6123,10 +6707,15 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     enabled: mqttOnOff,
                   ),
                 ),
+              ],
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
                 OutlinedButton(
                   onPressed: mqttOnOff ? (){
                     if(!mqttOnOff)return;
-                    sendBTLine(["S42:${mqttServer.text}"]);
+                    sendBTLine(["S72:${mqttServer.text}"]);
 
                   } : null,
                   style: OutlinedButton.styleFrom(
@@ -6141,12 +6730,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               height: 20,
             ),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                SizedBox(
-                  width: 200,
+                Flexible(
                   child: TextField(
-                      controller: mqttUser,
+                    controller: mqttUser,
                     decoration: InputDecoration(
                       labelText: "User",
                       floatingLabelStyle: TextStyle(color: Colors.black),
@@ -6169,10 +6756,15 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     enabled: mqttOnOff,
                   ),
                 ),
+              ],
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
                 OutlinedButton(
                   onPressed: mqttOnOff ? (){
                     if(!mqttOnOff)return;
-                    sendBTLine(["S43:${mqttUser.text}"]);
+                    sendBTLine(["S73:${mqttUser.text}"]);
                   } : null,
                   style: OutlinedButton.styleFrom(
                       backgroundColor: const Color(0xff0099f0),
@@ -6186,12 +6778,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               height: 20,
             ),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                SizedBox(
-                  width: 200,
+                Flexible(
                   child: TextField(
-                      controller: mqttPort,
+                    controller: mqttPort,
                     decoration: InputDecoration(
                       labelText: "Port",
                       floatingLabelStyle: TextStyle(color: Colors.black),
@@ -6214,10 +6804,15 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     enabled: mqttOnOff,
                   ),
                 ),
+              ],
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
                 OutlinedButton(
                   onPressed: mqttOnOff ? (){
                     if(!mqttOnOff)return;
-                    sendBTLine(["S44:${mqttPort.text}"]);
+                    sendBTLine(["S74:${mqttPort.text}"]);
                   } : null,
                   style: OutlinedButton.styleFrom(
                       backgroundColor: const Color(0xff0099f0),
@@ -6231,12 +6826,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               height: 20,
             ),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                SizedBox(
-                  width: 200,
+                Flexible(
                   child: TextField(
-                      controller: mqttTopic,
+                    controller: mqttTopic,
                     decoration: InputDecoration(
                       labelText: "Topic",
                       floatingLabelStyle: TextStyle(color: Colors.black),
@@ -6259,10 +6852,15 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     enabled: mqttOnOff,
                   ),
                 ),
+              ],
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
                 OutlinedButton(
                     onPressed: mqttOnOff ? (){
                       if(!mqttOnOff)return;
-                      sendBTLine(["S45:${mqttTopic.text}"]);
+                      sendBTLine(["S75:${mqttTopic.text}"]);
                     } : null,
                   style: OutlinedButton.styleFrom(
                       backgroundColor: const Color(0xff0099f0),
@@ -6346,8 +6944,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       if(characteristic.properties.notify){
                         await characteristic.setNotifyValue(true);
                         readCharacteristic = characteristic;
-                        readCharacteristic!.lastValueStream.timeout(
-                            Duration(seconds: 5),
+                        subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
+                            Duration(seconds: 1),
                             onTimeout: (list)async{
                               await btDevice!.disconnect(timeout: 1);
                               btDevice!.removeBond();
@@ -6361,8 +6959,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                   msg: "Error"
                               );
                             }
-                        );
-                        subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                        ).listen((data) async{
                           String message = utf8.decode(data).trim();
                           logger.d(utf8.decode(data));
                           if(message == "" && !loginSuccessful){
@@ -6387,19 +6984,49 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             cloudPaChain.text = message.split(":").last;
                           }
                           if(message.split(":").first == "G66"){
-                            cloudOnOff = bool.parse(message.split(":").last);
+                            cloudOnOff = "1" == message.split(":").last ? true : false;
+                          }
+                          if(message.split(":").first == "S66"){
+                            cloudOnOff = "1" == message.split(":").last ? true : false;
                           }
                           if(message.split(":").first == "G67"){
                             cloudPre.text = message.split(":").last;
                           }
                           if(message.split(":").first == "G54"){
-                            knxOnOff = bool.parse(message.split(":").last);
+                            knxOnOff = "1" == message.split(":").last ? true : false;
+                          }
+                          if(message.split(":").first == "S54"){
+                            knxOnOff = "1" == message.split(":").last ? true : false;
                           }
                           if(message.split(":").first == "G55"){
-                            knxProgMode = bool.parse(message.split(":").last);
+                            knxProgMode = "1" == message.split(":").last ? true : false;
+                          }
+                          if(message.split(":").first == "G56"){
+                            knxPhysAddress.text = message.split(":").last;
+                          }
+                          if(message.split(":").first == "G57"){
+                            knxGroup1.text = message.split(":").last.split(",")[0];
+                          }
+                          if(message.split(":").first == "G57"){
+                            knxGroup2.text = message.split(":").last.split(",")[1];
+                          }
+                          if(message.split(":").first == "G57"){
+                            knxGroup3.text = message.split(":").last.split(",")[2];
+                          }
+                          if(message.split(":").first == "G57"){
+                            knxGroup4.text = message.split(":").last.split(",")[3];
+                          }
+                          if(message.split(":").first == "G58"){
+                            knxParam0 = message.split(":").last;
+                          }
+                          if(message.split(":").first == "G59"){
+                            knxParam1 = message.split(":").last;
                           }
                           if(message.split(":").first == "G70"){
-                            mqttOnOff = bool.parse(message.split(":").last);
+                            mqttOnOff = "1" == message.split(":").last ? true : false;
+                          }
+                          if(message.split(":").first == "S70"){
+                            mqttOnOff = "1" == message.split(":").last ? true : false;
                           }
                           if(message.split(":").first == "G71"){
                             mqttClient.text = message.split(":").last;
@@ -6446,8 +7073,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           }
         }
       });
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
-      await Future<void>.delayed( const Duration(seconds: 4));
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
+      await Future<void>.delayed( const Duration(seconds: 3));
     if(!deviceFound){
     Navigator.pop(context);
     }
@@ -6677,8 +7304,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 if(characteristic.properties.notify){
                   await characteristic.setNotifyValue(true);
                   readCharacteristic = characteristic;
-                  readCharacteristic!.lastValueStream.timeout(
-                      Duration(seconds: 5),
+                  subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
+                      Duration(seconds: 1),
                       onTimeout: (list)async{
                         await btDevice!.disconnect(timeout: 1);
                         btDevice!.removeBond();
@@ -6692,8 +7319,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             msg: "Error"
                         );
                       }
-                  );
-                  subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                  ).listen((data) async{
                     String message = utf8.decode(data).trim();
                     logger.d(utf8.decode(data));
                     if(message == "" && !loginSuccessful){
@@ -6759,8 +7385,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         }
       }
     });
-    FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
-    await Future<void>.delayed( const Duration(seconds: 4));
+    FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
+    await Future<void>.delayed( const Duration(seconds: 3));
     if(!deviceFound){
       Navigator.pop(context);
       Fluttertoast.showToast(
@@ -6846,22 +7472,37 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     if(characteristic.properties.notify){
                       await characteristic.setNotifyValue(true);
                       readCharacteristic = characteristic;
-                      readCharacteristic!.lastValueStream.timeout(
-                          Duration(seconds: 3),
+                      subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
+                          Duration(seconds: 1),
                           onTimeout: (list)async{
+                            bool hasData = false;
+                            if(currentBtTimestampCount != -1){
+                              radonHistoryTimestamps = radonHistoryTimestamps.reversed.toList();
+                              chartSpots = getCurrentSpots();
+                              chartBars = getCurrentBars();
+                              List<int> barSizes = [];
+                              chartBars.forEach((bar) {
+                                barSizes.add(bar.barRods.first.toY.toInt());
+                              });
+                              currentMaxAvgValue = ((barSizes.reduce(max) / 100).ceil()) * 100;
+                              BtTimestampCount = -1;
+                              currentBtTimestampCount = -1;
+                              hasData = true;
+                            }
                             await btDevice!.disconnect(timeout: 1);
                             btDevice!.removeBond();
                             subscriptionToDevice?.cancel();
                             loaded = true;
                             setState(() {
-                            screenIndex = 1;
+                              screenIndex = 1;
                             });
-                            Fluttertoast.showToast(
-                                msg: "Error"
-                            );
+                            if(!hasData){
+                              Fluttertoast.showToast(
+                                  msg: "Error"
+                              );
+                            }
                           }
-                      );
-                      subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                      ).listen((data) async{
                         String message = utf8.decode(data).trim();
                         logger.d(utf8.decode(data));
                         if(message == "" && !loginSuccessful){
@@ -6980,8 +7621,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         }
       }
     });
-    FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
-    await Future<void>.delayed( const Duration(seconds: 4));
+    FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
+    await Future<void>.delayed( const Duration(seconds: 3));
     if(!deviceFound){
       Navigator.pop(context);
       Fluttertoast.showToast(
@@ -8888,18 +9529,23 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
-                      "Loading data over\n Bluetooth",
+                      AppLocalizations.of(context)!.loadingOverBT,
                       textAlign: TextAlign.center,
                     ),
                     SizedBox(height: 36,),
                     currentBtTimestampCount == -1 ? CircularProgressIndicator(
                       color: Colors.black,
-                    ) : SizedBox(
-                      width: 300,
-                      child: LinearProgressIndicator(
-                        value: currentBtTimestampCount/BtTimestampCount,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
-                      ),
+                    ) : Column(
+                      children: [
+                        SizedBox(
+                          width: 300,
+                          child: LinearProgressIndicator(
+                            value: currentBtTimestampCount/BtTimestampCount,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                          ),
+                        ),
+                        //Text("${currentBtTimestampCount} / ${BtTimestampCount}")
+                      ],
                     ),
                   ],
                 ),
@@ -8916,7 +9562,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
-                      "Loading data",
+                      AppLocalizations.of(context)!.loadingData,
                       textAlign: TextAlign.center,
                     ),
                     SizedBox(height: 36,),
