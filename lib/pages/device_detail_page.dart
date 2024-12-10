@@ -6890,7 +6890,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           }
                           if(message == 'LOGIN OK'){
                             lines.forEach((line)async{
-                              await writeCharacteristic!.write(utf8.encode(line)).;
+                              await writeCharacteristic!.write(utf8.encode(line));
                               await Future<void>.delayed( const Duration(milliseconds: 50));
                             });
                             await btDevice!.disconnect(timeout: 1);
