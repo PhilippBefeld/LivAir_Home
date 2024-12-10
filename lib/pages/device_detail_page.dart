@@ -5814,6 +5814,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   Switch(
                       value: knxProgMode,
                       onChanged: (value){
+                        if(knxProgMode)return;
                         sendBTLine(["S55"]);
                         setState(() {
 
