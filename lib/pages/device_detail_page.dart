@@ -6963,7 +6963,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         });
                       }
                       if(characteristic.properties.write){
-                        writeCharacteristic = characteristic.;
+                        writeCharacteristic = characteristic;
                         await Future<void>.delayed( const Duration(milliseconds: 300));
                         if(!loginSuccessful){
                           try{
