@@ -5713,8 +5713,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
             children: [
               OutlinedButton(
                 onPressed: (){
-                  sendBTLine(["S54"]);
-                  //sendBTLine("S33:1");
+                  sendBTLine(["S53:1"]);
+                  setState(() {
+
+                  });
                 },
                 style: OutlinedButton.styleFrom(
                     backgroundColor: const Color(0xff0099f0),
@@ -5812,8 +5814,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   Switch(
                       value: knxProgMode,
                       onChanged: (value){
-                        knxProgMode = value;
                         sendBTLine(["S55"]);
+                        setState(() {
+
+                        });
                       },
                     activeTrackColor: Colors.green,
                     inactiveThumbColor: Colors.white,
@@ -6074,9 +6078,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 child: Row(
                   children: [
                     OutlinedButton(
-                      onPressed: knxOnOff ? (){
+                      onPressed: (){
                         knxParam0 = "0";
-                      } : null,
+                        setState(() {
+
+                        });
+                      },
                       style: OutlinedButton.styleFrom(
                           backgroundColor: knxParam0 == "0" ? const Color(0xff0099f0) : Colors.grey,
                           disabledBackgroundColor: Colors.grey
@@ -6087,9 +6094,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       width: 10,
                     ),
                     OutlinedButton(
-                      onPressed: knxOnOff ? (){
+                      onPressed: (){
                         knxParam0 = "1";
-                      } : null,
+                        setState(() {
+
+                        });
+                      },
                       style: OutlinedButton.styleFrom(
                           backgroundColor: knxParam0 == "1" ? const Color(0xff0099f0) : Colors.grey,
                           disabledBackgroundColor: Colors.grey
@@ -6100,9 +6110,13 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       width: 10,
                     ),
                     OutlinedButton(
-                      onPressed: knxOnOff ? (){
+                      onPressed: (){
                         knxParam0 = "2";
-                      } : null,
+                        setState(() {
+
+                        });
+
+                      },
                       style: OutlinedButton.styleFrom(
                           backgroundColor: knxParam0 == "2" ? const Color(0xff0099f0) : Colors.grey,
                           disabledBackgroundColor: Colors.grey
@@ -6113,9 +6127,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       width: 10,
                     ),
                     OutlinedButton(
-                      onPressed: knxOnOff ? (){
+                      onPressed: (){
                         knxParam0 = "3";
-                      } : null,
+                        setState(() {
+
+                        });
+                      },
                       style: OutlinedButton.styleFrom(
                           backgroundColor: knxParam0 == "3" ? const Color(0xff0099f0) : Colors.grey,
                           disabledBackgroundColor: Colors.grey
@@ -6126,9 +6143,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       width: 10,
                     ),
                     OutlinedButton(
-                      onPressed: knxOnOff ? (){
+                      onPressed: (){
                         knxParam0 = "4";
-                      } : null,
+                        setState(() {
+
+                        });
+                      },
                       style: OutlinedButton.styleFrom(
                           backgroundColor: knxParam0 == "4" ? const Color(0xff0099f0) : Colors.grey,
                           disabledBackgroundColor: Colors.grey
@@ -6139,9 +6159,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       width: 10,
                     ),
                     OutlinedButton(
-                      onPressed: knxOnOff ? (){
+                      onPressed: (){
                         knxParam0 = "5";
-                      } : null,
+                        setState(() {
+
+                        });
+                      },
                       style: OutlinedButton.styleFrom(
                           backgroundColor: knxParam0 == "5" ? const Color(0xff0099f0) : Colors.grey,
                           disabledBackgroundColor: Colors.grey
@@ -6171,9 +6194,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 child: Row(
                   children: [
                     OutlinedButton(
-                      onPressed: knxOnOff ? (){
+                      onPressed: (){
                         knxParam1 = "0";
-                      } : null,
+                        setState(() {
+
+                        });
+                      },
                       style: OutlinedButton.styleFrom(
                           backgroundColor: knxParam1 == "0" ? const Color(0xff0099f0) : Colors.grey,
                           disabledBackgroundColor: Colors.grey
@@ -6184,9 +6210,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       width: 10,
                     ),
                     OutlinedButton(
-                      onPressed: knxOnOff ? (){
+                      onPressed:(){
                         knxParam1 = "1";
-                      } : null,
+                        setState(() {
+
+                        });
+                      },
                       style: OutlinedButton.styleFrom(
                           backgroundColor: knxParam1 == "1" ? const Color(0xff0099f0) : Colors.grey,
                           disabledBackgroundColor: Colors.grey
@@ -6197,9 +6226,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       width: 10,
                     ),
                     OutlinedButton(
-                      onPressed: knxOnOff ? (){
+                      onPressed: (){
                         knxParam1 = "2";
-                      } : null,
+                        setState(() {
+
+                        });
+                      },
                       style: OutlinedButton.styleFrom(
                           backgroundColor: knxParam1 == "2" ? const Color(0xff0099f0) : Colors.grey,
                           disabledBackgroundColor: Colors.grey
@@ -6210,9 +6242,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       width: 10,
                     ),
                     OutlinedButton(
-                      onPressed: knxOnOff ? (){
+                      onPressed: (){
                         knxParam1 = "3";
-                      } : null,
+                        setState(() {
+
+                        });
+                      },
                       style: OutlinedButton.styleFrom(
                           backgroundColor: knxParam1 == "3" ? const Color(0xff0099f0) : Colors.grey,
                           disabledBackgroundColor: Colors.grey
@@ -6235,11 +6270,13 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   OutlinedButton(
-                    onPressed: knxOnOff ? (){
+                    onPressed: (){
                       if(knxGroupError1!=null || knxGroupError2!=null || knxGroupError3!=null || knxGroupError4!=null) return;
-                      if(!knxOnOff)return;
                       sendBTLine(["S56:${knxPhysAddress.text}","S57:${knxGroup1.text.replaceAll("/", ".")}&${knxGroup2.text.replaceAll("/", ".")}&${knxGroup3.text.replaceAll("/", ".")}&${knxGroup4.text.replaceAll("/", ".")}", "S58:${knxParam0}", "S59:${knxParam1}"]);
-                    } : null,
+                      setState(() {
+
+                      });
+                    },
                     style: OutlinedButton.styleFrom(
                         backgroundColor: const Color(0xff0099f0),
                         disabledBackgroundColor: Colors.grey
@@ -6445,10 +6482,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   OutlinedButton(
-                    onPressed: cloudOnOff ? (){
-                      if(!cloudOnOff)return;
+                    onPressed: (){
                       sendBTLine(["S64:${cloudServer.text}","S65:${cloudPage.text}","S66:${cloudPaChain.text}","S67:${cloudPre.text}"]);
-                    } : null,
+                      setState(() {
+
+                      });
+                    },
                     style: OutlinedButton.styleFrom(
                         backgroundColor: const Color(0xff0099f0),
                         disabledBackgroundColor: Colors.grey
@@ -6608,7 +6647,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         hintText: "Client",
                         hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
                       ),
-                      enabled: mqttOnOff,
                     ),
                   ),
                 ],
@@ -6640,7 +6678,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         hintText: "Server",
                         hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
                       ),
-                      enabled: mqttOnOff,
                     ),
                   ),
                 ],
@@ -6672,7 +6709,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         hintText: "User",
                         hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
                       ),
-                      enabled: mqttOnOff,
                     ),
                   ),
                 ],
@@ -6704,7 +6740,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         hintText: "Port",
                         hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
                       ),
-                      enabled: mqttOnOff,
                     ),
                   ),
                 ],
@@ -6736,7 +6771,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         hintText: "Topic",
                         hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
                       ),
-                      enabled: mqttOnOff,
                     ),
                   ),
                 ],
@@ -6745,10 +6779,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   OutlinedButton(
-                      onPressed: mqttOnOff ? (){
-                        if(!mqttOnOff)return;
+                      onPressed: (){
                         sendBTLine(["S71:${mqttClient.text}","S72:${mqttServer.text}","S73:${mqttUser.text}","S74:${mqttPort.text}","S75:${mqttTopic.text}"]);
-                      } : null,
+                        setState(() {
+
+                        });
+                      },
                     style: OutlinedButton.styleFrom(
                         backgroundColor: const Color(0xff0099f0),
                         disabledBackgroundColor: Colors.grey
@@ -6854,7 +6890,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           }
                           if(message == 'LOGIN OK'){
                             lines.forEach((line)async{
-                              await writeCharacteristic!.write(utf8.encode(line));
+                              await writeCharacteristic!.write(utf8.encode(line)).;
                               await Future<void>.delayed( const Duration(milliseconds: 50));
                             });
                             await btDevice!.disconnect(timeout: 1);
@@ -6862,79 +6898,72 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             subscriptionToDevice?.cancel();
                             Navigator.pop(context);
                           }
-                          if(message.split(":").first == "G63"){
+                          if(message.split(":").first == "G63" || message.split(":").first ==  "S63"){
                             cloudServer.text = message.split(":").last;
                           }
-                          if(message.split(":").first == "G64"){
+                          if(message.split(":").first == "G64" || message.split(":").first ==  "S64"){
                             cloudPage.text = message.split(":").last;
                           }
-                          if(message.split(":").first == "G65"){
+                          if(message.split(":").first == "G65" || message.split(":").first ==  "S65"){
                             cloudPaChain.text = message.split(":").last;
                           }
-                          if(message.split(":").first == "G66"){
+                          if(message.split(":").first == "G66" || message.split(":").first ==  "S66"){
                             cloudOnOff = "1" == message.split(":").last ? true : false;
                           }
-                          if(message.split(":").first == "S66"){
-                            cloudOnOff = "1" == message.split(":").last ? true : false;
-                          }
-                          if(message.split(":").first == "G67"){
+
+                          if(message.split(":").first == "G67" || message.split(":").first ==  "S67"){
                             cloudPre.text = message.split(":").last;
                           }
-                          if(message.split(":").first == "G54"){
+                          if(message.split(":").first == "G54"  || message.split(":").first ==  "S54"){
                             knxOnOff = "1" == message.split(":").last ? true : false;
                           }
-                          if(message.split(":").first == "S54"){
-                            knxOnOff = "1" == message.split(":").last ? true : false;
-                          }
-                          if(message.split(":").first == "G55"){
+                          if(message.split(":").first == "G55"  || message.split(":").first ==  "S55"){
                             knxProgMode = "1" == message.split(":").last ? true : false;
                           }
-                          if(message.split(":").first == "G56"){
+                          if(message.split(":").first == "G56" || message.split(":").first ==  "S56"){
                             knxPhysAddress.text = message.split(":").last;
                           }
-                          if(message.split(":").first == "G57"){
+                          if(message.split(":").first == "G57" || message.split(":").first ==  "S57"){
                             knxGroup1.text = message.split(":").last.split(",")[0].replaceAll(".", "/");
                           }
-                          if(message.split(":").first == "G57"){
+                          if(message.split(":").first == "G57"  || message.split(":").first ==  "S57"){
                             knxGroup2.text = message.split(":").last.split(",")[1].replaceAll(".", "/");
                           }
-                          if(message.split(":").first == "G57"){
+                          if(message.split(":").first == "G57" || message.split(":").first ==  "S57"){
                             knxGroup3.text = message.split(":").last.split(",")[2].replaceAll(".", "/");
                           }
-                          if(message.split(":").first == "G57"){
+                          if(message.split(":").first == "G57" || message.split(":").first ==  "S57"){
                             knxGroup4.text = message.split(":").last.split(",")[3].replaceAll(".", "/");
                           }
-                          if(message.split(":").first == "G58"){
+                          if(message.split(":").first == "G58" || message.split(":").first ==  "S58"){
                             knxParam0 = message.split(":").last;
                           }
-                          if(message.split(":").first == "G59"){
+                          if(message.split(":").first == "G59"  || message.split(":").first ==  "S59"){
                             knxParam1 = message.split(":").last;
                           }
-                          if(message.split(":").first == "G70"){
+                          if(message.split(":").first == "G70" || message.split(":").first ==  "S70"){
                             mqttOnOff = "1" == message.split(":").last ? true : false;
                           }
-                          if(message.split(":").first == "S70"){
-                            mqttOnOff = "1" == message.split(":").last ? true : false;
-                          }
-                          if(message.split(":").first == "G71"){
+                          if(message.split(":").first == "G71"  || message.split(":").first ==  "S71"){
                             mqttClient.text = message.split(":").last;
                           }
-                          if(message.split(":").first == "G72"){
+                          if(message.split(":").first == "G72"  || message.split(":").first ==  "S72"){
                             mqttServer.text = message.split(":").last;
                           }
-                          if(message.split(":").first == "G73"){
+                          if(message.split(":").first == "G73"  || message.split(":").first ==  "S73"){
                             mqttUser.text = message.split(":").last;
                           }
-                          if(message.split(":").first == "G74"){
+                          if(message.split(":").first == "G74"  || message.split(":").first ==  "S74"){
                             mqttPort.text = message.split(":").last;
                           }
-                          if(message.split(":").first == "G75"){
+                          if(message.split(":").first == "G75"  || message.split(":").first ==  "S75"){
                             mqttTopic.text = message.split(":").last;
                           }
+
                         });
                       }
                       if(characteristic.properties.write){
-                        writeCharacteristic = characteristic;
+                        writeCharacteristic = characteristic.;
                         await Future<void>.delayed( const Duration(milliseconds: 300));
                         if(!loginSuccessful){
                           try{
@@ -6957,6 +6986,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   Navigator.pop(context);
                 }
               }
+              break;
             }
           }
         }
