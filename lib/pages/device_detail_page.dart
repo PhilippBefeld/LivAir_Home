@@ -4445,7 +4445,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 screenIndex = 26;
               });
               await sendBTLine(["G54","G55","G56","G57","G58","G59"]);
-              print(knxParam1);
               setState(() {
 
               });
@@ -5714,15 +5713,14 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
             children: [
               OutlinedButton(
                 onPressed: (){
-        
-                  sendBTLine(["G54"]);
+                  sendBTLine(["S54"]);
                   //sendBTLine("S33:1");
                 },
                 style: OutlinedButton.styleFrom(
                     backgroundColor: const Color(0xff0099f0),
                     disabledBackgroundColor: Colors.grey
                 ),
-                child: Text(AppLocalizations.of(context)!.bootKNX,style: const TextStyle(color: Colors.white)),
+                child: Text(AppLocalizations.of(context)!.bootKNX,style: const TextStyle(color: Colors.white), textAlign: TextAlign.center,),
               ),
               SizedBox(
                 height: 30,
@@ -5815,7 +5813,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       value: knxProgMode,
                       onChanged: (value){
                         knxProgMode = value;
-                        sendBTLine(["S35"]);
+                        sendBTLine(["S55"]);
                       },
                     activeTrackColor: Colors.green,
                     inactiveThumbColor: Colors.white,
@@ -5824,7 +5822,13 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 ],
               ),
               SizedBox(
-                height: 30,
+                height: 15,
+              ),
+              Divider(
+                  color: Colors.grey[500]
+              ),
+              SizedBox(
+                height: 20,
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -5856,7 +5860,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         setState(() {
                           if (text.isEmpty) {
                             knxPhysIDError = AppLocalizations.of(context)!.plsEnterAddress;
-                          } else if (!RegExp(r'^\d{1,3}\.\d{1,3}\.\d{1,3}$').hasMatch(knxPhysAddress.text)) {
+                          } else if (!RegExp(r'^\d{1,3}\/\d{1,3}\/\d{1,3}$').hasMatch(knxPhysAddress.text)) {
                             knxPhysIDError = AppLocalizations.of(context)!.invalidAddress;
                           } else {
                             knxPhysIDError = null;
@@ -5869,21 +5873,13 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 ],
               ),
               SizedBox(
-                height: 10,
+                height: 20,
               ),
-              OutlinedButton(
-                onPressed: knxOnOff ? (){
-                  if(!knxOnOff)return;
-                  sendBTLine(["S36:${knxPhysAddress.text}"]);
-                } : null,
-                style: OutlinedButton.styleFrom(
-                    backgroundColor: const Color(0xff0099f0),
-                    disabledBackgroundColor: Colors.grey
-                ),
-                child: Text(AppLocalizations.of(context)!.apply,style: const TextStyle(color: Colors.white)),
+              Divider(
+                  color: Colors.grey[500]
               ),
               SizedBox(
-                height: 30,
+                height: 20,
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -5915,8 +5911,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         setState(() {
                           if (text.isEmpty) {
                             knxGroupError1 = null;
-                          } else if (!RegExp(r'^\d{1,3}\.\d{1,3}\.\d{1,3}$').hasMatch(knxGroup1.text)) {
-                            knxGroupError1 = AppLocalizations.of(context)!.invalidAddress;
+                          } else if (!RegExp(r'^\d{1,3}\/\d{1,3}\/\d{1,3}$').hasMatch(knxGroup1.text)) {
+                            knxGroupError1 = AppLocalizations.of(context)!.invalidAddressBackslash;
                           } else {
                             knxGroupError1 = null;
                           }
@@ -5959,8 +5955,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         setState(() {
                           if (text.isEmpty) {
                             knxGroupError2 = null;
-                          } else if (!RegExp(r'^\d{1,3}\.\d{1,3}\.\d{1,3}$').hasMatch(knxGroup2.text)) {
-                            knxGroupError2 = AppLocalizations.of(context)!.invalidAddress;
+                          } else if (!RegExp(r'^\d{1,3}\/\d{1,3}\/\d{1,3}$').hasMatch(knxGroup2.text)) {
+                            knxGroupError2 = AppLocalizations.of(context)!.invalidAddressBackslash;
                           } else {
                             knxGroupError2 = null;
                           }
@@ -6003,8 +5999,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         setState(() {
                           if (text.isEmpty) {
                             knxGroupError3 = null;
-                          } else if (!RegExp(r'^\d{1,3}\.\d{1,3}\.\d{1,3}$').hasMatch(knxGroup3.text)) {
-                            knxGroupError3 = AppLocalizations.of(context)!.invalidAddress;
+                          } else if (!RegExp(r'^\d{1,3}\/\d{1,3}\/\d{1,3}$').hasMatch(knxGroup3.text)) {
+                            knxGroupError3 = AppLocalizations.of(context)!.invalidAddressBackslash;
                           } else {
                             knxGroupError3 = null;
                           }
@@ -6047,8 +6043,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         setState(() {
                           if (text.isEmpty) {
                             knxGroupError4 = null;
-                          } else if (!RegExp(r'^\d{1,3}\.\d{1,3}\.\d{1,3}$').hasMatch(knxGroup4.text)) {
-                            knxGroupError4 = AppLocalizations.of(context)!.invalidAddress;
+                          } else if (!RegExp(r'^\d{1,3}\/\d{1,3}\/\d{1,3}$').hasMatch(knxGroup4.text)) {
+                            knxGroupError4 = AppLocalizations.of(context)!.invalidAddressBackslash;
                           } else {
                             knxGroupError4 = null;
                           }
@@ -6061,20 +6057,11 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               SizedBox(
                 height: 20,
               ),
-              OutlinedButton(
-                onPressed: knxOnOff ? (){
-                  if(knxGroupError1!=null || knxGroupError2!=null || knxGroupError3!=null || knxGroupError4!=null) return;
-                  if(!knxOnOff)return;
-                  sendBTLine(["S37:${knxGroup1.text}&${knxGroup2.text}&${knxGroup3.text}&${knxGroup4.text}"]);
-                } : null,
-                style: OutlinedButton.styleFrom(
-                    backgroundColor: const Color(0xff0099f0),
-                    disabledBackgroundColor: Colors.grey
-                ),
-                child: Text(AppLocalizations.of(context)!.apply,style: const TextStyle(color: Colors.white)),
+              Divider(
+                  color: Colors.grey[500]
               ),
               SizedBox(
-                height: 30,
+                height: 20,
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.start,
@@ -6088,9 +6075,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   children: [
                     OutlinedButton(
                       onPressed: knxOnOff ? (){
-                        if(!knxOnOff)return;
                         knxParam0 = "0";
-                        sendBTLine(["S38:0"]);
                       } : null,
                       style: OutlinedButton.styleFrom(
                           backgroundColor: knxParam0 == "0" ? const Color(0xff0099f0) : Colors.grey,
@@ -6103,9 +6088,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     ),
                     OutlinedButton(
                       onPressed: knxOnOff ? (){
-                        if(!knxOnOff)return;
                         knxParam0 = "1";
-                        sendBTLine(["S38:1"]);
                       } : null,
                       style: OutlinedButton.styleFrom(
                           backgroundColor: knxParam0 == "1" ? const Color(0xff0099f0) : Colors.grey,
@@ -6118,9 +6101,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     ),
                     OutlinedButton(
                       onPressed: knxOnOff ? (){
-                        if(!knxOnOff)return;
                         knxParam0 = "2";
-                        sendBTLine(["S38:2"]);
                       } : null,
                       style: OutlinedButton.styleFrom(
                           backgroundColor: knxParam0 == "2" ? const Color(0xff0099f0) : Colors.grey,
@@ -6133,9 +6114,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     ),
                     OutlinedButton(
                       onPressed: knxOnOff ? (){
-                        if(!knxOnOff)return;
                         knxParam0 = "3";
-                        sendBTLine(["S38:3"]);
                       } : null,
                       style: OutlinedButton.styleFrom(
                           backgroundColor: knxParam0 == "3" ? const Color(0xff0099f0) : Colors.grey,
@@ -6148,9 +6127,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     ),
                     OutlinedButton(
                       onPressed: knxOnOff ? (){
-                        if(!knxOnOff)return;
                         knxParam0 = "4";
-                        sendBTLine(["S38:4"]);
                       } : null,
                       style: OutlinedButton.styleFrom(
                           backgroundColor: knxParam0 == "4" ? const Color(0xff0099f0) : Colors.grey,
@@ -6163,9 +6140,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     ),
                     OutlinedButton(
                       onPressed: knxOnOff ? (){
-                        if(!knxOnOff)return;
                         knxParam0 = "5";
-                        sendBTLine(["S38:5"]);
                       } : null,
                       style: OutlinedButton.styleFrom(
                           backgroundColor: knxParam0 == "5" ? const Color(0xff0099f0) : Colors.grey,
@@ -6177,7 +6152,13 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 ),
               ),
               SizedBox(
-                height: 30,
+                height: 20,
+              ),
+              Divider(
+                  color: Colors.grey[500]
+              ),
+              SizedBox(
+                height: 20,
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.start,
@@ -6191,7 +6172,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   children: [
                     OutlinedButton(
                       onPressed: knxOnOff ? (){
-                        sendBTLine(["S39:0"]);
+                        knxParam1 = "0";
                       } : null,
                       style: OutlinedButton.styleFrom(
                           backgroundColor: knxParam1 == "0" ? const Color(0xff0099f0) : Colors.grey,
@@ -6204,8 +6185,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     ),
                     OutlinedButton(
                       onPressed: knxOnOff ? (){
-                        if(!knxOnOff)return;
-                        sendBTLine(["S39:1"]);
+                        knxParam1 = "1";
                       } : null,
                       style: OutlinedButton.styleFrom(
                           backgroundColor: knxParam1 == "1" ? const Color(0xff0099f0) : Colors.grey,
@@ -6218,8 +6198,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     ),
                     OutlinedButton(
                       onPressed: knxOnOff ? (){
-                        if(!knxOnOff)return;
-                        sendBTLine(["S39:2"]);
+                        knxParam1 = "2";
                       } : null,
                       style: OutlinedButton.styleFrom(
                           backgroundColor: knxParam1 == "2" ? const Color(0xff0099f0) : Colors.grey,
@@ -6232,8 +6211,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     ),
                     OutlinedButton(
                       onPressed: knxOnOff ? (){
-                        if(!knxOnOff)return;
-                        sendBTLine(["S39:3"]);
+                        knxParam1 = "3";
                       } : null,
                       style: OutlinedButton.styleFrom(
                           backgroundColor: knxParam1 == "3" ? const Color(0xff0099f0) : Colors.grey,
@@ -6243,6 +6221,32 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     ),
                   ],
                 ),
+              ),
+              SizedBox(
+                height: 20,
+              ),
+              Divider(
+                  color: Colors.grey[500]
+              ),
+              SizedBox(
+                height: 20,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  OutlinedButton(
+                    onPressed: knxOnOff ? (){
+                      if(knxGroupError1!=null || knxGroupError2!=null || knxGroupError3!=null || knxGroupError4!=null) return;
+                      if(!knxOnOff)return;
+                      sendBTLine(["S56:${knxPhysAddress.text}","S57:${knxGroup1.text.replaceAll("/", ".")}&${knxGroup2.text.replaceAll("/", ".")}&${knxGroup3.text.replaceAll("/", ".")}&${knxGroup4.text.replaceAll("/", ".")}", "S58:${knxParam0}", "S59:${knxParam1}"]);
+                    } : null,
+                    style: OutlinedButton.styleFrom(
+                        backgroundColor: const Color(0xff0099f0),
+                        disabledBackgroundColor: Colors.grey
+                    ),
+                    child: Text(AppLocalizations.of(context)!.apply,style: const TextStyle(color: Colors.white)),
+                  ),
+                ],
               ),
             ],
           ),
@@ -6282,233 +6286,179 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           ],
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(AppLocalizations.of(context)!.cloudOnOff),
-                Switch(
-                  value: cloudOnOff,
-                  onChanged: (value) async{
-                    if(!cloudOnOff) {
-                      await sendBTLine(["S66:1"]);
-                    } else {
-                      await sendBTLine(["S66:0"]);
-                    }
-                    setState(() {
+      body: SingleChildScrollView(
+        scrollDirection: Axis.vertical,
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(AppLocalizations.of(context)!.cloudOnOff),
+                  Switch(
+                    value: cloudOnOff,
+                    onChanged: (value) async{
+                      if(!cloudOnOff) {
+                        await sendBTLine(["S66:1"]);
+                      } else {
+                        await sendBTLine(["S66:0"]);
+                      }
+                      setState(() {
 
-                    });
-                  },
-                  activeTrackColor: Colors.green,
-                  inactiveTrackColor: Colors.red,
-                  inactiveThumbColor: Colors.white,
-                ),
-              ],
-            ),
-            SizedBox(
-              height: 30,
-            ),
-            Row(
-              children: [
-                Flexible(
-                  child: TextField(
-                    controller: cloudServer,
-                    decoration: InputDecoration(
-                      labelText: "Server",
-                      floatingLabelStyle: TextStyle(color: Colors.black),
-                      floatingLabelBehavior: FloatingLabelBehavior.always,
-                      enabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      focusedBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      disabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      fillColor: Colors.white,
-                      filled: true,
+                      });
+                    },
+                    activeTrackColor: Colors.green,
+                    inactiveTrackColor: Colors.red,
+                    inactiveThumbColor: Colors.white,
+                  ),
+                ],
+              ),
+              SizedBox(
+                height: 30,
+              ),
+              Row(
+                children: [
+                  Flexible(
+                    child: TextField(
+                      controller: cloudServer,
+                      decoration: InputDecoration(
+                        labelText: "Server",
+                        floatingLabelStyle: TextStyle(color: Colors.black),
+                        floatingLabelBehavior: FloatingLabelBehavior.always,
+                        enabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        disabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        fillColor: Colors.white,
+                        filled: true,
 
-                      hintText: "Server",
-                      hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                        hintText: "Server",
+                        hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-            SizedBox(
-              height: 10,
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton(
-                  onPressed: cloudOnOff ? (){
-                    if(!cloudOnOff)return;
-                    sendBTLine(["S63:${cloudServer.text}"]);
-                  } : null,
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: const Color(0xff0099f0),
-                    disabledBackgroundColor: Colors.grey
-                  ),
-                  child: Text(AppLocalizations.of(context)!.apply,style: const TextStyle(color: Colors.white)),
-                )
-              ],
-            ),
-            SizedBox(
-              height: 20,
-            ),
-            Row(
-              children: [
-                Flexible(
-                  child: TextField(
-                    controller: cloudPage,
-                    decoration: InputDecoration(
-                      labelText: AppLocalizations.of(context)!.page,
-                      floatingLabelStyle: TextStyle(color: Colors.black),
-                      floatingLabelBehavior: FloatingLabelBehavior.always,
-                      enabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      focusedBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      disabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      fillColor: Colors.white,
-                      filled: true,
+                ],
+              ),
+              SizedBox(
+                height: 20,
+              ),
+              Row(
+                children: [
+                  Flexible(
+                    child: TextField(
+                      controller: cloudPage,
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.of(context)!.page,
+                        floatingLabelStyle: TextStyle(color: Colors.black),
+                        floatingLabelBehavior: FloatingLabelBehavior.always,
+                        enabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        disabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        fillColor: Colors.white,
+                        filled: true,
 
-                      hintText: AppLocalizations.of(context)!.page,
-                      hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                        hintText: AppLocalizations.of(context)!.page,
+                        hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-            SizedBox(
-              height: 10,
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton(
-                  onPressed: cloudOnOff ? (){
-                    if(!cloudOnOff)return;
-                    sendBTLine(["S64:${cloudPage.text}"]);
-                  } : null,
-                  style: OutlinedButton.styleFrom(
-                      backgroundColor: const Color(0xff0099f0),
-                      disabledBackgroundColor: Colors.grey
-                  ),
-                  child: Text(AppLocalizations.of(context)!.apply,style: const TextStyle(color: Colors.white)),
-                )
-              ],
-            ),
-            SizedBox(
-              height: 20,
-            ),
-            Row(
-              children: [
-                Flexible(
-                  child: TextField(
-                    controller: cloudPaChain,
-                    decoration: InputDecoration(
-                      labelText: AppLocalizations.of(context)!.characters,
-                      floatingLabelStyle: TextStyle(color: Colors.black),
-                      floatingLabelBehavior: FloatingLabelBehavior.always,
-                      enabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      focusedBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      disabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      fillColor: Colors.white,
-                      filled: true,
+                ],
+              ),
+              SizedBox(
+                height: 20,
+              ),
+              Row(
+                children: [
+                  Flexible(
+                    child: TextField(
+                      controller: cloudPaChain,
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.of(context)!.characters,
+                        floatingLabelStyle: TextStyle(color: Colors.black),
+                        floatingLabelBehavior: FloatingLabelBehavior.always,
+                        enabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        disabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        fillColor: Colors.white,
+                        filled: true,
 
-                      hintText: AppLocalizations.of(context)!.characters,
-                      hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                        hintText: AppLocalizations.of(context)!.characters,
+                        hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-            SizedBox(
-              height: 10,
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton(
-                  onPressed: cloudOnOff ? (){
-                    if(!cloudOnOff)return;
-                    sendBTLine(["S65:${cloudPage.text}"]);
-                  } : null,
-                  style: OutlinedButton.styleFrom(
-                      backgroundColor: const Color(0xff0099f0),
-                      disabledBackgroundColor: Colors.grey
-                  ),
-                  child: Text(AppLocalizations.of(context)!.apply,style: const TextStyle(color: Colors.white)),
-                )
-              ],
-            ),
-            SizedBox(
-              height: 20,
-            ),
-            Row(
-              children: [
-                Flexible(
-                  child: TextField(
-                    controller: cloudPage,
-                    decoration: InputDecoration(
-                      labelText: AppLocalizations.of(context)!.prefix,
-                      floatingLabelStyle: TextStyle(color: Colors.black),
-                      floatingLabelBehavior: FloatingLabelBehavior.always,
-                      enabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      focusedBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      disabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      fillColor: Colors.white,
-                      filled: true,
+                ],
+              ),
+              SizedBox(
+                height: 20,
+              ),
+              Row(
+                children: [
+                  Flexible(
+                    child: TextField(
+                      controller: cloudPre,
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.of(context)!.prefix,
+                        floatingLabelStyle: TextStyle(color: Colors.black),
+                        floatingLabelBehavior: FloatingLabelBehavior.always,
+                        enabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        disabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        fillColor: Colors.white,
+                        filled: true,
 
-                      hintText: AppLocalizations.of(context)!.prefix,
-                      hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                        hintText: AppLocalizations.of(context)!.prefix,
+                        hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-            SizedBox(
-              height: 10,
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton(
-                  onPressed: cloudOnOff ? (){
-                    if(!cloudOnOff)return;
-                    sendBTLine(["S67:${cloudPage.text}"]);
-                  } : null,
-                  style: OutlinedButton.styleFrom(
-                      backgroundColor: const Color(0xff0099f0),
-                      disabledBackgroundColor: Colors.grey
-                  ),
-                  child: Text(AppLocalizations.of(context)!.apply,style: const TextStyle(color: Colors.white)),
-                )
-              ],
-            ),
-          ],
+                ],
+              ),
+              SizedBox(
+                height: 10,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  OutlinedButton(
+                    onPressed: cloudOnOff ? (){
+                      if(!cloudOnOff)return;
+                      sendBTLine(["S64:${cloudServer.text}","S65:${cloudPage.text}","S66:${cloudPaChain.text}","S67:${cloudPre.text}"]);
+                    } : null,
+                    style: OutlinedButton.styleFrom(
+                        backgroundColor: const Color(0xff0099f0),
+                        disabledBackgroundColor: Colors.grey
+                    ),
+                    child: Text(AppLocalizations.of(context)!.apply,style: const TextStyle(color: Colors.white)),
+                  )
+                ],
+              ),
+            ],
+          ),
         ),
       )
     );
@@ -6545,332 +6495,270 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           ],
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(AppLocalizations.of(context)!.mqttOnOff),
-                Switch(
-                    value: mqttOnOff,
-                    onChanged: (value){
-                      AlertDialog alert = AlertDialog(
-                        title: Text(AppLocalizations.of(context)!.mqttOnOff, style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 20),),
-                        content: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(AppLocalizations.of(context)!.deviceWillRestart),
-                            SizedBox(
-                              height: 30,
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: OutlinedButton(
-                                        onPressed:() async{
-                                          if(!mqttOnOff) {
-                                            await sendBTLine(["S70:1"]);
-                                          } else {
-                                            await sendBTLine(["S70:0"]);
-                                          }
-                                          setState(() {
-                                      
-                                          });
-                                        },
-                                        style: OutlinedButton.styleFrom(
-                                            backgroundColor: const Color(0xff0099f0),
-                                            disabledBackgroundColor: Colors.grey,
-                                            minimumSize: Size(100, 50)
+      body: SingleChildScrollView(
+        scrollDirection: Axis.vertical,
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(AppLocalizations.of(context)!.mqttOnOff),
+                  Switch(
+                      value: mqttOnOff,
+                      onChanged: (value){
+                        AlertDialog alert = AlertDialog(
+                          title: Text(AppLocalizations.of(context)!.mqttOnOff, style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 20),),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(AppLocalizations.of(context)!.deviceWillRestart),
+                              SizedBox(
+                                height: 30,
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: OutlinedButton(
+                                          onPressed:() async{
+                                            if(!mqttOnOff) {
+                                              await sendBTLine(["S70:1"]);
+                                            } else {
+                                              await sendBTLine(["S70:0"]);
+                                            }
+                                            setState(() {
+
+                                            });
+                                          },
+                                          style: OutlinedButton.styleFrom(
+                                              backgroundColor: const Color(0xff0099f0),
+                                              disabledBackgroundColor: Colors.grey,
+                                              minimumSize: Size(100, 50)
+                                          ),
+                                          child: Text(AppLocalizations.of(context)!.apply,style: const TextStyle(color: Colors.white)),
                                         ),
-                                        child: Text(AppLocalizations.of(context)!.apply,style: const TextStyle(color: Colors.white)),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(
-                                  height: 10,
-                                ),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: OutlinedButton(
-                                        onPressed: (){
-                                          Navigator.pop(context);
-                                          setState(() {
-                                      
-                                          });
-                                        },
-                                        style: OutlinedButton.styleFrom(backgroundColor: Colors.white,minimumSize: Size(100, 50)),
-                                        child: Text(AppLocalizations.of(context)!.cancel,style: const TextStyle(color: Colors.black)),
+                                    ],
+                                  ),
+                                  SizedBox(
+                                    height: 10,
+                                  ),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: OutlinedButton(
+                                          onPressed: (){
+                                            Navigator.pop(context);
+                                            setState(() {
+
+                                            });
+                                          },
+                                          style: OutlinedButton.styleFrom(backgroundColor: Colors.white,minimumSize: Size(100, 50)),
+                                          child: Text(AppLocalizations.of(context)!.cancel,style: const TextStyle(color: Colors.black)),
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ],
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context){
+                            return alert;
+                          },
+                        );
+                      },
+                    activeTrackColor: Colors.green,
+                    inactiveTrackColor: Colors.red,
+                    inactiveThumbColor: Colors.white,
+                  ),
+                ],
+              ),
+              SizedBox(
+                height: 30,
+              ),
+              Row(
+                children: [
+                  Flexible(
+                    child: TextField(
+                      controller: mqttClient,
+                      decoration: InputDecoration(
+                        labelText: "Client",
+                        floatingLabelStyle: TextStyle(color: Colors.black),
+                        floatingLabelBehavior: FloatingLabelBehavior.always,
+                        enabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
                         ),
-                      );
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context){
-                          return alert;
-                        },
-                      );
-                    },
-                  activeTrackColor: Colors.green,
-                  inactiveTrackColor: Colors.red,
-                  inactiveThumbColor: Colors.white,
-                ),
-              ],
-            ),
-            SizedBox(
-              height: 30,
-            ),
-            Row(
-              children: [
-                Flexible(
-                  child: TextField(
-                    controller: mqttClient,
-                    decoration: InputDecoration(
-                      labelText: "Client",
-                      floatingLabelStyle: TextStyle(color: Colors.black),
-                      floatingLabelBehavior: FloatingLabelBehavior.always,
-                      enabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      focusedBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      disabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      fillColor: Colors.white,
-                      filled: true,
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        disabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        fillColor: Colors.white,
+                        filled: true,
 
-                      hintText: "Client",
-                      hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                        hintText: "Client",
+                        hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                      ),
+                      enabled: mqttOnOff,
                     ),
-                    enabled: mqttOnOff,
                   ),
-                ),
-              ],
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton(
-                  onPressed: mqttOnOff ? (){
-                    if(!mqttOnOff)return;
-                    sendBTLine(["S71:${mqttClient.text}"]);
-                  } : null,
-                  style: OutlinedButton.styleFrom(
-                      backgroundColor: const Color(0xff0099f0),
-                      disabledBackgroundColor: Colors.grey
-                  ),
-                  child: Text(AppLocalizations.of(context)!.apply,style: const TextStyle(color: Colors.white)),
-                )
-              ],
-            ),
-            SizedBox(
-              height: 20,
-            ),
-            Row(
-              children: [
-                Flexible(
-                  child: TextField(
-                    controller: mqttServer,
-                    decoration: InputDecoration(
-                      labelText: "Server",
-                      floatingLabelStyle: TextStyle(color: Colors.black),
-                      floatingLabelBehavior: FloatingLabelBehavior.always,
-                      enabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      focusedBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      disabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      fillColor: Colors.white,
-                      filled: true,
+                ],
+              ),
+              SizedBox(
+                height: 20,
+              ),
+              Row(
+                children: [
+                  Flexible(
+                    child: TextField(
+                      controller: mqttServer,
+                      decoration: InputDecoration(
+                        labelText: "Server",
+                        floatingLabelStyle: TextStyle(color: Colors.black),
+                        floatingLabelBehavior: FloatingLabelBehavior.always,
+                        enabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        disabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        fillColor: Colors.white,
+                        filled: true,
 
-                      hintText: "Server",
-                      hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                        hintText: "Server",
+                        hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                      ),
+                      enabled: mqttOnOff,
                     ),
-                    enabled: mqttOnOff,
                   ),
-                ),
-              ],
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton(
-                  onPressed: mqttOnOff ? (){
-                    if(!mqttOnOff)return;
-                    sendBTLine(["S72:${mqttServer.text}"]);
+                ],
+              ),
+              SizedBox(
+                height: 20,
+              ),
+              Row(
+                children: [
+                  Flexible(
+                    child: TextField(
+                      controller: mqttUser,
+                      decoration: InputDecoration(
+                        labelText: "User",
+                        floatingLabelStyle: TextStyle(color: Colors.black),
+                        floatingLabelBehavior: FloatingLabelBehavior.always,
+                        enabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        disabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        fillColor: Colors.white,
+                        filled: true,
 
-                  } : null,
-                  style: OutlinedButton.styleFrom(
-                      backgroundColor: const Color(0xff0099f0),
-                      disabledBackgroundColor: Colors.grey
-                  ),
-                  child: Text(AppLocalizations.of(context)!.apply,style: const TextStyle(color: Colors.white)),
-                )
-              ],
-            ),
-            SizedBox(
-              height: 20,
-            ),
-            Row(
-              children: [
-                Flexible(
-                  child: TextField(
-                    controller: mqttUser,
-                    decoration: InputDecoration(
-                      labelText: "User",
-                      floatingLabelStyle: TextStyle(color: Colors.black),
-                      floatingLabelBehavior: FloatingLabelBehavior.always,
-                      enabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        hintText: "User",
+                        hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
                       ),
-                      focusedBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      disabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      fillColor: Colors.white,
-                      filled: true,
-
-                      hintText: "User",
-                      hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                      enabled: mqttOnOff,
                     ),
-                    enabled: mqttOnOff,
                   ),
-                ),
-              ],
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton(
-                  onPressed: mqttOnOff ? (){
-                    if(!mqttOnOff)return;
-                    sendBTLine(["S73:${mqttUser.text}"]);
-                  } : null,
-                  style: OutlinedButton.styleFrom(
-                      backgroundColor: const Color(0xff0099f0),
-                      disabledBackgroundColor: Colors.grey
-                  ),
-                  child: Text(AppLocalizations.of(context)!.apply,style: const TextStyle(color: Colors.white)),
-                )
-              ],
-            ),
-            SizedBox(
-              height: 20,
-            ),
-            Row(
-              children: [
-                Flexible(
-                  child: TextField(
-                    controller: mqttPort,
-                    decoration: InputDecoration(
-                      labelText: "Port",
-                      floatingLabelStyle: TextStyle(color: Colors.black),
-                      floatingLabelBehavior: FloatingLabelBehavior.always,
-                      enabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      focusedBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      disabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      fillColor: Colors.white,
-                      filled: true,
+                ],
+              ),
+              SizedBox(
+                height: 20,
+              ),
+              Row(
+                children: [
+                  Flexible(
+                    child: TextField(
+                      controller: mqttPort,
+                      decoration: InputDecoration(
+                        labelText: "Port",
+                        floatingLabelStyle: TextStyle(color: Colors.black),
+                        floatingLabelBehavior: FloatingLabelBehavior.always,
+                        enabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        disabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        fillColor: Colors.white,
+                        filled: true,
 
-                      hintText: "Port",
-                      hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                        hintText: "Port",
+                        hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                      ),
+                      enabled: mqttOnOff,
                     ),
-                    enabled: mqttOnOff,
                   ),
-                ),
-              ],
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton(
-                  onPressed: mqttOnOff ? (){
-                    if(!mqttOnOff)return;
-                    sendBTLine(["S74:${mqttPort.text}"]);
-                  } : null,
-                  style: OutlinedButton.styleFrom(
-                      backgroundColor: const Color(0xff0099f0),
-                      disabledBackgroundColor: Colors.grey
-                  ),
-                  child: Text(AppLocalizations.of(context)!.apply,style: const TextStyle(color: Colors.white)),
-                )
-              ],
-            ),
-            SizedBox(
-              height: 20,
-            ),
-            Row(
-              children: [
-                Flexible(
-                  child: TextField(
-                    controller: mqttTopic,
-                    decoration: InputDecoration(
-                      labelText: "Topic",
-                      floatingLabelStyle: TextStyle(color: Colors.black),
-                      floatingLabelBehavior: FloatingLabelBehavior.always,
-                      enabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      focusedBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      disabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
-                      ),
-                      fillColor: Colors.white,
-                      filled: true,
+                ],
+              ),
+              SizedBox(
+                height: 20,
+              ),
+              Row(
+                children: [
+                  Flexible(
+                    child: TextField(
+                      controller: mqttTopic,
+                      decoration: InputDecoration(
+                        labelText: "Topic",
+                        floatingLabelStyle: TextStyle(color: Colors.black),
+                        floatingLabelBehavior: FloatingLabelBehavior.always,
+                        enabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        disabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                        ),
+                        fillColor: Colors.white,
+                        filled: true,
 
-                      hintText: "Topic",
-                      hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                        hintText: "Topic",
+                        hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                      ),
+                      enabled: mqttOnOff,
                     ),
-                    enabled: mqttOnOff,
                   ),
-                ),
-              ],
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton(
-                    onPressed: mqttOnOff ? (){
-                      if(!mqttOnOff)return;
-                      sendBTLine(["S75:${mqttTopic.text}"]);
-                    } : null,
-                  style: OutlinedButton.styleFrom(
-                      backgroundColor: const Color(0xff0099f0),
-                      disabledBackgroundColor: Colors.grey
-                  ),
-                    child: Text(AppLocalizations.of(context)!.apply,style: const TextStyle(color: Colors.white)),
-                )
-              ],
-            ),
-          ],
+                ],
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  OutlinedButton(
+                      onPressed: mqttOnOff ? (){
+                        if(!mqttOnOff)return;
+                        sendBTLine(["S71:${mqttClient.text}","S72:${mqttServer.text}","S73:${mqttUser.text}","S74:${mqttPort.text}","S75:${mqttTopic.text}"]);
+                      } : null,
+                    style: OutlinedButton.styleFrom(
+                        backgroundColor: const Color(0xff0099f0),
+                        disabledBackgroundColor: Colors.grey
+                    ),
+                      child: Text(AppLocalizations.of(context)!.apply,style: const TextStyle(color: Colors.white)),
+                  )
+                ],
+              ),
+            ],
+          ),
         ),
       )
     );
@@ -6967,7 +6855,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           if(message == 'LOGIN OK'){
                             lines.forEach((line)async{
                               await writeCharacteristic!.write(utf8.encode(line));
-                              await Future<void>.delayed( const Duration(milliseconds: 500));
+                              await Future<void>.delayed( const Duration(milliseconds: 50));
                             });
                             await btDevice!.disconnect(timeout: 1);
                             btDevice!.removeBond();
@@ -7005,16 +6893,16 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             knxPhysAddress.text = message.split(":").last;
                           }
                           if(message.split(":").first == "G57"){
-                            knxGroup1.text = message.split(":").last.split(",")[0];
+                            knxGroup1.text = message.split(":").last.split(",")[0].replaceAll(".", "/");
                           }
                           if(message.split(":").first == "G57"){
-                            knxGroup2.text = message.split(":").last.split(",")[1];
+                            knxGroup2.text = message.split(":").last.split(",")[1].replaceAll(".", "/");
                           }
                           if(message.split(":").first == "G57"){
-                            knxGroup3.text = message.split(":").last.split(",")[2];
+                            knxGroup3.text = message.split(":").last.split(",")[2].replaceAll(".", "/");
                           }
                           if(message.split(":").first == "G57"){
-                            knxGroup4.text = message.split(":").last.split(",")[3];
+                            knxGroup4.text = message.split(":").last.split(",")[3].replaceAll(".", "/");
                           }
                           if(message.split(":").first == "G58"){
                             knxParam0 = message.split(":").last;

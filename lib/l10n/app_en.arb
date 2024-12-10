@@ -250,7 +250,7 @@
     "selectTimezone": "Select timezone:",
     "diagramType": "Diagram type",
     "showRealtime": "Show realtime values",
-    "bootKNX": "Boot for KNX programming (will restart device)",
+    "bootKNX": "Boot for KNX parameter programming (will restart device)",
     "knxOnOff": "KNX on/off",
     "knxProgMode": "KNX programming mode",
     "cloudOnOff": "Cloud on/off",
@@ -273,12 +273,13 @@
     "physID": "Physical ID",
     "plsEnterAddress": "Please enter an anddress",
     "invalidAddress": "Invalid format. Use XXX.XXX.XXX.",
+    "invalidAddressBackslash": "Invalid format. Use XXX/XXX/XXX.",
     "groupAddress1": "Group address 1",
     "groupAddress2": "Group address 2",
     "groupAddress3": "Group address 3",
     "groupAddress4": "Group address 4",
     "bootTime": "Booting time",
-    "send": "send",
+    "send": "Send",
     "deact": "Deact.",
     "deviceWillRestart": "The device will restart\nafter applying the changes."
 }
