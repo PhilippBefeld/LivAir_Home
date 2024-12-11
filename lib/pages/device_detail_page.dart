@@ -3382,396 +3382,398 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           ],
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(AppLocalizations.of(context)!.sendSettWithBT, textAlign: TextAlign.center, style: TextStyle(fontSize: 12),),
-                Switch(
-                    value: transmitionMethodSettings,
-                    onChanged: (value){
-                      transmitionMethodSettings = value;
-                      setState(() {
-
-                      });
-                    },
-                  activeColor: const Color(0xff0099F0),
-                  activeTrackColor: const Color(0xffCCEBFC),
-                  inactiveTrackColor: Colors.grey,
-                  inactiveThumbColor: Colors.white30,
-                ),
-              ],
-            ),
-            Container(
-              height: 15,
-              decoration: const BoxDecoration(
-                border: Border(bottom: BorderSide(width: 1,color: Color(0xffb0bec5))),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(AppLocalizations.of(context)!.sendSettWithBT, textAlign: TextAlign.center, style: TextStyle(fontSize: 12),),
+                  Switch(
+                      value: transmitionMethodSettings,
+                      onChanged: (value){
+                        transmitionMethodSettings = value;
+                        setState(() {
+        
+                        });
+                      },
+                    activeColor: const Color(0xff0099F0),
+                    activeTrackColor: const Color(0xffCCEBFC),
+                    inactiveTrackColor: Colors.grey,
+                    inactiveThumbColor: Colors.white30,
+                  ),
+                ],
               ),
-            ),
-            SizedBox(
-              height: 15,
-            ),
-            Row(
-              children: [
-                Text(
-                  AppLocalizations.of(context)!.indicatorLights,
-                  style: const TextStyle(fontSize: 12),
-                )
-              ],
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                Text(
-                  d_led_t ? AppLocalizations.of(context)!.on : AppLocalizations.of(context)!.off,
-                  style: const TextStyle(fontSize: 16),
+              Container(
+                height: 15,
+                decoration: const BoxDecoration(
+                  border: Border(bottom: BorderSide(width: 1,color: Color(0xffb0bec5))),
                 ),
-                Expanded(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Switch(
-                        value: d_led_t,
-                        activeColor: const Color(0xff0099F0),
-                        activeTrackColor: const Color(0xffCCEBFC),
-                        inactiveTrackColor: Colors.grey,
-                        inactiveThumbColor: Colors.white30,
-                        onChanged: (value) async{
-                          d_led_t = value;
-                          sendTelemetry("u_led_t", d_led_t ? 1 : 0, "S02:${d_led_t ? 1 : 0}");
+              ),
+              SizedBox(
+                height: 15,
+              ),
+              Row(
+                children: [
+                  Text(
+                    AppLocalizations.of(context)!.indicatorLights,
+                    style: const TextStyle(fontSize: 12),
+                  )
+                ],
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Text(
+                    d_led_t ? AppLocalizations.of(context)!.on : AppLocalizations.of(context)!.off,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Switch(
+                          value: d_led_t,
+                          activeColor: const Color(0xff0099F0),
+                          activeTrackColor: const Color(0xffCCEBFC),
+                          inactiveTrackColor: Colors.grey,
+                          inactiveThumbColor: Colors.white30,
+                          onChanged: (value) async{
+                            d_led_t = value;
+                            sendTelemetry("u_led_t", d_led_t ? 1 : 0, "S02:${d_led_t ? 1 : 0}");
+                            setState(() {
+                            });
+                          },
+                        ),
+                        const SizedBox(width: 10,)
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Text(
+                    AppLocalizations.of(context)!.brightness,
+                    style: const TextStyle(
+                        fontSize: 12
+                    ),
+                  )
+                ],
+              ),
+              Slider(
+                label: d_led_tb.round().toString(),
+                activeColor: const Color(0xff0099F0),
+                thumbColor: Colors.white,
+                inactiveColor: Colors.black12,
+                divisions: 16,
+                min: 0.0,
+                max: 255.0,
+                value: d_led_tb,
+                onChangeEnd: (value){
+                  setState(() {
+                    d_led_tb = value.round().toDouble();
+                  });
+                  sendTelemetry("u_led_tb", d_led_tb.toInt(), "S05:${d_led_tb.toInt()}");
+                },
+                onChanged: (value){
+                  setState(() {
+                    d_led_tb = value.round().toDouble();
+                  });
+                },
+              ),
+              Text(AppLocalizations.of(context)!.indicatorAnimation,style: const TextStyle(fontSize: 12),),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  SizedBox(
+                    width: 160,
+                    child: OutlinedButton(
+                        onPressed: () async{
+                          try {
+                            final result = await InternetAddress.lookup('example.com');
+                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                            }
+                          } on SocketException catch (_) {
+                            Fluttertoast.showToast(
+                                msg: AppLocalizations.of(context)!.noInternetT
+                            );
+                            return;
+                          }
+                          sendTelemetry("u_led_tf", 0, "S06:0");
+                          displayAnimation = 0;
                           setState(() {
+        
                           });
                         },
-                      ),
-                      const SizedBox(width: 10,)
-                    ],
+                        style: OutlinedButton.styleFrom(backgroundColor: displayAnimation != 0 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(AppLocalizations.of(context)!.animationOff, style: TextStyle(color: displayAnimation != 0 ?  const Color(0xff0099F0) : Colors.white),),
+                          ],
+                        )
+                    ),
                   ),
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                Text(
-                  AppLocalizations.of(context)!.brightness,
-                  style: const TextStyle(
-                      fontSize: 12
-                  ),
-                )
-              ],
-            ),
-            Slider(
-              label: d_led_tb.round().toString(),
-              activeColor: const Color(0xff0099F0),
-              thumbColor: Colors.white,
-              inactiveColor: Colors.black12,
-              divisions: 16,
-              min: 0.0,
-              max: 255.0,
-              value: d_led_tb,
-              onChangeEnd: (value){
-                setState(() {
-                  d_led_tb = value.round().toDouble();
-                });
-                sendTelemetry("u_led_tb", d_led_tb.toInt(), "S05:${d_led_tb.toInt()}");
-              },
-              onChanged: (value){
-                setState(() {
-                  d_led_tb = value.round().toDouble();
-                });
-              },
-            ),
-            Text(AppLocalizations.of(context)!.indicatorAnimation,style: const TextStyle(fontSize: 12),),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                SizedBox(
-                  width: 160,
-                  child: OutlinedButton(
-                      onPressed: () async{
-                        try {
-                          final result = await InternetAddress.lookup('example.com');
-                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                  SizedBox(
+                    width: 160,
+                    child: OutlinedButton(
+                        onPressed: () async{
+                          try {
+                            final result = await InternetAddress.lookup('example.com');
+                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                            }
+                          } on SocketException catch (_) {
+                            Fluttertoast.showToast(
+                                msg: AppLocalizations.of(context)!.noInternetT
+                            );
+                            return;
                           }
-                        } on SocketException catch (_) {
-                          Fluttertoast.showToast(
-                              msg: AppLocalizations.of(context)!.noInternetT
-                          );
-                          return;
-                        }
-                        sendTelemetry("u_led_tf", 0, "S06:0");
-                        displayAnimation = 0;
-                        setState(() {
-
-                        });
-                      },
-                      style: OutlinedButton.styleFrom(backgroundColor: displayAnimation != 0 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(AppLocalizations.of(context)!.animationOff, style: TextStyle(color: displayAnimation != 0 ?  const Color(0xff0099F0) : Colors.white),),
-                        ],
-                      )
-                  ),
-                ),
-                SizedBox(
-                  width: 160,
-                  child: OutlinedButton(
-                      onPressed: () async{
-                        try {
-                          final result = await InternetAddress.lookup('example.com');
-                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                          }
-                        } on SocketException catch (_) {
-                          Fluttertoast.showToast(
-                              msg: AppLocalizations.of(context)!.noInternetT
-                          );
-                          return;
-                        }
-                        sendTelemetry("u_led_tf", 1, "S06:1");
-                        displayAnimation = 1;
-                        setState(() {
-
-                        });
-                      },
-                      style: OutlinedButton.styleFrom(backgroundColor: displayAnimation != 1 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(AppLocalizations.of(context)!.animationOn, style: TextStyle(color: displayAnimation != 1 ?  const Color(0xff0099F0) : Colors.white),),
-                        ],
-                      )
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 40,),
-            Row(
-              children: [
-                Text(AppLocalizations.of(context)!.display, style: const TextStyle(fontSize: 12),)
-              ],
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                Text(
-                  d_led_f ? AppLocalizations.of(context)!.on : AppLocalizations.of(context)!.off,
-                  style: const TextStyle(
-                      fontSize: 16
-                  ),
-                ),
-                Expanded(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Switch(
-                        value: d_led_f,
-                        activeColor: const Color(0xff0099F0),
-                        activeTrackColor: const Color(0xffCCEBFC),
-                        inactiveTrackColor: Colors.grey,
-                        inactiveThumbColor: Colors.white30,
-                        onChanged: (value) async{
-                          d_led_f = value;
-                          await sendTelemetry("u_led_f", d_led_f ? 1 : 0, "S03${d_led_f ? 1 : 0}");
+                          sendTelemetry("u_led_tf", 1, "S06:1");
+                          displayAnimation = 1;
                           setState(() {
-
+        
                           });
                         },
-                      ),
-                      const SizedBox(width: 10,)
-                    ],
+                        style: OutlinedButton.styleFrom(backgroundColor: displayAnimation != 1 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(AppLocalizations.of(context)!.animationOn, style: TextStyle(color: displayAnimation != 1 ?  const Color(0xff0099F0) : Colors.white),),
+                          ],
+                        )
+                    ),
                   ),
-                ),
-              ],
-            ),
-            Row(
-              children: [
-                Text(
-                  AppLocalizations.of(context)!.brightness,style: const TextStyle(fontSize: 12),)
-              ],
-            ),
-            Slider(
-              label: d_led_fb.round().toString(),
-              activeColor: const Color(0xff0099F0),
-              thumbColor: Colors.white,
-              inactiveColor: Colors.black12,
-              divisions: 15,
-              min: 0.0,
-              max: 15.0,
-              value: d_led_fb,
-              onChangeEnd: (value){
-                setState(() {
-                  d_led_fb = value.round().toDouble();
-                });
-                sendTelemetry("u_led_fb", d_led_fb.toInt(), "S04:${d_led_fb.toInt()}");
-              },
-              onChanged: (value){
-                setState(() {
-                  d_led_fb = value.round().toDouble();
-                });
-              },
-            ),
-            Text(AppLocalizations.of(context)!.displayType,style: const TextStyle(fontSize: 12),),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                SizedBox(
-                  width: 100,
-                  child: OutlinedButton(
-                      onPressed: () async{
-                        try {
-                          final result = await InternetAddress.lookup('example.com');
-                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                ],
+              ),
+              const SizedBox(height: 40,),
+              Row(
+                children: [
+                  Text(AppLocalizations.of(context)!.display, style: const TextStyle(fontSize: 12),)
+                ],
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Text(
+                    d_led_f ? AppLocalizations.of(context)!.on : AppLocalizations.of(context)!.off,
+                    style: const TextStyle(
+                        fontSize: 16
+                    ),
+                  ),
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Switch(
+                          value: d_led_f,
+                          activeColor: const Color(0xff0099F0),
+                          activeTrackColor: const Color(0xffCCEBFC),
+                          inactiveTrackColor: Colors.grey,
+                          inactiveThumbColor: Colors.white30,
+                          onChanged: (value) async{
+                            d_led_f = value;
+                            await sendTelemetry("u_led_f", d_led_f ? 1 : 0, "S03${d_led_f ? 1 : 0}");
+                            setState(() {
+        
+                            });
+                          },
+                        ),
+                        const SizedBox(width: 10,)
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Text(
+                    AppLocalizations.of(context)!.brightness,style: const TextStyle(fontSize: 12),)
+                ],
+              ),
+              Slider(
+                label: d_led_fb.round().toString(),
+                activeColor: const Color(0xff0099F0),
+                thumbColor: Colors.white,
+                inactiveColor: Colors.black12,
+                divisions: 15,
+                min: 0.0,
+                max: 15.0,
+                value: d_led_fb,
+                onChangeEnd: (value){
+                  setState(() {
+                    d_led_fb = value.round().toDouble();
+                  });
+                  sendTelemetry("u_led_fb", d_led_fb.toInt(), "S04:${d_led_fb.toInt()}");
+                },
+                onChanged: (value){
+                  setState(() {
+                    d_led_fb = value.round().toDouble();
+                  });
+                },
+              ),
+              Text(AppLocalizations.of(context)!.displayType,style: const TextStyle(fontSize: 12),),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  SizedBox(
+                    width: 100,
+                    child: OutlinedButton(
+                        onPressed: () async{
+                          try {
+                            final result = await InternetAddress.lookup('example.com');
+                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                            }
+                          } on SocketException catch (_) {
+                            Fluttertoast.showToast(
+                                msg: AppLocalizations.of(context)!.noInternetT
+                            );
+                            return;
                           }
-                        } on SocketException catch (_) {
-                          Fluttertoast.showToast(
-                              msg: AppLocalizations.of(context)!.noInternetT
-                          );
-                          return;
-                        }
-                        sendTelemetry("u_view_switch", 0, "S11:0");
-                        clock=0;
-                        setState(() {
-
-                        });
-                      },
-                      style: OutlinedButton.styleFrom(backgroundColor: clock != 0 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(AppLocalizations.of(context)!.radon, style: TextStyle(color: clock != 0 ?  const Color(0xff0099F0) : Colors.white),),
-                        ],
-                      )
+                          sendTelemetry("u_view_switch", 0, "S11:0");
+                          clock=0;
+                          setState(() {
+        
+                          });
+                        },
+                        style: OutlinedButton.styleFrom(backgroundColor: clock != 0 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(AppLocalizations.of(context)!.radon, style: TextStyle(color: clock != 0 ?  const Color(0xff0099F0) : Colors.white),),
+                          ],
+                        )
+                    ),
                   ),
-                ),
-                SizedBox(
-                  width: 100,
-                  child: OutlinedButton(
-                      onPressed: () async{
-                        try {
-                          final result = await InternetAddress.lookup('example.com');
-                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                  SizedBox(
+                    width: 100,
+                    child: OutlinedButton(
+                        onPressed: () async{
+                          try {
+                            final result = await InternetAddress.lookup('example.com');
+                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                            }
+                          } on SocketException catch (_) {
+                            Fluttertoast.showToast(
+                                msg: AppLocalizations.of(context)!.noInternetT
+                            );
+                            return;
                           }
-                        } on SocketException catch (_) {
-                          Fluttertoast.showToast(
-                              msg: AppLocalizations.of(context)!.noInternetT
-                          );
-                          return;
-                        }
-                        sendTelemetry("u_view_switch", 1, "S11:1");
-                        clock=1;
-                        setState(() {
-
-                        });
-                      },
-                      style: OutlinedButton.styleFrom(backgroundColor: clock != 1 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(AppLocalizations.of(context)!.time, style: TextStyle(color: clock != 1 ?  const Color(0xff0099F0) : Colors.white),),
-                        ],
-                      )
+                          sendTelemetry("u_view_switch", 1, "S11:1");
+                          clock=1;
+                          setState(() {
+        
+                          });
+                        },
+                        style: OutlinedButton.styleFrom(backgroundColor: clock != 1 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(AppLocalizations.of(context)!.time, style: TextStyle(color: clock != 1 ?  const Color(0xff0099F0) : Colors.white),),
+                          ],
+                        )
+                    ),
                   ),
-                ),
-                SizedBox(
-                  child: OutlinedButton(
-                      onPressed: () async{
-                        try {
-                          final result = await InternetAddress.lookup('example.com');
-                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                  SizedBox(
+                    child: OutlinedButton(
+                        onPressed: () async{
+                          try {
+                            final result = await InternetAddress.lookup('example.com');
+                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                            }
+                          } on SocketException catch (_) {
+                            Fluttertoast.showToast(
+                                msg: AppLocalizations.of(context)!.noInternetT
+                            );
+                            return;
                           }
-                        } on SocketException catch (_) {
-                          Fluttertoast.showToast(
-                              msg: AppLocalizations.of(context)!.noInternetT
-                          );
-                          return;
-                        }
-                        sendTelemetry("u_view_switch", 2, "S11:2");
-                        clock=2;
-                        setState(() {
-
-                        });
-                      },
-                      style: OutlinedButton.styleFrom(backgroundColor: clock != 2 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(AppLocalizations.of(context)!.changing, style: TextStyle(color: clock != 2 ?  const Color(0xff0099F0) : Colors.white),),
-                        ],
-                      )
+                          sendTelemetry("u_view_switch", 2, "S11:2");
+                          clock=2;
+                          setState(() {
+        
+                          });
+                        },
+                        style: OutlinedButton.styleFrom(backgroundColor: clock != 2 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(AppLocalizations.of(context)!.changing, style: TextStyle(color: clock != 2 ?  const Color(0xff0099F0) : Colors.white),),
+                          ],
+                        )
+                    ),
                   ),
-                ),
-              ],
-            ),
-            SizedBox(height: 10,),
-            Text(AppLocalizations.of(context)!.unit,style: const TextStyle(fontSize: 12),),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                SizedBox(
-                  width: 160,
-                  child: OutlinedButton(
-                      onPressed: () async{
-                        try {
-                          final result = await InternetAddress.lookup('example.com');
-                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                ],
+              ),
+              SizedBox(height: 10,),
+              Text(AppLocalizations.of(context)!.unit,style: const TextStyle(fontSize: 12),),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  SizedBox(
+                    width: 160,
+                    child: OutlinedButton(
+                        onPressed: () async{
+                          try {
+                            final result = await InternetAddress.lookup('example.com');
+                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                            }
+                          } on SocketException catch (_) {
+                            Fluttertoast.showToast(
+                                msg: AppLocalizations.of(context)!.noInternetT
+                            );
+                            return;
                           }
-                        } on SocketException catch (_) {
-                          Fluttertoast.showToast(
-                              msg: AppLocalizations.of(context)!.noInternetT
-                          );
-                          return;
-                        }
-                        sendTelemetry("u_unit", 1, "S01:1");
-                        d_unit = 1;
-                        setState(() {
-
-                        });
-                      },
-                      style: OutlinedButton.styleFrom(backgroundColor: d_unit != 1 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text("Bq/m³", style: TextStyle(color: d_unit != 1 ?  const Color(0xff0099F0) : Colors.white),),
-                        ],
-                      )
+                          sendTelemetry("u_unit", 1, "S01:1");
+                          d_unit = 1;
+                          setState(() {
+        
+                          });
+                        },
+                        style: OutlinedButton.styleFrom(backgroundColor: d_unit != 1 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text("Bq/m³", style: TextStyle(color: d_unit != 1 ?  const Color(0xff0099F0) : Colors.white),),
+                          ],
+                        )
+                    ),
                   ),
-                ),
-                SizedBox(
-                  width: 160,
-                  child: OutlinedButton(
-                      onPressed: () async{
-                        try {
-                          final result = await InternetAddress.lookup('example.com');
-                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                  SizedBox(
+                    width: 160,
+                    child: OutlinedButton(
+                        onPressed: () async{
+                          try {
+                            final result = await InternetAddress.lookup('example.com');
+                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                            }
+                          } on SocketException catch (_) {
+                            Fluttertoast.showToast(
+                                msg: AppLocalizations.of(context)!.noInternetT
+                            );
+                            return;
                           }
-                        } on SocketException catch (_) {
-                          Fluttertoast.showToast(
-                              msg: AppLocalizations.of(context)!.noInternetT
-                          );
-                          return;
-                        }
-                        sendTelemetry("u_unit", 0, "S01:0");
-                        d_unit = 0;
-                        setState(() {
-
-                        });
-                      },
-                      style: OutlinedButton.styleFrom(backgroundColor: d_unit != 0 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text("pCi/L", style: TextStyle(color: d_unit != 0 ?  const Color(0xff0099F0) : Colors.white),),
-                        ],
-                      )
+                          sendTelemetry("u_unit", 0, "S01:0");
+                          d_unit = 0;
+                          setState(() {
+        
+                          });
+                        },
+                        style: OutlinedButton.styleFrom(backgroundColor: d_unit != 0 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text("pCi/L", style: TextStyle(color: d_unit != 0 ?  const Color(0xff0099F0) : Colors.white),),
+                          ],
+                        )
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -3808,246 +3810,150 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           ],
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(AppLocalizations.of(context)!.sendSettWithBT, textAlign: TextAlign.center, style: TextStyle(fontSize: 12),),
-                Switch(
-                  value: transmitionMethodSettings,
-                  onChanged: (value){
-                    transmitionMethodSettings = value;
-                    setState(() {
-
-                    });
-                  },
-                  activeColor: const Color(0xff0099F0),
-                  activeTrackColor: const Color(0xffCCEBFC),
-                  inactiveTrackColor: Colors.grey,
-                  inactiveThumbColor: Colors.white30,
-                ),
-              ],
-            ),
-            Container(
-              height: 15,
-              decoration: const BoxDecoration(
-                border: Border(bottom: BorderSide(width: 1,color: Color(0xffb0bec5))),
-              ),
-            ),
-            SizedBox(
-              height: 15,
-            ),
-            Row(
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(AppLocalizations.of(context)!.clockType)
-                ]
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                SizedBox(
-                  width: 100,
-                  child: OutlinedButton(
-                      onPressed: () async{
-                        try {
-                          final result = await InternetAddress.lookup('example.com');
-                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                          }
-                        } on SocketException catch (_) {
-                          Fluttertoast.showToast(
-                              msg: AppLocalizations.of(context)!.noInternetT
-                          );
-                          return;
-                        }
-                        sendTelemetry("u_clock", 1, "S10:1");
-                        clockType=1;
-                        setState(() {
+                  Text(AppLocalizations.of(context)!.sendSettWithBT, textAlign: TextAlign.center, style: TextStyle(fontSize: 12),),
+                  Switch(
+                    value: transmitionMethodSettings,
+                    onChanged: (value){
+                      transmitionMethodSettings = value;
+                      setState(() {
 
-                        });
-                      },
-                      style: OutlinedButton.styleFrom(backgroundColor: clockType != 1 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text("24h", style: TextStyle(color: clockType != 1 ?  const Color(0xff0099F0) : Colors.white),),
-                        ],
-                      )
+                      });
+                    },
+                    activeColor: const Color(0xff0099F0),
+                    activeTrackColor: const Color(0xffCCEBFC),
+                    inactiveTrackColor: Colors.grey,
+                    inactiveThumbColor: Colors.white30,
                   ),
+                ],
+              ),
+              Container(
+                height: 15,
+                decoration: const BoxDecoration(
+                  border: Border(bottom: BorderSide(width: 1,color: Color(0xffb0bec5))),
                 ),
-                SizedBox(
-                  width: 100,
-                  child: OutlinedButton(
-                      onPressed: () async{
-                        try {
-                          final result = await InternetAddress.lookup('example.com');
-                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                          }
-                        } on SocketException catch (_) {
-                          Fluttertoast.showToast(
-                              msg: AppLocalizations.of(context)!.noInternetT
-                          );
-                          return;
-                        }
-                        sendTelemetry("u_clock", 2, "S10:2");
-                        clockType=2;
-                        setState(() {
-
-                        });
-                      },
-                      style: OutlinedButton.styleFrom(backgroundColor: clockType != 2 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text("12h", style: TextStyle(color: clockType != 2 ?  const Color(0xff0099F0) : Colors.white),),
-                        ],
-                      )
-                  ),
-                ),
-                SizedBox(
-                  child: OutlinedButton(
-                      onPressed: () async{
-                        try {
-                          final result = await InternetAddress.lookup('example.com');
-                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                          }
-                        } on SocketException catch (_) {
-                          Fluttertoast.showToast(
-                              msg: AppLocalizations.of(context)!.noInternetT
-                          );
-                          return;
-                        }
-                        sendTelemetry("u_clock", 3, "S10:3");
-                        clockType=3;
-                        setState(() {
-
-                        });
-                      },
-                      style: OutlinedButton.styleFrom(backgroundColor: clockType!= 3 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(AppLocalizations.of(context)!.date, style: TextStyle(color: clockType != 3 ?  const Color(0xff0099F0) : Colors.white),),
-                        ],
-                      )
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(
-              height: 40,
-            ),
-            Text("${AppLocalizations.of(context)!.timezoneCurrent} ${currentTZ}",),
-            const SizedBox(
-              height: 20,
-            ),
-            Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              ),
+              SizedBox(
+                height: 15,
+              ),
+              Row(
                   children: [
-                    Text(AppLocalizations.of(context)!.selectTimezone),
-                    SizedBox(
-                      width: 230,
-                      height: 50,
-                      child: InputDecorator(
-                        decoration: InputDecoration(
-                          enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(
-                                  color: Colors.black,
-                                  width: 0.5
-                              ),
-                              borderRadius: BorderRadius.all(Radius.circular(8))
-                          ),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton(
-                            value: timezoneCountry,
-                            items: [
-                              DropdownMenuItem(
-                                  value: "None selected",
-                                  child: Text("None selected")
-                              ),
-                              DropdownMenuItem<String>(
-                                  value: "Africa",
-                                  child: Text("Africa")
-                              ),
-                              DropdownMenuItem<String>(
-                                  value: "America",
-                                  child: Text("America")
-                              ),
-                              DropdownMenuItem<String>(
-                                  value: "Antarctica",
-                                  child: Text("Antarctica")
-                              ),
-                              DropdownMenuItem<String>(
-                                  value: "Asia",
-                                  child: Text("Asia")
-                              ),
-                              DropdownMenuItem<String>(
-                                  value: "Australia",
-                                  child: Text("Australia")
-                              ),
-                              DropdownMenuItem<String>(
-                                  value: "Europe",
-                                  child: Text("Europe")
-                              ),
-                              DropdownMenuItem<String>(
-                                  value: "Indian",
-                                  child: Text("Indian")
-                              ),
-                              DropdownMenuItem<String>(
-                                  value: "Pacific",
-                                  child: Text("Pacific")
-                              ),
-                              DropdownMenuItem<String>(
-                                  value: "Etc",
-                                  child: Text("ETC")
-                              ),
-                            ],
-                            style: TextStyle(color: Colors.black),
-                            borderRadius: BorderRadius.all(Radius.circular(8)),
-                            onChanged: (obj){
-                              tzOfSelection = List.of(tzLocations.where((location){
-                                return location.split("/")[0] == obj.toString();
-                              }));
-                              tzOfSelectionWidgets = [];
-                              tzOfSelectionWidgets = [
-                                DropdownMenuItem(
-                                    value: "None selected",
-                                    child: Text("None selected")
-                                )
-                              ];
-                              tzOfSelection.forEach((element){
-                                tzOfSelectionWidgets.add(
-                                    DropdownMenuItem(
-                                        value: element.split("/").sublist(1).join("-"),
-                                        child: Text(element.split("/").sublist(1).join("-"))
-                                    )
-                                );
-                              });
-                              timezoneCountry = obj.toString();
-                              setState(() {
-                              });
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
+                    Text(AppLocalizations.of(context)!.clockType)
                   ]
-                ),
-                SizedBox(
-                  height: 10,
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    SizedBox(
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  SizedBox(
+                    width: 100,
+                    child: OutlinedButton(
+                        onPressed: () async{
+                          try {
+                            final result = await InternetAddress.lookup('example.com');
+                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                            }
+                          } on SocketException catch (_) {
+                            Fluttertoast.showToast(
+                                msg: AppLocalizations.of(context)!.noInternetT
+                            );
+                            return;
+                          }
+                          sendTelemetry("u_clock", 1, "S10:1");
+                          clockType=1;
+                          setState(() {
+
+                          });
+                        },
+                        style: OutlinedButton.styleFrom(backgroundColor: clockType != 1 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text("24h", style: TextStyle(color: clockType != 1 ?  const Color(0xff0099F0) : Colors.white),),
+                          ],
+                        )
                     ),
-                    SizedBox(
+                  ),
+                  SizedBox(
+                    width: 100,
+                    child: OutlinedButton(
+                        onPressed: () async{
+                          try {
+                            final result = await InternetAddress.lookup('example.com');
+                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                            }
+                          } on SocketException catch (_) {
+                            Fluttertoast.showToast(
+                                msg: AppLocalizations.of(context)!.noInternetT
+                            );
+                            return;
+                          }
+                          sendTelemetry("u_clock", 2, "S10:2");
+                          clockType=2;
+                          setState(() {
+
+                          });
+                        },
+                        style: OutlinedButton.styleFrom(backgroundColor: clockType != 2 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text("12h", style: TextStyle(color: clockType != 2 ?  const Color(0xff0099F0) : Colors.white),),
+                          ],
+                        )
+                    ),
+                  ),
+                  SizedBox(
+                    child: OutlinedButton(
+                        onPressed: () async{
+                          try {
+                            final result = await InternetAddress.lookup('example.com');
+                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                            }
+                          } on SocketException catch (_) {
+                            Fluttertoast.showToast(
+                                msg: AppLocalizations.of(context)!.noInternetT
+                            );
+                            return;
+                          }
+                          sendTelemetry("u_clock", 3, "S10:3");
+                          clockType=3;
+                          setState(() {
+
+                          });
+                        },
+                        style: OutlinedButton.styleFrom(backgroundColor: clockType!= 3 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(AppLocalizations.of(context)!.date, style: TextStyle(color: clockType != 3 ?  const Color(0xff0099F0) : Colors.white),),
+                          ],
+                        )
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(
+                height: 40,
+              ),
+              Text("${AppLocalizations.of(context)!.timezoneCurrent} ${currentTZ}",),
+              const SizedBox(
+                height: 20,
+              ),
+              Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(AppLocalizations.of(context)!.selectTimezone),
+                      SizedBox(
                         width: 230,
                         height: 50,
                         child: InputDecorator(
@@ -4055,230 +3961,328 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             enabledBorder: OutlineInputBorder(
                                 borderSide: BorderSide(
                                     color: Colors.black,
-                                  width: 0.5
+                                    width: 0.5
                                 ),
-
                                 borderRadius: BorderRadius.all(Radius.circular(8))
                             ),
                           ),
                           child: DropdownButtonHideUnderline(
                             child: DropdownButton(
-                                style: TextStyle(color: Colors.black),
-                                items: tzOfSelectionWidgets,
-                                onChanged: (obj){
-                                  timezoneCity = obj.toString();
-                                  tzSelected = timezoneCountry+"/"+timezoneCity;
-                                  setState(() {
-                                  });
-                                },
-                                value: timezoneCity
+                              value: timezoneCountry,
+                              items: [
+                                DropdownMenuItem(
+                                    value: "None selected",
+                                    child: Text("None selected")
+                                ),
+                                DropdownMenuItem<String>(
+                                    value: "Africa",
+                                    child: Text("Africa")
+                                ),
+                                DropdownMenuItem<String>(
+                                    value: "America",
+                                    child: Text("America")
+                                ),
+                                DropdownMenuItem<String>(
+                                    value: "Antarctica",
+                                    child: Text("Antarctica")
+                                ),
+                                DropdownMenuItem<String>(
+                                    value: "Asia",
+                                    child: Text("Asia")
+                                ),
+                                DropdownMenuItem<String>(
+                                    value: "Australia",
+                                    child: Text("Australia")
+                                ),
+                                DropdownMenuItem<String>(
+                                    value: "Europe",
+                                    child: Text("Europe")
+                                ),
+                                DropdownMenuItem<String>(
+                                    value: "Indian",
+                                    child: Text("Indian")
+                                ),
+                                DropdownMenuItem<String>(
+                                    value: "Pacific",
+                                    child: Text("Pacific")
+                                ),
+                                DropdownMenuItem<String>(
+                                    value: "Etc",
+                                    child: Text("ETC")
+                                ),
+                              ],
+                              style: TextStyle(color: Colors.black),
+                              borderRadius: BorderRadius.all(Radius.circular(8)),
+                              onChanged: (obj){
+                                tzOfSelection = List.of(tzLocations.where((location){
+                                  return location.split("/")[0] == obj.toString();
+                                }));
+                                tzOfSelectionWidgets = [];
+                                tzOfSelectionWidgets = [
+                                  DropdownMenuItem(
+                                      value: "None selected",
+                                      child: Text("None selected")
+                                  )
+                                ];
+                                tzOfSelection.forEach((element){
+                                  tzOfSelectionWidgets.add(
+                                      DropdownMenuItem(
+                                          value: element.split("/").sublist(1).join("-"),
+                                          child: Text(element.split("/").sublist(1).join("-"))
+                                      )
+                                  );
+                                });
+                                timezoneCountry = obj.toString();
+                                setState(() {
+                                });
+                              },
                             ),
                           ),
+                        ),
+                      ),
+                    ]
+                  ),
+                  SizedBox(
+                    height: 10,
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      SizedBox(
+                      ),
+                      SizedBox(
+                          width: 230,
+                          height: 50,
+                          child: InputDecorator(
+                            decoration: InputDecoration(
+                              enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                      color: Colors.black,
+                                    width: 0.5
+                                  ),
+
+                                  borderRadius: BorderRadius.all(Radius.circular(8))
+                              ),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton(
+                                  style: TextStyle(color: Colors.black),
+                                  items: tzOfSelectionWidgets,
+                                  onChanged: (obj){
+                                    timezoneCity = obj.toString();
+                                    tzSelected = timezoneCountry+"/"+timezoneCity;
+                                    setState(() {
+                                    });
+                                  },
+                                  value: timezoneCity
+                              ),
+                            ),
+                          )
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              const SizedBox(
+                height: 20,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  OutlinedButton(
+                      onPressed: (){
+                        AlertDialog alert = AlertDialog(
+                          title: Text("${AppLocalizations.of(context)!.set} ${tzSelected} ${AppLocalizations.of(context)!.asTimezone}", style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 20),),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(height: 10,),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton(
+                                      onPressed: () async{
+                                        try {
+                                          final result = await InternetAddress.lookup('example.com');
+                                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                                          }
+                                        } on SocketException catch (_) {
+                                          Fluttertoast.showToast(
+                                              msg: AppLocalizations.of(context)!.noInternetT
+                                          );
+                                          return;
+                                        }
+                                        setTimezone(tzCodes[tzLocations.indexWhere((element){
+                                          return element.contains(tzSelected);
+                                        })]);
+                                        currentTZ = (tzLocations.firstWhere((element){
+                                          return element.contains(tzSelected);
+                                        }));
+                                        storage.write(key: 'timezone', value: currentTZ);
+                                        Navigator.pop(context);
+                                        setState(() {
+                                        });
+                                      },
+                                      style: OutlinedButton.styleFrom(backgroundColor: const Color(0xff0099f0),minimumSize: const Size(100, 50)),
+                                      child: Text(AppLocalizations.of(context)!.confirm,style: const TextStyle(color: Colors.white)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10,),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton(
+                                      onPressed: (){
+                                        Navigator.pop(context);
+                                      },
+                                      style: OutlinedButton.styleFrom(backgroundColor: const Color(0xff0099f0),minimumSize: const Size(100, 50)),
+                                      child: Text(AppLocalizations.of(context)!.cancel,style: const TextStyle(color: Colors.black)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context){
+                            return alert;
+                          },
+                        );
+                      },
+                      child: Text(AppLocalizations.of(context)!.applyTZ,style: TextStyle(color: const Color(0xff0099F0)),)
+                  ),
+                ],
+              ),
+              SizedBox(
+                height: 20,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Text(AppLocalizations.of(context)!.changeNtpServer,style: TextStyle(fontSize: 12)),
+                  SizedBox(
+                    width: 10,
+                  ),
+                  SizedBox(
+                    width: 100,
+                    child: TextField(
+                      style: TextStyle(fontSize: 12),
+                      controller: customNTPServerController,
+                      decoration: InputDecoration(
+                        hintText: tzServer3
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 10,
+                  ),
+                  SizedBox(
+                    width: 100,
+                    child: OutlinedButton(
+                        onPressed: () async{
+                          try {
+                            final result = await InternetAddress.lookup('example.com');
+                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                            }
+                          } on SocketException catch (_) {
+                            Fluttertoast.showToast(
+                                msg: AppLocalizations.of(context)!.noInternetT
+                            );
+                            return;
+                          }
+                          setNTPServer(customNTPServerController.text);
+                          tzServer3 = customNTPServerController.text;
+                          setState(() {
+
+                          });
+                        },
+                        style: OutlinedButton.styleFrom(backgroundColor: Colors.white ,shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(AppLocalizations.of(context)!.apply, style: const TextStyle(color: Color(0xff0099F0),)),
+                          ],
                         )
                     ),
-                  ],
-                ),
-              ],
-            ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 40,),
+              Row(
+                  children: [
+                    Text(AppLocalizations.of(context)!.winterSummerTime)
+                  ]
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  SizedBox(
+                    width: 160,
+                    child: OutlinedButton(
+                        onPressed: () async{
+                          try {
+                            final result = await InternetAddress.lookup('example.com');
+                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                            }
+                          } on SocketException catch (_) {
+                            Fluttertoast.showToast(
+                                msg: AppLocalizations.of(context)!.noInternetT
+                            );
+                            return;
+                          }
+                          sendTelemetry("u_mez_ea", 0, "S15:0");
+                          mezType = 0;
+                          setState(() {
 
-            const SizedBox(
-              height: 20,
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                OutlinedButton(
-                    onPressed: (){
-                      AlertDialog alert = AlertDialog(
-                        title: Text("${AppLocalizations.of(context)!.set} ${tzSelected} ${AppLocalizations.of(context)!.asTimezone}", style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 20),),
-                        content: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const SizedBox(height: 10,),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton(
-                                    onPressed: () async{
-                                      try {
-                                        final result = await InternetAddress.lookup('example.com');
-                                        if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                                        }
-                                      } on SocketException catch (_) {
-                                        Fluttertoast.showToast(
-                                            msg: AppLocalizations.of(context)!.noInternetT
-                                        );
-                                        return;
-                                      }
-                                      setTimezone(tzCodes[tzLocations.indexWhere((element){
-                                        return element.contains(tzSelected);
-                                      })]);
-                                      currentTZ = (tzLocations.firstWhere((element){
-                                        return element.contains(tzSelected);
-                                      }));
-                                      storage.write(key: 'timezone', value: currentTZ);
-                                      Navigator.pop(context);
-                                      setState(() {
-                                      });
-                                    },
-                                    style: OutlinedButton.styleFrom(backgroundColor: const Color(0xff0099f0),minimumSize: const Size(100, 50)),
-                                    child: Text(AppLocalizations.of(context)!.confirm,style: const TextStyle(color: Colors.white)),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10,),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton(
-                                    onPressed: (){
-                                      Navigator.pop(context);
-                                    },
-                                    style: OutlinedButton.styleFrom(backgroundColor: const Color(0xff0099f0),minimumSize: const Size(100, 50)),
-                                    child: Text(AppLocalizations.of(context)!.cancel,style: const TextStyle(color: Colors.black)),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context){
-                          return alert;
+                          });
                         },
-                      );
-                    },
-                    child: Text(AppLocalizations.of(context)!.applyTZ,style: TextStyle(color: const Color(0xff0099F0)),)
-                ),
-              ],
-            ),
-            SizedBox(
-              height: 20,
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                Text(AppLocalizations.of(context)!.changeNtpServer,style: TextStyle(fontSize: 12)),
-                SizedBox(
-                  width: 10,
-                ),
-                SizedBox(
-                  width: 100,
-                  child: TextField(
-                    style: TextStyle(fontSize: 12),
-                    controller: customNTPServerController,
-                    decoration: InputDecoration(
-                      hintText: tzServer3
+                        style: OutlinedButton.styleFrom(backgroundColor: mezType != 0 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(AppLocalizations.of(context)!.withoutChange, style: TextStyle(color: mezType != 0 ?  const Color(0xff0099F0) : Colors.white),),
+                          ],
+                        )
                     ),
                   ),
-                ),
-                SizedBox(
-                  width: 10,
-                ),
-                SizedBox(
-                  width: 100,
-                  child: OutlinedButton(
-                      onPressed: () async{
-                        try {
-                          final result = await InternetAddress.lookup('example.com');
-                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                  SizedBox(
+                    width: 160,
+                    child: OutlinedButton(
+                        onPressed: () async{
+                          try {
+                            final result = await InternetAddress.lookup('example.com');
+                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                            }
+                          } on SocketException catch (_) {
+                            Fluttertoast.showToast(
+                                msg: AppLocalizations.of(context)!.noInternetT
+                            );
+                            return;
                           }
-                        } on SocketException catch (_) {
-                          Fluttertoast.showToast(
-                              msg: AppLocalizations.of(context)!.noInternetT
-                          );
-                          return;
-                        }
-                        setNTPServer(customNTPServerController.text);
-                        tzServer3 = customNTPServerController.text;
-                        setState(() {
+                          sendTelemetry("u_mez_ea", 1, "S15:1");
+                          mezType = 1;
+                          setState(() {
 
-                        });
-                      },
-                      style: OutlinedButton.styleFrom(backgroundColor: Colors.white ,shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(AppLocalizations.of(context)!.apply, style: const TextStyle(color: Color(0xff0099F0),)),
-                        ],
-                      )
+                          });
+                        },
+                        style: OutlinedButton.styleFrom(backgroundColor: mezType != 1 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(AppLocalizations.of(context)!.withChange, style: TextStyle(color: mezType != 1 ?  const Color(0xff0099F0) : Colors.white),),
+                          ],
+                        )
+                    ),
                   ),
-                ),
-              ],
-            ),
-            SizedBox(height: 40,),
-            Row(
-                children: [
-                  Text(AppLocalizations.of(context)!.winterSummerTime)
-                ]
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                SizedBox(
-                  width: 160,
-                  child: OutlinedButton(
-                      onPressed: () async{
-                        try {
-                          final result = await InternetAddress.lookup('example.com');
-                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                          }
-                        } on SocketException catch (_) {
-                          Fluttertoast.showToast(
-                              msg: AppLocalizations.of(context)!.noInternetT
-                          );
-                          return;
-                        }
-                        sendTelemetry("u_mez_ea", 0, "S15:0");
-                        mezType = 0;
-                        setState(() {
-
-                        });
-                      },
-                      style: OutlinedButton.styleFrom(backgroundColor: mezType != 0 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(AppLocalizations.of(context)!.withoutChange, style: TextStyle(color: mezType != 0 ?  const Color(0xff0099F0) : Colors.white),),
-                        ],
-                      )
-                  ),
-                ),
-                SizedBox(
-                  width: 160,
-                  child: OutlinedButton(
-                      onPressed: () async{
-                        try {
-                          final result = await InternetAddress.lookup('example.com');
-                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                          }
-                        } on SocketException catch (_) {
-                          Fluttertoast.showToast(
-                              msg: AppLocalizations.of(context)!.noInternetT
-                          );
-                          return;
-                        }
-                        sendTelemetry("u_mez_ea", 1, "S15:1");
-                        mezType = 1;
-                        setState(() {
-
-                        });
-                      },
-                      style: OutlinedButton.styleFrom(backgroundColor: mezType != 1 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(AppLocalizations.of(context)!.withChange, style: TextStyle(color: mezType != 1 ?  const Color(0xff0099F0) : Colors.white),),
-                        ],
-                      )
-                  ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -4311,7 +4315,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 });
               },
             ),
-            Text("KNX",style: const TextStyle(color: Colors.black,fontSize: 20,fontWeight: FontWeight.w400),),
+            Text("KNX",style: const TextStyle(color: Colors.black,fontSize: 20,fontWeight: FontWeight.w400),textScaler: MediaQuery.textScalerOf(context),),
           ],
         ),
       ),
@@ -4475,7 +4479,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         setState(() {
                           if (text.isEmpty) {
                             knxPhysIDError = AppLocalizations.of(context)!.plsEnterAddress;
-                          } else if (!RegExp(r'^\d{1,3}\/\d{1,3}\/\d{1,3}$').hasMatch(knxPhysAddress.text)) {
+                          } else if (!RegExp(r'^((25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){2}(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)$').hasMatch(knxPhysAddress.text)) {
                             knxPhysIDError = AppLocalizations.of(context)!.invalidAddress;
                           } else {
                             knxPhysIDError = null;
@@ -4526,7 +4530,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         setState(() {
                           if (text.isEmpty) {
                             knxGroupError1 = null;
-                          } else if (!RegExp(r'^\d{1,3}\/\d{1,3}\/\d{1,3}$').hasMatch(knxGroup1.text)) {
+                          } else if (!RegExp(r'^((25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\/){2}(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)$').hasMatch(knxGroup1.text)) {
                             knxGroupError1 = AppLocalizations.of(context)!.invalidAddressBackslash;
                           } else {
                             knxGroupError1 = null;
@@ -4570,7 +4574,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         setState(() {
                           if (text.isEmpty) {
                             knxGroupError2 = null;
-                          } else if (!RegExp(r'^\d{1,3}\/\d{1,3}\/\d{1,3}$').hasMatch(knxGroup2.text)) {
+                          } else if (!RegExp(r'^((25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\/){2}(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)$').hasMatch(knxGroup2.text)) {
                             knxGroupError2 = AppLocalizations.of(context)!.invalidAddressBackslash;
                           } else {
                             knxGroupError2 = null;
@@ -4614,7 +4618,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         setState(() {
                           if (text.isEmpty) {
                             knxGroupError3 = null;
-                          } else if (!RegExp(r'^\d{1,3}\/\d{1,3}\/\d{1,3}$').hasMatch(knxGroup3.text)) {
+                          } else if (!RegExp(r'^((25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\/){2}(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)$').hasMatch(knxGroup3.text)) {
                             knxGroupError3 = AppLocalizations.of(context)!.invalidAddressBackslash;
                           } else {
                             knxGroupError3 = null;
@@ -4658,7 +4662,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         setState(() {
                           if (text.isEmpty) {
                             knxGroupError4 = null;
-                          } else if (!RegExp(r'^\d{1,3}\/\d{1,3}\/\d{1,3}$').hasMatch(knxGroup4.text)) {
+                          } else if (!RegExp(r'^((25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\/){2}(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)$').hasMatch(knxGroup4.text)) {
                             knxGroupError4 = AppLocalizations.of(context)!.invalidAddressBackslash;
                           } else {
                             knxGroupError4 = null;

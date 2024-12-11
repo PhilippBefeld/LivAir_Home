@@ -245,15 +245,15 @@ class SignInPageState extends State<SignInPage> {
         emailController.text = (await storage.read(key: 'email'))!;
         passwordController.text = (await storage.read(key: 'password'))!;
       }
-      if(await storage.containsKey(key: "autoSignIn")){
-        logIn();
-        firstBuild = false;
-        return;
-      }
       if(await storage.containsKey(key: "language")){
         if(await storage.read(key: "language") != "english"){
           MVP.of(context)!.setLocale(const Locale.fromSubtags(languageCode: 'de'));
         }
+      }
+      if(await storage.containsKey(key: "autoSignIn")){
+        logIn();
+        firstBuild = false;
+        return;
       }
     }
     if(await storage.containsKey(key: "email")== false && credentialsLoaded == false){
