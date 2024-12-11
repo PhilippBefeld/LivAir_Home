@@ -744,8 +744,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     }
   }
 
-
-  changeDisplayBrightness()async{
+  sendTelemetry(String name, int value, String btValue) async{
     if(telemetryRunning)return;
     telemetryRunning = true;
     String id = device.keys.elementAt(0);
@@ -765,13 +764,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
         data: jsonEncode(
             {
-              "u_led_fb": d_led_fb.toInt(),
+              name: value,
             }
         ),
       );
     }catch(e){
     }
-    if(!transmitionMethodSettings)return;
     if(!transmitionMethodSettings)return;
     try{
       showDialog(context: context, builder: (context) {
@@ -806,6 +804,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       }
       FlutterBluePlus.stopScan();
       bool deviceFound = false;
+      bool sentSuccessfully = false;
+      bool loginSuccessful = false;
       subscription = FlutterBluePlus.scanResults.listen((results) async {
         for (ScanResult r in results) {
           if (!deviceFound) {
@@ -832,20 +832,35 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   if (Platform.isAndroid) {
                     await r.device.requestMtu(300);
                   }
-                  bool loginSuccessful = false;
                   List<BluetoothService> services = await r.device.discoverServices();
                   for (var service in services){
                     for(var characteristic in service.characteristics){
                       if(characteristic.properties.notify){
                         await characteristic.setNotifyValue(true);
                         readCharacteristic = characteristic;
-                        subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
+                        subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
+                            Duration(seconds: 2),
+                            onTimeout: (list)async{
+                              await btDevice!.disconnect(timeout: 1);
+                              btDevice!.removeBond();
+                              subscriptionToDevice?.cancel();
+                              loaded = true;
+                              setState(() {
+                                screenIndex = 1;
+                                Navigator.pop(context);
+                              });
+                              Fluttertoast.showToast(
+                                  msg: "Error"
+                              );
+                            }
+                        ).listen((data) async{
                           String message = utf8.decode(data).trim();
                           logger.d(utf8.decode(data));
                           if(message == "" && !loginSuccessful){
                           }
                           if(message == 'LOGIN OK'){
-                            await writeCharacteristic!.write(utf8.encode('S04:${d_led_fb.toInt()}'));
+                            sentSuccessfully = true;
+                            await writeCharacteristic!.write(utf8.encode(btValue));
                             await Future<void>.delayed( const Duration(milliseconds: 500));
                             await btDevice!.disconnect(timeout: 1);
                             btDevice!.removeBond();
@@ -887,994 +902,22 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       if(!deviceFound){
         Navigator.pop(context);
       }
+      if(!sentSuccessfully  && loginSuccessful){
+        await btDevice!.disconnect(timeout: 1);
+        btDevice!.removeBond();
+        subscriptionToDevice?.cancel();
+        Navigator.pop(context);
+      }
     }catch(e){
+      try{
+        await btDevice!.disconnect(timeout: 1);
+        btDevice!.removeBond();
+        subscriptionToDevice?.cancel();
+        Navigator.pop(context);
+      }catch(e){
+      }
     }
     telemetryRunning = false;
-  }
-
-  changeLEDBrightness() async{
-    if(telemetryRunning)return;
-    telemetryRunning = true;
-    String id = device.keys.elementAt(0);
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
-    try{
-      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
-        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
-            data: {
-              "refreshToken": refreshToken
-            });
-        token = loginResponse.data["token"];
-        refreshToken = loginResponse.data["refreshToken"];
-      }
-      dio.options.headers['Authorization'] = "Bearer $token";
-      dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
-        data: jsonEncode(
-            {
-              "u_led_tb": d_led_tb.toInt(),
-            }
-        ),
-      );
-    }catch(e){
-    }
-    if(!transmitionMethodSettings)return;
-    try{
-      showDialog(context: context, builder: (context) {
-        return Scaffold(
-            body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(AppLocalizations.of(context)!.searchingDevice),
-                    const SizedBox(height: 36,),
-                    const CircularProgressIndicator(color: Colors.black,),
-                  ],
-                )
-            )
-        );
-      });
-      if (Platform.isAndroid) {
-        await FlutterBluePlus.turnOn();
-      }
-      var locationEnabled = await location.serviceEnabled();
-      if(!locationEnabled){
-        var locationEnabled2 = await location.requestService();
-        if(!locationEnabled2){
-        }
-      }
-      var permissionGranted = await location.hasPermission();
-      if(permissionGranted == PermissionStatus.denied){
-        permissionGranted = await location.requestPermission();
-        if(permissionGranted != PermissionStatus.granted){
-        }
-      }
-      FlutterBluePlus.stopScan();
-      bool deviceFound = false;
-      subscription = FlutterBluePlus.scanResults.listen((results) async {
-        for (ScanResult r in results) {
-          if (!deviceFound) {
-            List<int> bluetoothAdvertisementData = [];
-            String bluetoothDeviceName = "";
-            if(r.advertisementData.manufacturerData.keys.isNotEmpty){
-              logger.d(r.advertisementData.manufacturerData);
-              if(r.advertisementData.manufacturerData.values.isNotEmpty){
-                bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
-              }
-              if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
-              if(bluetoothDeviceName == device.values.first.name){
-                radonValue = bluetoothAdvertisementData.elementAt(1).toString();
-                radonCurrent = bluetoothAdvertisementData.elementAt(1);
-                radonDaily = bluetoothAdvertisementData.elementAt(5);
-                currentAvgValue = bluetoothAdvertisementData.elementAt(5);
-                radonEver = bluetoothAdvertisementData.elementAt(9);
-                deviceFound = true;
-                FlutterBluePlus.stopScan();
-                subscription!.cancel();
-                btDevice = r.device;
-                await btDevice!.connect();
-                try{
-                  if (Platform.isAndroid) {
-                    await r.device.requestMtu(300);
-                  }
-                  bool loginSuccessful = false;
-                  List<BluetoothService> services = await r.device.discoverServices();
-                  for (var service in services){
-                    for(var characteristic in service.characteristics){
-                      if(characteristic.properties.notify){
-                        await characteristic.setNotifyValue(true);
-                        readCharacteristic = characteristic;
-                        readCharacteristic = characteristic;
-                        subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
-                            Duration(seconds: 1),
-                            onTimeout: (list)async{
-                              await btDevice!.disconnect(timeout: 1);
-                              btDevice!.removeBond();
-                              subscriptionToDevice?.cancel();
-                              loaded = true;
-                              setState(() {
-                                screenIndex = 1;
-                                Navigator.pop(context);
-                              });
-                              Fluttertoast.showToast(
-                                  msg: "Error"
-                              );
-                            }
-                        ).listen((data) async{
-                          String message = utf8.decode(data).trim();
-                          logger.d(utf8.decode(data));
-                          if(message == "" && !loginSuccessful){
-                          }
-                          if(message == 'LOGIN OK'){
-                            await writeCharacteristic!.write(utf8.encode('S05:${d_led_tb.toInt()}'));
-                            await Future<void>.delayed( const Duration(milliseconds: 500));
-                            await btDevice!.disconnect(timeout: 1);
-                            btDevice!.removeBond();
-                            subscriptionToDevice?.cancel();
-                            Navigator.pop(context);
-                          }
-                        });
-                      }
-                      if(characteristic.properties.write){
-                        writeCharacteristic = characteristic;
-                        await Future<void>.delayed( const Duration(milliseconds: 300));
-                        if(!loginSuccessful){
-                          try{
-                            loginSuccessful = true;
-                            await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
-                          }catch(e){
-                            await btDevice!.disconnect(timeout: 1);
-                            btDevice!.removeBond();
-                            subscriptionToDevice?.cancel();
-                            Navigator.pop(context);
-                          }
-                        }
-                      }
-                    }
-                  }
-                }catch(e){
-                  await btDevice!.disconnect(timeout: 1);
-                  btDevice!.removeBond();
-                  subscriptionToDevice?.cancel();
-                  Navigator.pop(context);
-                }
-              }
-            }
-          }
-        }
-      });
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
-      await Future<void>.delayed( const Duration(seconds: 3));
-      if(!deviceFound){
-        Navigator.pop(context);
-      }
-    }catch(e){
-    }
-    telemetryRunning = false;
-  }
-
-
-  void _updateColors() async{
-    if(int.parse(orangeMinValue.value.text)>=int.parse(redMinValue.value.text) || int.parse(orangeMinValue.value.text)==1) {
-      Fluttertoast.showToast(
-          msg: 'Bitte Werte korrigieren.'
-      );
-      return;
-    }
-    String id = device.keys.elementAt(0);
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
-    try{
-      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
-        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
-            data: {
-              "refreshToken": refreshToken
-            });
-        token = loginResponse.data["token"];
-        refreshToken = loginResponse.data["refreshToken"];
-      }
-      dio.options.headers['Authorization'] = "Bearer $token";
-      dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
-        data: jsonEncode(
-            {
-              "u_range_u": 0,
-              "u_range_m": int.parse(orangeMinValue.value.text),
-              "u_range_t": int.parse(redMinValue.value.text),
-            }
-        ),
-      );
-    }catch(e){
-      logger.e(e);
-      Fluttertoast.showToast(
-          msg: AppLocalizations.of(context)!.failedSendData
-      );
-    }
-  }
-
-  displayOnOff(bool value) async{
-    int intValue = 0;
-    if(value) intValue = 1;
-    String id = device.keys.elementAt(0);
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
-    try{
-      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
-        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
-            data: {
-              "refreshToken": refreshToken
-            });
-        token = loginResponse.data["token"];
-        refreshToken = loginResponse.data["refreshToken"];
-      }
-      dio.options.headers['Authorization'] = "Bearer $token";
-      dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
-        data: jsonEncode(
-            {
-              "u_led_f": intValue,
-            }
-        ),
-      );
-    }catch(e){
-    }
-    if(!transmitionMethodSettings)return;
-    try{
-      showDialog(context: context, builder: (context) {
-        return Scaffold(
-            body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(AppLocalizations.of(context)!.searchingDevice),
-                    const SizedBox(height: 36,),
-                    const CircularProgressIndicator(color: Colors.black,),
-                  ],
-                )
-            )
-        );
-      });
-      if (Platform.isAndroid) {
-        await FlutterBluePlus.turnOn();
-      }
-      var locationEnabled = await location.serviceEnabled();
-      if(!locationEnabled){
-        var locationEnabled2 = await location.requestService();
-        if(!locationEnabled2){
-        }
-      }
-      var permissionGranted = await location.hasPermission();
-      if(permissionGranted == PermissionStatus.denied){
-        permissionGranted = await location.requestPermission();
-        if(permissionGranted != PermissionStatus.granted){
-        }
-      }
-      FlutterBluePlus.stopScan();
-      bool deviceFound = false;
-      subscription = FlutterBluePlus.scanResults.listen((results) async {
-        for (ScanResult r in results) {
-          if (!deviceFound) {
-            List<int> bluetoothAdvertisementData = [];
-            String bluetoothDeviceName = "";
-            if(r.advertisementData.manufacturerData.keys.isNotEmpty){
-              logger.d(r.advertisementData.manufacturerData);
-              if(r.advertisementData.manufacturerData.values.isNotEmpty){
-                bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
-              }
-              if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
-              if(bluetoothDeviceName == device.values.first.name){
-                radonValue = bluetoothAdvertisementData.elementAt(1).toString();
-                radonCurrent = bluetoothAdvertisementData.elementAt(1);
-                radonDaily = bluetoothAdvertisementData.elementAt(5);
-                currentAvgValue = bluetoothAdvertisementData.elementAt(5);
-                radonEver = bluetoothAdvertisementData.elementAt(9);
-                deviceFound = true;
-                FlutterBluePlus.stopScan();
-                subscription!.cancel();
-                btDevice = r.device;
-                await btDevice!.connect();
-                try{
-                  if (Platform.isAndroid) {
-                    await r.device.requestMtu(300);
-                  }
-                  bool loginSuccessful = false;
-                  List<BluetoothService> services = await r.device.discoverServices();
-                  for (var service in services){
-                    for(var characteristic in service.characteristics){
-                      if(characteristic.properties.notify){
-                        await characteristic.setNotifyValue(true);
-                        readCharacteristic = characteristic;
-                        readCharacteristic = characteristic;
-                        subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
-                            Duration(seconds: 1),
-                            onTimeout: (list)async{
-                              await btDevice!.disconnect(timeout: 1);
-                              btDevice!.removeBond();
-                              subscriptionToDevice?.cancel();
-                              loaded = true;
-                              setState(() {
-                                screenIndex = 1;
-                                Navigator.pop(context);
-                              });
-                              Fluttertoast.showToast(
-                                  msg: "Error"
-                              );
-                            }
-                        ).listen((data) async{
-                          String message = utf8.decode(data).trim();
-                          logger.d(utf8.decode(data));
-                          if(message == "" && !loginSuccessful){
-                          }
-                          if(message == 'LOGIN OK'){
-                            await writeCharacteristic!.write(utf8.encode('S03:${intValue}'));
-                            await Future<void>.delayed( const Duration(milliseconds: 500));
-                            await btDevice!.disconnect(timeout: 1);
-                            btDevice!.removeBond();
-                            subscriptionToDevice?.cancel();
-                            Navigator.pop(context);
-                          }
-                        });
-                      }
-                      if(characteristic.properties.write){
-                        writeCharacteristic = characteristic;
-                        await Future<void>.delayed( const Duration(milliseconds: 300));
-                        if(!loginSuccessful){
-                          try{
-                            loginSuccessful = true;
-                            await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
-                          }catch(e){
-                            await btDevice!.disconnect(timeout: 1);
-                            btDevice!.removeBond();
-                            subscriptionToDevice?.cancel();
-                            Navigator.pop(context);
-                          }
-                        }
-                      }
-                    }
-                  }
-                }catch(e){
-                  await btDevice!.disconnect(timeout: 1);
-                  btDevice!.removeBond();
-                  subscriptionToDevice?.cancel();
-                  Navigator.pop(context);
-                }
-              }
-            }
-          }
-        }
-      });
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
-      await Future<void>.delayed( const Duration(seconds: 3));
-      if(!deviceFound){
-        Navigator.pop(context);
-      }
-    }catch(e){
-    }
-  }
-
-  ledOnOff(bool value) async {
-    int intValue = 0;
-    if(value) intValue = 1;
-    String id = device.keys.elementAt(0);
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
-    try{
-      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
-        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
-            data: {
-              "refreshToken": refreshToken
-            });
-        token = loginResponse.data["token"];
-        refreshToken = loginResponse.data["refreshToken"];
-      }
-      dio.options.headers['Authorization'] = "Bearer $token";
-      await dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
-        data: jsonEncode(
-            {
-              "u_led_t": intValue,
-            }
-        ),
-      );
-    }catch(e){
-    }
-    if(!transmitionMethodSettings)return;
-    try{
-      showDialog(context: context, builder: (context) {
-        return Scaffold(
-            body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(AppLocalizations.of(context)!.searchingDevice),
-                    const SizedBox(height: 36,),
-                    const CircularProgressIndicator(color: Colors.black,),
-                  ],
-                )
-            )
-        );
-      });
-      if (Platform.isAndroid) {
-        await FlutterBluePlus.turnOn();
-      }
-      var locationEnabled = await location.serviceEnabled();
-      if(!locationEnabled){
-        var locationEnabled2 = await location.requestService();
-        if(!locationEnabled2){
-        }
-      }
-      var permissionGranted = await location.hasPermission();
-      if(permissionGranted == PermissionStatus.denied){
-        permissionGranted = await location.requestPermission();
-        if(permissionGranted != PermissionStatus.granted){
-        }
-      }
-      FlutterBluePlus.stopScan();
-      bool deviceFound = false;
-      subscription = FlutterBluePlus.scanResults.listen((results) async {
-        for (ScanResult r in results) {
-          if (!deviceFound) {
-            List<int> bluetoothAdvertisementData = [];
-            String bluetoothDeviceName = "";
-            if(r.advertisementData.manufacturerData.keys.isNotEmpty){
-              logger.d(r.advertisementData.manufacturerData);
-              if(r.advertisementData.manufacturerData.values.isNotEmpty){
-                bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
-              }
-              if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
-              if(bluetoothDeviceName == device.values.first.name){
-                radonValue = bluetoothAdvertisementData.elementAt(1).toString();
-                radonCurrent = bluetoothAdvertisementData.elementAt(1);
-                radonDaily = bluetoothAdvertisementData.elementAt(5);
-                currentAvgValue = bluetoothAdvertisementData.elementAt(5);
-                radonEver = bluetoothAdvertisementData.elementAt(9);
-                deviceFound = true;
-                FlutterBluePlus.stopScan();
-                subscription!.cancel();
-                btDevice = r.device;
-                await btDevice!.connect();
-                try{
-                  if (Platform.isAndroid) {
-                    await r.device.requestMtu(300);
-                  }
-                  bool loginSuccessful = false;
-                  List<BluetoothService> services = await r.device.discoverServices();
-                  for (var service in services){
-                    for(var characteristic in service.characteristics){
-                      if(characteristic.properties.notify){
-                        await characteristic.setNotifyValue(true);
-                        readCharacteristic = characteristic;
-                        readCharacteristic = characteristic;
-                        subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
-                            Duration(seconds: 1),
-                            onTimeout: (list)async{
-                              await btDevice!.disconnect(timeout: 1);
-                              btDevice!.removeBond();
-                              subscriptionToDevice?.cancel();
-                              loaded = true;
-                              setState(() {
-                                screenIndex = 1;
-                                Navigator.pop(context);
-                              });
-                              Fluttertoast.showToast(
-                                  msg: "Error"
-                              );
-                            }
-                        ).listen((data) async{
-                          String message = utf8.decode(data).trim();
-                          logger.d(utf8.decode(data));
-                          if(message == "" && !loginSuccessful){
-                          }
-                          if(message == 'LOGIN OK'){
-                            await writeCharacteristic!.write(utf8.encode('S02:${intValue}'));
-                            await Future<void>.delayed( const Duration(milliseconds: 500));
-                            await btDevice!.disconnect(timeout: 1);
-                            btDevice!.removeBond();
-                            subscriptionToDevice?.cancel();
-                            Navigator.pop(context);
-                          }
-                        });
-                      }
-                      if(characteristic.properties.write){
-                        writeCharacteristic = characteristic;
-                        await Future<void>.delayed( const Duration(milliseconds: 300));
-                        if(!loginSuccessful){
-                          try{
-                            loginSuccessful = true;
-                            await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
-                          }catch(e){
-                            await btDevice!.disconnect(timeout: 1);
-                            btDevice!.removeBond();
-                            subscriptionToDevice?.cancel();
-                            Navigator.pop(context);
-                          }
-                        }
-                      }
-                    }
-                  }
-                }catch(e){
-                  await btDevice!.disconnect(timeout: 1);
-                  btDevice!.removeBond();
-                  subscriptionToDevice?.cancel();
-                  Navigator.pop(context);
-                }
-              }
-            }
-          }
-        }
-      });
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
-      await Future<void>.delayed( const Duration(seconds: 3));
-      if(!deviceFound){
-        Navigator.pop(context);
-      }
-    }catch(e){
-    }
-  }
-
-  void displayType(int value) async{
-    String id = device.keys.elementAt(0);
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
-    try{
-      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
-        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
-            data: {
-              "refreshToken": refreshToken
-            });
-        token = loginResponse.data["token"];
-        refreshToken = loginResponse.data["refreshToken"];
-      }
-      dio.options.headers['Authorization'] = "Bearer $token";
-      dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
-        data: jsonEncode(
-            {
-              "u_view_switch": value,
-            }
-        ),
-      );
-    }catch(e){
-    }
-    if(!transmitionMethodSettings)return;
-    try{
-      showDialog(context: context, builder: (context) {
-        return Scaffold(
-            body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(AppLocalizations.of(context)!.searchingDevice),
-                    const SizedBox(height: 36,),
-                    const CircularProgressIndicator(color: Colors.black,),
-                  ],
-                )
-            )
-        );
-      });
-      if (Platform.isAndroid) {
-        await FlutterBluePlus.turnOn();
-      }
-      var locationEnabled = await location.serviceEnabled();
-      if(!locationEnabled){
-        var locationEnabled2 = await location.requestService();
-        if(!locationEnabled2){
-        }
-      }
-      var permissionGranted = await location.hasPermission();
-      if(permissionGranted == PermissionStatus.denied){
-        permissionGranted = await location.requestPermission();
-        if(permissionGranted != PermissionStatus.granted){
-        }
-      }
-      FlutterBluePlus.stopScan();
-      bool deviceFound = false;
-      subscription = FlutterBluePlus.scanResults.listen((results) async {
-        for (ScanResult r in results) {
-          if (!deviceFound) {
-            List<int> bluetoothAdvertisementData = [];
-            String bluetoothDeviceName = "";
-            if(r.advertisementData.manufacturerData.keys.isNotEmpty){
-              logger.d(r.advertisementData.manufacturerData);
-              if(r.advertisementData.manufacturerData.values.isNotEmpty){
-                bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
-              }
-              if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
-              if(bluetoothDeviceName == device.values.first.name){
-                radonValue = bluetoothAdvertisementData.elementAt(1).toString();
-                radonCurrent = bluetoothAdvertisementData.elementAt(1);
-                radonDaily = bluetoothAdvertisementData.elementAt(5);
-                currentAvgValue = bluetoothAdvertisementData.elementAt(5);
-                radonEver = bluetoothAdvertisementData.elementAt(9);
-                deviceFound = true;
-                FlutterBluePlus.stopScan();
-                subscription!.cancel();
-                btDevice = r.device;
-                await btDevice!.connect();
-                try{
-                  if (Platform.isAndroid) {
-                    await r.device.requestMtu(300);
-                  }
-                  bool loginSuccessful = false;
-                  List<BluetoothService> services = await r.device.discoverServices();
-                  for (var service in services){
-                    for(var characteristic in service.characteristics){
-                      if(characteristic.properties.notify){
-                        await characteristic.setNotifyValue(true);
-                        readCharacteristic = characteristic;
-
-                        subscriptionToDevice = characteristic.lastValueStream.listen((data) async{
-                          String message = utf8.decode(data).trim();
-                          logger.d(utf8.decode(data));
-                          if(message == "" && !loginSuccessful){
-                          }
-                          if(message == 'LOGIN OK'){
-                            await writeCharacteristic!.write(utf8.encode('S11:${value}'));
-                            await Future<void>.delayed( const Duration(milliseconds: 500));
-                            logger.d("hello");
-                            await btDevice!.disconnect(timeout: 1);
-                            btDevice!.removeBond();
-                            subscriptionToDevice?.cancel();
-                            Navigator.pop(context);
-                          }
-                        });
-                      }
-                      if(characteristic.properties.write){
-                        writeCharacteristic = characteristic;
-                        await Future<void>.delayed( const Duration(milliseconds: 500));
-                        if(!loginSuccessful){
-                          try{
-                            loginSuccessful = true;
-                            await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
-                          }catch(e){
-                            await btDevice!.disconnect(timeout: 1);
-                            btDevice!.removeBond();
-                            subscriptionToDevice?.cancel();
-                            Navigator.pop(context);
-                          }
-                        }
-                      }
-                    }
-                  }
-                }catch(e){
-                  Navigator.pop(context);
-                  await btDevice!.disconnect(timeout: 1);
-                  btDevice!.removeBond();
-                  subscriptionToDevice?.cancel();
-                }
-              }
-            }
-          }
-        }
-      });
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
-      await Future<void>.delayed( const Duration(seconds: 3));
-      if(!deviceFound){
-        Navigator.pop(context);
-      }
-    }catch(e){
-    }
-  }
-
-  void setClockType(int value)async{
-    String id = device.keys.elementAt(0);
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
-    try{
-      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
-        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
-            data: {
-              "refreshToken": refreshToken
-            });
-        token = loginResponse.data["token"];
-        refreshToken = loginResponse.data["refreshToken"];
-      }
-      dio.options.headers['Authorization'] = "Bearer $token";
-       dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
-        data: jsonEncode(
-            {
-              "u_clock": value,
-            }
-        ),
-      );
-    }catch(e){
-    }
-    if(!transmitionMethodSettings)return;
-    try{
-      showDialog(context: context, builder: (context) {
-        return Scaffold(
-            body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(AppLocalizations.of(context)!.searchingDevice),
-                    const SizedBox(height: 36,),
-                    const CircularProgressIndicator(color: Colors.black,),
-                  ],
-                )
-            )
-        );
-      });
-      if (Platform.isAndroid) {
-        await FlutterBluePlus.turnOn();
-      }
-      var locationEnabled = await location.serviceEnabled();
-      if(!locationEnabled){
-        var locationEnabled2 = await location.requestService();
-        if(!locationEnabled2){
-        }
-      }
-      var permissionGranted = await location.hasPermission();
-      if(permissionGranted == PermissionStatus.denied){
-        permissionGranted = await location.requestPermission();
-        if(permissionGranted != PermissionStatus.granted){
-        }
-      }
-      FlutterBluePlus.stopScan();
-      bool deviceFound = false;
-      subscription = FlutterBluePlus.scanResults.listen((results) async {
-        for (ScanResult r in results) {
-          if (!deviceFound) {
-            List<int> bluetoothAdvertisementData = [];
-            String bluetoothDeviceName = "";
-            if(r.advertisementData.manufacturerData.keys.isNotEmpty){
-              logger.d(r.advertisementData.manufacturerData);
-              if(r.advertisementData.manufacturerData.values.isNotEmpty){
-                bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
-              }
-              if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
-              if(bluetoothDeviceName == device.values.first.name){
-                radonValue = bluetoothAdvertisementData.elementAt(1).toString();
-                radonCurrent = bluetoothAdvertisementData.elementAt(1);
-                radonDaily = bluetoothAdvertisementData.elementAt(5);
-                currentAvgValue = bluetoothAdvertisementData.elementAt(5);
-                radonEver = bluetoothAdvertisementData.elementAt(9);
-                deviceFound = true;
-                FlutterBluePlus.stopScan();
-                subscription!.cancel();
-                btDevice = r.device;
-                await btDevice!.connect();
-                try{
-                  if (Platform.isAndroid) {
-                    await r.device.requestMtu(300);
-                  }
-                  bool loginSuccessful = false;
-                  List<BluetoothService> services = await r.device.discoverServices();
-                  for (var service in services){
-                    for(var characteristic in service.characteristics){
-                      if(characteristic.properties.notify){
-                        await characteristic.setNotifyValue(true);
-                        readCharacteristic = characteristic;
-                        subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
-                            Duration(seconds: 1),
-                            onTimeout: (list)async{
-                              await btDevice!.disconnect(timeout: 1);
-                              btDevice!.removeBond();
-                              subscriptionToDevice?.cancel();
-                              loaded = true;
-                              setState(() {
-                                screenIndex = 1;
-                                Navigator.pop(context);
-                              });
-                              Fluttertoast.showToast(
-                                  msg: "Error"
-                              );
-                            }
-                        ).listen((data) async{
-                          String message = utf8.decode(data).trim();
-                          logger.d(utf8.decode(data));
-                          if(message == "" && !loginSuccessful){
-                          }
-                          if(message == 'LOGIN OK'){
-                            await writeCharacteristic!.write(utf8.encode('S10:${value}'));
-                            await Future<void>.delayed( const Duration(milliseconds: 500));
-                            await btDevice!.disconnect(timeout: 1);
-                            btDevice!.removeBond();
-                            subscriptionToDevice?.cancel();
-                            Navigator.pop(context);
-                          }
-                        });
-
-                      }
-                      if(characteristic.properties.write){
-                        writeCharacteristic = characteristic;
-                        await Future<void>.delayed( const Duration(milliseconds: 300));
-                        if(!loginSuccessful){
-                          try{
-                            loginSuccessful = true;
-                            await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
-                          }catch(e){
-                            await btDevice!.disconnect(timeout: 1);
-                            btDevice!.removeBond();
-                            subscriptionToDevice?.cancel();
-                            Navigator.pop(context);
-                          }
-                        }
-                      }
-                    }
-                  }
-                }catch(e){
-                  await btDevice!.disconnect(timeout: 1);
-                  btDevice!.removeBond();
-                  subscriptionToDevice?.cancel();
-                  Navigator.pop(context);
-                }
-              }
-            }
-          }
-        }
-      });
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
-      await Future<void>.delayed( const Duration(seconds: 3));
-      if(!deviceFound){
-        Navigator.pop(context);
-      }
-    }catch(e){
-    }
-  }
-
-  void setMEZType(int value) async{
-    String id = device.keys.elementAt(0);
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
-    try{
-      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
-        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
-            data: {
-              "refreshToken": refreshToken
-            });
-        token = loginResponse.data["token"];
-        refreshToken = loginResponse.data["refreshToken"];
-      }
-      dio.options.headers['Authorization'] = "Bearer $token";
-      dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
-        data: jsonEncode(
-            {
-              "u_mez_ea": value,
-            }
-        ),
-      );
-    }catch(e){
-    }
-    if(!transmitionMethodSettings)return;
-    try{
-      showDialog(context: context, builder: (context) {
-        return Scaffold(
-            body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(AppLocalizations.of(context)!.searchingDevice),
-                    const SizedBox(height: 36,),
-                    const CircularProgressIndicator(color: Colors.black,),
-                  ],
-                )
-            )
-        );
-      });
-      if (Platform.isAndroid) {
-        await FlutterBluePlus.turnOn();
-      }
-      var locationEnabled = await location.serviceEnabled();
-      if(!locationEnabled){
-        var locationEnabled2 = await location.requestService();
-        if(!locationEnabled2){
-        }
-      }
-      var permissionGranted = await location.hasPermission();
-      if(permissionGranted == PermissionStatus.denied){
-        permissionGranted = await location.requestPermission();
-        if(permissionGranted != PermissionStatus.granted){
-        }
-      }
-      FlutterBluePlus.stopScan();
-      bool deviceFound = false;
-      subscription = FlutterBluePlus.scanResults.listen((results) async {
-        for (ScanResult r in results) {
-          if (!deviceFound) {
-            List<int> bluetoothAdvertisementData = [];
-            String bluetoothDeviceName = "";
-            if(r.advertisementData.manufacturerData.keys.isNotEmpty){
-              logger.d(r.advertisementData.manufacturerData);
-              if(r.advertisementData.manufacturerData.values.isNotEmpty){
-                bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
-              }
-              if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
-              if(bluetoothDeviceName == device.values.first.name){
-                radonValue = bluetoothAdvertisementData.elementAt(1).toString();
-                radonCurrent = bluetoothAdvertisementData.elementAt(1);
-                radonDaily = bluetoothAdvertisementData.elementAt(5);
-                currentAvgValue = bluetoothAdvertisementData.elementAt(5);
-                radonEver = bluetoothAdvertisementData.elementAt(9);
-                deviceFound = true;
-                FlutterBluePlus.stopScan();
-                subscription!.cancel();
-                btDevice = r.device;
-                await btDevice!.connect();
-                try{
-                  if (Platform.isAndroid) {
-                    await r.device.requestMtu(300);
-                  }
-                  bool loginSuccessful = false;
-                  List<BluetoothService> services = await r.device.discoverServices();
-                  for (var service in services){
-                    for(var characteristic in service.characteristics){
-                      if(characteristic.properties.notify){
-                        await characteristic.setNotifyValue(true);
-                        readCharacteristic = characteristic;
-                        subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
-                            Duration(seconds: 1),
-                            onTimeout: (list)async{
-                              await btDevice!.disconnect(timeout: 1);
-                              btDevice!.removeBond();
-                              subscriptionToDevice?.cancel();
-                              loaded = true;
-                              setState(() {
-                                screenIndex = 1;
-                                Navigator.pop(context);
-                              });
-                              Fluttertoast.showToast(
-                                  msg: "Error"
-                              );
-                            }
-                        ).listen((data) async{
-                          String message = utf8.decode(data).trim();
-                          logger.d(utf8.decode(data));
-                          if(message == "" && !loginSuccessful){
-                          }
-                          if(message == 'LOGIN OK'){
-                            await writeCharacteristic!.write(utf8.encode('S15:${value}'));
-                            await Future<void>.delayed( const Duration(milliseconds: 500));
-                            await btDevice!.disconnect(timeout: 1);
-                            btDevice!.removeBond();
-                            subscriptionToDevice?.cancel();
-                            Navigator.pop(context);
-                          }
-                        });
-                      }
-                      if(characteristic.properties.write){
-                        writeCharacteristic = characteristic;
-                        await Future<void>.delayed( const Duration(milliseconds: 300));
-                        if(!loginSuccessful){
-                          try{
-                            loginSuccessful = true;
-                            await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
-                          }catch(e){
-                            await btDevice!.disconnect(timeout: 1);
-                            btDevice!.removeBond();
-                            subscriptionToDevice?.cancel();
-                            Navigator.pop(context);
-                          }
-                        }
-                      }
-                    }
-                  }
-                }catch(e){
-                  await btDevice!.disconnect(timeout: 1);
-                  btDevice!.removeBond();
-                  subscriptionToDevice?.cancel();
-                  Navigator.pop(context);
-                }
-              }
-            }
-          }
-        }
-      });
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
-      await Future<void>.delayed( const Duration(seconds: 3));
-      if(!deviceFound){
-        Navigator.pop(context);
-      }
-    }catch(e){
-    }
   }
 
   void setTimezone(String value) async{
@@ -1935,6 +978,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       }
       FlutterBluePlus.stopScan();
       bool deviceFound = false;
+      bool sentSuccessfully = false;
+      bool loginSuccessful = false;
       subscription = FlutterBluePlus.scanResults.listen((results) async {
         for (ScanResult r in results) {
           if (!deviceFound) {
@@ -1961,16 +1006,14 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   if (Platform.isAndroid) {
                     await r.device.requestMtu(300);
                   }
-                  bool loginSuccessful = false;
                   List<BluetoothService> services = await r.device.discoverServices();
                   for (var service in services){
                     for(var characteristic in service.characteristics){
                       if(characteristic.properties.notify){
                         await characteristic.setNotifyValue(true);
                         readCharacteristic = characteristic;
-                        readCharacteristic = characteristic;
                         subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
-                            Duration(seconds: 1),
+                            Duration(seconds: 2),
                             onTimeout: (list)async{
                               await btDevice!.disconnect(timeout: 1);
                               btDevice!.removeBond();
@@ -1990,6 +1033,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           if(message == "" && !loginSuccessful){
                           }
                           if(message == 'LOGIN OK'){
+                            sentSuccessfully = true;
                             await writeCharacteristic!.write(utf8.encode('S31:${value}'));
                             await Future<void>.delayed( const Duration(milliseconds: 500));
                             await btDevice!.disconnect(timeout: 1);
@@ -2032,7 +1076,20 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       if(!deviceFound){
         Navigator.pop(context);
       }
+      if(!sentSuccessfully && loginSuccessful){
+        await btDevice!.disconnect(timeout: 1);
+        btDevice!.removeBond();
+        subscriptionToDevice?.cancel();
+        Navigator.pop(context);
+      }
     }catch(e){
+      try{
+        await btDevice!.disconnect(timeout: 1);
+        btDevice!.removeBond();
+        subscriptionToDevice?.cancel();
+        Navigator.pop(context);
+      }catch(e){
+      }
     }
   }
 
@@ -2058,455 +1115,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
             }
         ),
       );
-    }catch(e){
-    }
-    if(!transmitionMethodSettings)return;
-    try{
-      showDialog(context: context, builder: (context) {
-        return Scaffold(
-            body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(AppLocalizations.of(context)!.searchingDevice),
-                    const SizedBox(height: 36,),
-                    const CircularProgressIndicator(color: Colors.black,),
-                  ],
-                )
-            )
-        );
-      });
-      if (Platform.isAndroid) {
-        await FlutterBluePlus.turnOn();
-      }
-      var locationEnabled = await location.serviceEnabled();
-      if(!locationEnabled){
-        var locationEnabled2 = await location.requestService();
-        if(!locationEnabled2){
-        }
-      }
-      var permissionGranted = await location.hasPermission();
-      if(permissionGranted == PermissionStatus.denied){
-        permissionGranted = await location.requestPermission();
-        if(permissionGranted != PermissionStatus.granted){
-        }
-      }
-      FlutterBluePlus.stopScan();
-      bool deviceFound = false;
-      subscription = FlutterBluePlus.scanResults.listen((results) async {
-        for (ScanResult r in results) {
-          if (!deviceFound) {
-            List<int> bluetoothAdvertisementData = [];
-            String bluetoothDeviceName = "";
-            if(r.advertisementData.manufacturerData.keys.isNotEmpty){
-              logger.d(r.advertisementData.manufacturerData);
-              if(r.advertisementData.manufacturerData.values.isNotEmpty){
-                bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
-              }
-              if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
-              if(bluetoothDeviceName == device.values.first.name){
-                radonValue = bluetoothAdvertisementData.elementAt(1).toString();
-                radonCurrent = bluetoothAdvertisementData.elementAt(1);
-                radonDaily = bluetoothAdvertisementData.elementAt(5);
-                currentAvgValue = bluetoothAdvertisementData.elementAt(5);
-                radonEver = bluetoothAdvertisementData.elementAt(9);
-                deviceFound = true;
-                FlutterBluePlus.stopScan();
-                subscription!.cancel();
-                btDevice = r.device;
-                await btDevice!.connect();
-                try{
-                  if (Platform.isAndroid) {
-                    await r.device.requestMtu(300);
-                  }
-                  bool loginSuccessful = false;
-                  List<BluetoothService> services = await r.device.discoverServices();
-                  for (var service in services){
-                    for(var characteristic in service.characteristics){
-                      if(characteristic.properties.notify){
-                        await characteristic.setNotifyValue(true);
-                        readCharacteristic = characteristic;
-                        subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
-                            Duration(seconds: 1),
-                            onTimeout: (list)async{
-                              await btDevice!.disconnect(timeout: 1);
-                              btDevice!.removeBond();
-                              subscriptionToDevice?.cancel();
-                              loaded = true;
-                              setState(() {
-                                screenIndex = 1;
-                                Navigator.pop(context);
-                              });
-                              Fluttertoast.showToast(
-                                  msg: "Error"
-                              );
-                            }
-                        ).listen((data) async{
-                          String message = utf8.decode(data).trim();
-                          logger.d(utf8.decode(data));
-                          if(message == "" && !loginSuccessful){
-                          }
-                          if(message == 'LOGIN OK'){
-                            await writeCharacteristic!.write(utf8.encode('S17:${value}'));
-                            await Future<void>.delayed( const Duration(milliseconds: 500));
-                            await btDevice!.disconnect(timeout: 1);
-                            btDevice!.removeBond();
-                            subscriptionToDevice?.cancel();
-                            Navigator.pop(context);
-                          }
-                        });
-                      }
-                      if(characteristic.properties.write){
-                        writeCharacteristic = characteristic;
-                        await Future<void>.delayed( const Duration(milliseconds: 300));
-                        if(!loginSuccessful){
-                          try{
-                            loginSuccessful = true;
-                            await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
-                          }catch(e){
-                            await btDevice!.disconnect(timeout: 1);
-                            btDevice!.removeBond();
-                            subscriptionToDevice?.cancel();
-                            Navigator.pop(context);
-                          }
-                        }
-                      }
-                    }
-                  }
-                }catch(e){
-                  await btDevice!.disconnect(timeout: 1);
-                  btDevice!.removeBond();
-                  subscriptionToDevice?.cancel();
-                  Navigator.pop(context);
-                }
-              }
-            }
-          }
-        }
-      });
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
-      await Future<void>.delayed( const Duration(seconds: 3));
-      if(!deviceFound){
-        Navigator.pop(context);
-      }
-    }catch(e){
-    }
-  }
-
-  void setDisplayAnimation(int value) async{
-    String id = device.keys.elementAt(0);
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
-    try{
-      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
-        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
-            data: {
-              "refreshToken": refreshToken
-            });
-        token = loginResponse.data["token"];
-        refreshToken = loginResponse.data["refreshToken"];
-      }
-      dio.options.headers['Authorization'] = "Bearer $token";
-      dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
-        data: jsonEncode(
-            {
-              "u_led_tf": value,
-            }
-        ),
-      );
-    }catch(e){
-    }
-    if(!transmitionMethodSettings)return;
-    try{
-      showDialog(context: context, builder: (context) {
-        return Scaffold(
-            body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(AppLocalizations.of(context)!.searchingDevice),
-                    const SizedBox(height: 36,),
-                    const CircularProgressIndicator(color: Colors.black,),
-                  ],
-                )
-            )
-        );
-      });
-      if (Platform.isAndroid) {
-        await FlutterBluePlus.turnOn();
-      }
-      var locationEnabled = await location.serviceEnabled();
-      if(!locationEnabled){
-        var locationEnabled2 = await location.requestService();
-        if(!locationEnabled2){
-        }
-      }
-      var permissionGranted = await location.hasPermission();
-      if(permissionGranted == PermissionStatus.denied){
-        permissionGranted = await location.requestPermission();
-        if(permissionGranted != PermissionStatus.granted){
-        }
-      }
-      FlutterBluePlus.stopScan();
-      bool deviceFound = false;
-      subscription = FlutterBluePlus.scanResults.listen((results) async {
-        for (ScanResult r in results) {
-          if (!deviceFound) {
-            List<int> bluetoothAdvertisementData = [];
-            String bluetoothDeviceName = "";
-            if(r.advertisementData.manufacturerData.keys.isNotEmpty){
-              logger.d(r.advertisementData.manufacturerData);
-              if(r.advertisementData.manufacturerData.values.isNotEmpty){
-                bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
-              }
-              if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
-              if(bluetoothDeviceName == device.values.first.name){
-                radonValue = bluetoothAdvertisementData.elementAt(1).toString();
-                radonCurrent = bluetoothAdvertisementData.elementAt(1);
-                radonDaily = bluetoothAdvertisementData.elementAt(5);
-                currentAvgValue = bluetoothAdvertisementData.elementAt(5);
-                radonEver = bluetoothAdvertisementData.elementAt(9);
-                deviceFound = true;
-                FlutterBluePlus.stopScan();
-                subscription!.cancel();
-                btDevice = r.device;
-                await btDevice!.connect();
-                try{
-                  if (Platform.isAndroid) {
-                    await r.device.requestMtu(300);
-                  }
-                  bool loginSuccessful = false;
-                  List<BluetoothService> services = await r.device.discoverServices();
-                  for (var service in services){
-                    for(var characteristic in service.characteristics){
-                      if(characteristic.properties.notify){
-                        await characteristic.setNotifyValue(true);
-                        readCharacteristic = characteristic;
-                        subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
-                            Duration(seconds: 1),
-                            onTimeout: (list)async{
-                              await btDevice!.disconnect(timeout: 1);
-                              btDevice!.removeBond();
-                              subscriptionToDevice?.cancel();
-                              loaded = true;
-                              setState(() {
-                                screenIndex = 1;
-                                Navigator.pop(context);
-                              });
-                              Fluttertoast.showToast(
-                                  msg: "Error"
-                              );
-                            }
-                        ).listen((data) async{
-                          String message = utf8.decode(data).trim();
-                          logger.d(utf8.decode(data));
-                          if(message == "" && !loginSuccessful){
-                          }
-                          if(message == 'LOGIN OK'){
-                            await writeCharacteristic!.write(utf8.encode('S06:${value}'));
-                            await Future<void>.delayed( const Duration(milliseconds: 500));
-                            await btDevice!.disconnect(timeout: 1);
-                            btDevice!.removeBond();
-                            subscriptionToDevice?.cancel();
-                            Navigator.pop(context);
-                          }
-                        });
-                      }
-                      if(characteristic.properties.write){
-                        writeCharacteristic = characteristic;
-                        await Future<void>.delayed( const Duration(milliseconds: 300));
-                        if(!loginSuccessful){
-                          try{
-                            loginSuccessful = true;
-                            await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
-                          }catch(e){
-                            await btDevice!.disconnect(timeout: 1);
-                            btDevice!.removeBond();
-                            subscriptionToDevice?.cancel();
-                            Navigator.pop(context);
-                          }
-                        }
-                      }
-                    }
-                  }
-                }catch(e){
-                  await btDevice!.disconnect(timeout: 1);
-                  btDevice!.removeBond();
-                  subscriptionToDevice?.cancel();
-                  Navigator.pop(context);
-                }
-              }
-            }
-          }
-        }
-      });
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
-      await Future<void>.delayed( const Duration(seconds: 3));
-      if(!deviceFound){
-        Navigator.pop(context);
-      }
-    }catch(e){
-    }
-  }
-
-  void setDeviceUnit(int value) async{
-    String id = device.keys.elementAt(0);
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
-    try{
-      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
-        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
-            data: {
-              "refreshToken": refreshToken
-            });
-        token = loginResponse.data["token"];
-        refreshToken = loginResponse.data["refreshToken"];
-      }
-      dio.options.headers['Authorization'] = "Bearer $token";
-      dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
-        data: jsonEncode(
-            {
-              "u_unit": value,
-            }
-        ),
-      );
-    }catch(e){
-    }
-    if(!transmitionMethodSettings)return;
-    try{
-      showDialog(context: context, builder: (context) {
-        return Scaffold(
-            body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(AppLocalizations.of(context)!.searchingDevice),
-                    const SizedBox(height: 36,),
-                    const CircularProgressIndicator(color: Colors.black,),
-                  ],
-                )
-            )
-        );
-      });
-      if (Platform.isAndroid) {
-        await FlutterBluePlus.turnOn();
-      }
-      var locationEnabled = await location.serviceEnabled();
-      if(!locationEnabled){
-        var locationEnabled2 = await location.requestService();
-        if(!locationEnabled2){
-        }
-      }
-      var permissionGranted = await location.hasPermission();
-      if(permissionGranted == PermissionStatus.denied){
-        permissionGranted = await location.requestPermission();
-        if(permissionGranted != PermissionStatus.granted){
-        }
-      }
-      FlutterBluePlus.stopScan();
-      bool deviceFound = false;
-      subscription = FlutterBluePlus.scanResults.listen((results) async {
-        for (ScanResult r in results) {
-          if (!deviceFound) {
-            List<int> bluetoothAdvertisementData = [];
-            String bluetoothDeviceName = "";
-            if(r.advertisementData.manufacturerData.keys.isNotEmpty){
-              logger.d(r.advertisementData.manufacturerData);
-              if(r.advertisementData.manufacturerData.values.isNotEmpty){
-                bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
-              }
-              if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
-              if(bluetoothDeviceName == device.values.first.name){
-                radonValue = bluetoothAdvertisementData.elementAt(1).toString();
-                radonCurrent = bluetoothAdvertisementData.elementAt(1);
-                radonDaily = bluetoothAdvertisementData.elementAt(5);
-                currentAvgValue = bluetoothAdvertisementData.elementAt(5);
-                radonEver = bluetoothAdvertisementData.elementAt(9);
-                deviceFound = true;
-                FlutterBluePlus.stopScan();
-                subscription!.cancel();
-                btDevice = r.device;
-                await btDevice!.connect();
-                try{
-                  if (Platform.isAndroid) {
-                    await r.device.requestMtu(300);
-                  }
-                  bool loginSuccessful = false;
-                  List<BluetoothService> services = await r.device.discoverServices();
-                  for (var service in services){
-                    for(var characteristic in service.characteristics){
-                      if(characteristic.properties.notify){
-                        await characteristic.setNotifyValue(true);
-                        readCharacteristic = characteristic;
-                        readCharacteristic = characteristic;
-                        subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
-                            Duration(seconds: 1),
-                            onTimeout: (list)async{
-                              await btDevice!.disconnect(timeout: 1);
-                              btDevice!.removeBond();
-                              subscriptionToDevice?.cancel();
-                              loaded = true;
-                              setState(() {
-                                screenIndex = 1;
-                                Navigator.pop(context);
-                              });
-                              Fluttertoast.showToast(
-                                  msg: "Error"
-                              );
-                            }
-                        ).listen((data) async{
-                          String message = utf8.decode(data).trim();
-                          logger.d(utf8.decode(data));
-                          if(message == "" && !loginSuccessful){
-                          }
-                          if(message == 'LOGIN OK'){
-                            await writeCharacteristic!.write(utf8.encode('S01:${value}'));
-                            await Future<void>.delayed( const Duration(milliseconds: 500));
-                            await btDevice!.disconnect(timeout: 1);
-                            btDevice!.removeBond();
-                            subscriptionToDevice?.cancel();
-                            Navigator.pop(context);
-                          }
-                        });
-                      }
-                      if(characteristic.properties.write){
-                        writeCharacteristic = characteristic;
-                        await Future<void>.delayed( const Duration(milliseconds: 300));
-                        if(!loginSuccessful){
-                          try{
-                            loginSuccessful = true;
-                            await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
-                          }catch(e){
-                            await btDevice!.disconnect(timeout: 1);
-                            btDevice!.removeBond();
-                            subscriptionToDevice?.cancel();
-                            Navigator.pop(context);
-                          }
-                        }
-                      }
-                    }
-                  }
-                }catch(e){
-                  await btDevice!.disconnect(timeout: 1);
-                  btDevice!.removeBond();
-                  subscriptionToDevice?.cancel();
-                  Navigator.pop(context);
-                }
-              }
-            }
-          }
-        }
-      });
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
-      await Future<void>.delayed( const Duration(seconds: 3));
-      if(!deviceFound){
-        Navigator.pop(context);
-      }
     }catch(e){
     }
   }
@@ -2747,6 +1355,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     trackColor: trackColor,
                     value: useBluetoothData,
                     onChanged: (bool value) {
+                      chartBars = [];
+                      chartSpots = [];
+                      radonHistory = [];
+                      radonValuesTimeseries = [];
                       loaded = false;
                       loadedInternet = false;
                       futureFuncRunning = false;
@@ -4609,7 +3221,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         await characteristic.setNotifyValue(true);
                         readCharacteristic = characteristic;
                         subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
-                            Duration(seconds: 1),
+                            Duration(seconds: 2),
                             onTimeout: (list)async{
                               await btDevice!.disconnect(timeout: 1);
                               btDevice!.removeBond();
@@ -4641,9 +3253,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                 });
                               }
                               if (message.length >= 2 && message.substring(0, 2) == "|A") {
-                                var bluetoothCurrentValuesAsString = message.split("|")[1];
-                                var bluetoothCurrentvalues = bluetoothCurrentValuesAsString.split(",");
-                                currentWifiName = bluetoothCurrentvalues[15].substring(3);
+                                if(message.substring(2,4) == "03")  currentWifiName = message.substring(4,message.length);
                               }
                             });
                       }
@@ -4832,7 +3442,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         inactiveThumbColor: Colors.white30,
                         onChanged: (value) async{
                           d_led_t = value;
-                          await ledOnOff(value);
+                          sendTelemetry("u_led_t", d_led_t ? 1 : 0, "S02:${d_led_t ? 1 : 0}");
                           setState(() {
                           });
                         },
@@ -4866,7 +3476,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 setState(() {
                   d_led_tb = value.round().toDouble();
                 });
-                changeLEDBrightness();
+                sendTelemetry("u_led_tb", d_led_tb.toInt(), "S05:${d_led_tb.toInt()}");
               },
               onChanged: (value){
                 setState(() {
@@ -4892,7 +3502,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           );
                           return;
                         }
-                        setDisplayAnimation(0);
+                        sendTelemetry("u_led_tf", 0, "S06:0");
                         displayAnimation = 0;
                         setState(() {
 
@@ -4921,7 +3531,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           );
                           return;
                         }
-                        setDisplayAnimation(1);
+                        sendTelemetry("u_led_tf", 1, "S06:1");
                         displayAnimation = 1;
                         setState(() {
 
@@ -4965,7 +3575,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         inactiveThumbColor: Colors.white30,
                         onChanged: (value) async{
                           d_led_f = value;
-                          await displayOnOff(value);
+                          await sendTelemetry("u_led_f", d_led_f ? 1 : 0, "S03${d_led_f ? 1 : 0}");
                           setState(() {
 
                           });
@@ -4996,7 +3606,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 setState(() {
                   d_led_fb = value.round().toDouble();
                 });
-                changeDisplayBrightness();
+                sendTelemetry("u_led_fb", d_led_fb.toInt(), "S04:${d_led_fb.toInt()}");
               },
               onChanged: (value){
                 setState(() {
@@ -5022,7 +3632,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           );
                           return;
                         }
-                        displayType(0);
+                        sendTelemetry("u_view_switch", 0, "S11:0");
                         clock=0;
                         setState(() {
 
@@ -5051,7 +3661,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           );
                           return;
                         }
-                        displayType(1);
+                        sendTelemetry("u_view_switch", 1, "S11:1");
                         clock=1;
                         setState(() {
 
@@ -5079,7 +3689,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           );
                           return;
                         }
-                        displayType(2);
+                        sendTelemetry("u_view_switch", 2, "S11:2");
                         clock=2;
                         setState(() {
 
@@ -5115,7 +3725,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           );
                           return;
                         }
-                        setDeviceUnit(1);
+                        sendTelemetry("u_unit", 1, "S01:1");
                         d_unit = 1;
                         setState(() {
 
@@ -5144,7 +3754,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           );
                           return;
                         }
-                        setDeviceUnit(0);
+                        sendTelemetry("u_unit", 0, "S01:0");
                         d_unit = 0;
                         setState(() {
 
@@ -5253,7 +3863,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           );
                           return;
                         }
-                        setClockType(1);
+                        sendTelemetry("u_clock", 1, "S10:1");
                         clockType=1;
                         setState(() {
 
@@ -5282,7 +3892,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           );
                           return;
                         }
-                        setClockType(2);
+                        sendTelemetry("u_clock", 2, "S10:2");
                         clockType=2;
                         setState(() {
 
@@ -5310,7 +3920,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           );
                           return;
                         }
-                        setClockType(3);
+                        sendTelemetry("u_clock", 3, "S10:3");
                         clockType=3;
                         setState(() {
 
@@ -5622,7 +4232,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           );
                           return;
                         }
-                        setMEZType(0);
+                        sendTelemetry("u_mez_ea", 0, "S15:0");
                         mezType = 0;
                         setState(() {
 
@@ -5651,7 +4261,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           );
                           return;
                         }
-                        setMEZType(1);
+                        sendTelemetry("u_mez_ea", 1, "S15:1");
                         mezType = 1;
                         setState(() {
 
@@ -6484,7 +5094,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 children: [
                   OutlinedButton(
                     onPressed: (){
-                      sendBTLine(["S64:${cloudServer.text}","S65:${cloudPage.text}","S66:${cloudPaChain.text}","S67:${cloudPre.text}"]);
+                      sendBTLine(["S63:${cloudServer.text}","S64:${cloudPage.text}","S65:${cloudPaChain.text}","S67:${cloudPre.text}"]);
                       setState(() {
 
                       });
@@ -6836,6 +5446,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       }
       FlutterBluePlus.stopScan();
       bool deviceFound = false;
+      bool sentSuccessfully = false;
+      bool loginSuccessful = false;
       subscription = FlutterBluePlus.scanResults.listen((results) async {
         for (ScanResult r in results) {
           if (!deviceFound) {
@@ -6862,7 +5474,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   if (Platform.isAndroid) {
                     await r.device.requestMtu(300);
                   }
-                  bool loginSuccessful = false;
                   List<BluetoothService> services = await r.device.discoverServices();
                   for (var service in services){
                     for(var characteristic in service.characteristics){
@@ -6870,7 +5481,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         await characteristic.setNotifyValue(true);
                         readCharacteristic = characteristic;
                         subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
-                            Duration(seconds: 1),
+                            Duration(seconds: 2),
                             onTimeout: (list)async{
                               await btDevice!.disconnect(timeout: 1);
                               btDevice!.removeBond();
@@ -6890,6 +5501,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           if(message == "" && !loginSuccessful){
                           }
                           if(message == 'LOGIN OK'){
+                            sentSuccessfully = true;
                             lines.forEach((line)async{
                               await writeCharacteristic!.write(utf8.encode(line));
                               await Future<void>.delayed( const Duration(milliseconds: 50));
@@ -6899,68 +5511,66 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             subscriptionToDevice?.cancel();
                             Navigator.pop(context);
                           }
-                          if(message.split(":").first == "G63" || message.split(":").first ==  "S63"){
+                          if((message.split(":").first == "G63") || (message.split(":").first ==  "S63")){
                             cloudServer.text = message.split(":").last;
                           }
-                          if(message.split(":").first == "G64" || message.split(":").first ==  "S64"){
+                          if((message.split(":").first == "G64") || (message.split(":").first ==  "S64")){
                             cloudPage.text = message.split(":").last;
                           }
-                          if(message.split(":").first == "G65" || message.split(":").first ==  "S65"){
+                          if((message.split(":").first == "G65") || (message.split(":").first ==  "S65")){
                             cloudPaChain.text = message.split(":").last;
                           }
-                          if(message.split(":").first == "G66" || message.split(":").first ==  "S66"){
+                          if((message.split(":").first == "G66") || (message.split(":").first ==  "S66")){
                             cloudOnOff = "1" == message.split(":").last ? true : false;
                           }
-
-                          if(message.split(":").first == "G67" || message.split(":").first ==  "S67"){
+                          if((message.split(":").first == "G67") || (message.split(":").first ==  "S67")){
                             cloudPre.text = message.split(":").last;
                           }
-                          if(message.split(":").first == "G54"  || message.split(":").first ==  "S54"){
+                          if((message.split(":").first == "G54")  || (message.split(":").first ==  "S54")){
                             knxOnOff = "1" == message.split(":").last ? true : false;
                           }
-                          if(message.split(":").first == "G55"  || message.split(":").first ==  "S55"){
+                          if((message.split(":").first == "G55")  || (message.split(":").first ==  "S55")){
                             knxProgMode = "1" == message.split(":").last ? true : false;
                           }
-                          if(message.split(":").first == "G56" || message.split(":").first ==  "S56"){
+                          if((message.split(":").first == "G56") || (message.split(":").first ==  "S56")){
                             knxPhysAddress.text = message.split(":").last;
                           }
-                          if(message.split(":").first == "G57" || message.split(":").first ==  "S57"){
+                          if((message.split(":").first == "G57") || (message.split(":").first ==  "S57")){
                             knxGroup1.text = message.split(":").last.split(",")[0].replaceAll(".", "/");
                           }
-                          if(message.split(":").first == "G57"  || message.split(":").first ==  "S57"){
+                          if((message.split(":").first == "G57")  || (message.split(":").first ==  "S57")){
                             knxGroup2.text = message.split(":").last.split(",")[1].replaceAll(".", "/");
                           }
-                          if(message.split(":").first == "G57" || message.split(":").first ==  "S57"){
+                          if((message.split(":").first == "G57") || (message.split(":").first ==  "S57")){
                             knxGroup3.text = message.split(":").last.split(",")[2].replaceAll(".", "/");
                           }
-                          if(message.split(":").first == "G57" || message.split(":").first ==  "S57"){
+                          if((message.split(":").first == "G57") || (message.split(":").first ==  "S57")){
                             knxGroup4.text = message.split(":").last.split(",")[3].replaceAll(".", "/");
                           }
-                          if(message.split(":").first == "G58" || message.split(":").first ==  "S58"){
+                          if((message.split(":").first == "G58") || (message.split(":").first ==  "S58")){
                             knxParam0 = message.split(":").last;
                           }
-                          if(message.split(":").first == "G59"  || message.split(":").first ==  "S59"){
+                          if((message.split(":").first == "G59" ) || (message.split(":").first ==  "S59")){
                             knxParam1 = message.split(":").last;
                           }
-                          if(message.split(":").first == "G70" || message.split(":").first ==  "S70"){
+                          if((message.split(":").first == "G70") || (message.split(":").first ==  "S70")){
                             mqttOnOff = "1" == message.split(":").last ? true : false;
                           }
-                          if(message.split(":").first == "G71"  || message.split(":").first ==  "S71"){
+                          if((message.split(":").first == "G71" ) || ((message.split(":").first ==  "S71"))){
                             mqttClient.text = message.split(":").last;
                           }
-                          if(message.split(":").first == "G72"  || message.split(":").first ==  "S72"){
+                          if((message.split(":").first == "G72")  || ((message.split(":").first ==  "S72"))){
                             mqttServer.text = message.split(":").last;
                           }
-                          if(message.split(":").first == "G73"  || message.split(":").first ==  "S73"){
+                          if((message.split(":").first == "G73")  || (message.split(":").first ==  "S73")){
                             mqttUser.text = message.split(":").last;
                           }
-                          if(message.split(":").first == "G74"  || message.split(":").first ==  "S74"){
+                          if((message.split(":").first == "G74") || (message.split(":").first ==  "S74")){
                             mqttPort.text = message.split(":").last;
                           }
-                          if(message.split(":").first == "G75"  || message.split(":").first ==  "S75"){
+                          if((message.split(":").first == "G75")  || (message.split(":").first ==  "S75")){
                             mqttTopic.text = message.split(":").last;
                           }
-
                         });
                       }
                       if(characteristic.properties.write){
@@ -6987,17 +5597,29 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   Navigator.pop(context);
                 }
               }
-              break;
             }
           }
         }
       });
       FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
       await Future<void>.delayed( const Duration(seconds: 3));
-    if(!deviceFound){
-    Navigator.pop(context);
-    }
+      if(!deviceFound){
+        Navigator.pop(context);
+      }
+      if(!sentSuccessfully && loginSuccessful){
+        await btDevice!.disconnect(timeout: 1);
+        btDevice!.removeBond();
+        subscriptionToDevice?.cancel();
+        Navigator.pop(context);
+      }
     }catch(e){
+      try{
+        await btDevice!.disconnect(timeout: 1);
+        btDevice!.removeBond();
+        subscriptionToDevice?.cancel();
+        Navigator.pop(context);
+      }catch(e){
+      }
     }
   }
 
@@ -7224,7 +5846,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   await characteristic.setNotifyValue(true);
                   readCharacteristic = characteristic;
                   subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
-                      Duration(seconds: 1),
+                      Duration(seconds: 2),
                       onTimeout: (list)async{
                         await btDevice!.disconnect(timeout: 1);
                         btDevice!.removeBond();
@@ -7242,6 +5864,15 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     String message = utf8.decode(data).trim();
                     logger.d(utf8.decode(data));
                     if(message == "" && !loginSuccessful){
+                      await Future<void>.delayed(const Duration(seconds: 1));
+                      if(!loginSuccessful){
+                        try{
+                          loginSuccessful = true;
+                          await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+                        }catch(e){
+                          logger.e("ERROR");
+                        }
+                      }
                     }
                     if(message == 'LOGIN OK' && !hasScanned){
                       loginSuccessful = true;
@@ -7295,6 +5926,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       loginSuccessful = true;
                       await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
                     }catch(e){
+                      logger.e("ERROR");
                     }
                   }
                 }
@@ -7306,6 +5938,23 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     });
     FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
     await Future<void>.delayed( const Duration(seconds: 3));
+    if(!loginSuccessful){
+      try{
+        await btDevice!.disconnect(timeout: 1);
+        btDevice!.removeBond();
+        subscriptionToDevice?.cancel();
+        loaded = true;
+        setState(() {
+          screenIndex = 1;
+          Navigator.pop(context);
+        });
+        Fluttertoast.showToast(
+            msg: "Error"
+        );
+      }catch(e){
+        logger.e("ERROR");
+      }
+    }
     if(!deviceFound){
       Navigator.pop(context);
       Fluttertoast.showToast(
@@ -7392,7 +6041,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       await characteristic.setNotifyValue(true);
                       readCharacteristic = characteristic;
                       subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
-                          Duration(seconds: 1),
+                          Duration(seconds: 2),
                           onTimeout: (list)async{
                             bool hasData = false;
                             if(currentBtTimestampCount != -1){
@@ -7455,14 +6104,13 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           BtTimestampCount = int.parse(message.substring(4, message.length-1));
                         }
                         if(message.length >= 2 && message.substring(0,2)=="|A"){
-                          var bluetoothCurrentValuesAsString = message.split("|")[1];
-                          var bluetoothCurrentvalues = bluetoothCurrentValuesAsString.split(",");
-                          d_unit = int.parse(bluetoothCurrentvalues[0].substring(3));
-                          d_led_t = bluetoothCurrentvalues[1].substring(3) == "1";
-                          d_led_f = bluetoothCurrentvalues[2].substring(3) == "1";
-                          d_led_fb = double.parse(bluetoothCurrentvalues[3].substring(3));
-                          d_led_tb = double.parse(bluetoothCurrentvalues[4].substring(3));
-                          currentWifiName = bluetoothCurrentvalues[16].substring(3);
+                          if(message.substring(2,4) == "01")  d_unit = int.parse(message.substring(4));
+                          if(message.substring(2,4) == "02")  d_led_t = message.substring(4) == "1";
+                          if(message.substring(2,4) == "03")  d_led_f = message.substring(4) == "1";
+                          if(message.substring(2,4) == "04")  d_led_tb = double.parse(message.substring(4,message.length));
+                          if(message.substring(2,4) == "05")  d_led_fb = double.parse(message.substring(4,message.length));
+                          if(message.substring(2,4) == "03")  currentWifiName = message.substring(4,message.length);
+
                         }
                         if(readGraph){
                           var bluetoothRadonHistory = message.split(";");
