@@ -3262,7 +3262,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               if (r.advertisementData.manufacturerData.keys.first == 3503)
                 bluetoothDeviceName +=
                     utf8.decode(bluetoothAdvertisementData.sublist(15, 23));
-              if (true/*bluetoothDeviceName == device.values.first.name*/) {
+              if (bluetoothDeviceName == device.values.first.name) {
                 deviceFound = true;
                 FlutterBluePlus.stopScan();
                 subscription!.cancel();
@@ -6183,7 +6183,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
             }
             if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
           }
-          if(true/*bluetoothDeviceName == device.values.first.name*/) {
+          if(bluetoothDeviceName == device.values.first.name) {
             deviceFound = true;
             btDevice = r.device;
             try{
