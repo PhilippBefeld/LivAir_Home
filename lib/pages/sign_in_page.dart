@@ -9,7 +9,6 @@ import 'package:livair_home/components/my_button.dart';
 import 'package:livair_home/components/my_textfield.dart';
 import 'package:livair_home/pages/root_page.dart';
 import 'package:livair_home/pages/sign_up_page.dart';
-import 'package:logger/logger.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -29,7 +28,6 @@ class SignInPage extends StatefulWidget {
 
 class SignInPageState extends State<SignInPage> {
   final Dio dio = Dio();
-  final logger = Logger();
   final emailController = TextEditingController();
   final emailResetController = TextEditingController();
   final passwordController = TextEditingController();
@@ -105,7 +103,6 @@ class SignInPageState extends State<SignInPage> {
         }
         var languageData = await dio.get('https://dashboard.livair.io/api/livAir/language',options: Options(responseType: ResponseType.plain));
       }catch(e){
-        logger.e(e);
       }
       Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/login',
           data: {
@@ -148,7 +145,6 @@ class SignInPageState extends State<SignInPage> {
       }
 
     } on Error catch (e){
-      logger.e(e);
     }
   }
 
@@ -188,7 +184,6 @@ class SignInPageState extends State<SignInPage> {
             msg: AppLocalizations.of(context)!.emailSent_toast
         );
       }catch(e){
-        logger.e(e);
       }
     }
 

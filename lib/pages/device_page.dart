@@ -12,7 +12,6 @@ import 'package:jwt_decoder/jwt_decoder.dart';
 import 'package:livair_home/components/my_device_widget.dart';
 import 'package:livair_home/pages/device_detail_page.dart';
 import 'package:livair_home/components/data/device.dart';
-import 'package:logger/logger.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -34,7 +33,6 @@ class DevicePageState extends State<DevicePage> {
 
   String token;
   String refreshToken;
-  final logger = Logger();
   final Dio dio = Dio();
   final location = Location();
   final storage = const FlutterSecureStorage();
@@ -119,7 +117,6 @@ class DevicePageState extends State<DevicePage> {
                 "page": 0
               }
           );
-          logger.d(result2.data);
           Map<String,dynamic> map = result2.data;
           List list = map["data"];
           for (var element in list) {
@@ -162,7 +159,6 @@ class DevicePageState extends State<DevicePage> {
                 "page": 0
               }
           );
-          logger.d(result.data);
           map = result.data;
           list = map["data"];
           for (var element in list) {
@@ -225,7 +221,6 @@ class DevicePageState extends State<DevicePage> {
                 List<int> bluetoothAdvertisementData = [];
                 String bluetoothDeviceName = "";
                 if(r.advertisementData.manufacturerData.keys.isNotEmpty){
-                  logger.d(r.advertisementData.manufacturerData);
                   if(r.advertisementData.manufacturerData.values.isNotEmpty){
                     bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
                   }
@@ -241,11 +236,11 @@ class DevicePageState extends State<DevicePage> {
           });
           FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
           await Future<void>.delayed( const Duration(seconds: 4));
+          subscription!.cancel();
           setState(() {
 
           });
         }catch(e){
-          print(e);
         }
       }
 
@@ -438,7 +433,6 @@ class DevicePageState extends State<DevicePage> {
               isLatLngRequired:true,// if you required coordinates from place detail
               getPlaceDetailWithLatLng: (Prediction prediction) {
                 // this method will return latlng with place detail
-                print("placeDetails${prediction.lng}");
               }, // this callback is called when isLatLngRequired is true
               itemClick: (Prediction prediction) {
                 deviceLocationController.text = prediction.description!;
@@ -663,10 +657,32 @@ class DevicePageState extends State<DevicePage> {
         if(characteristic.properties.notify){
           await characteristic.setNotifyValue(true);
           readCharacteristic = characteristic;
-          btChat = characteristic.lastValueStream.listen((data) async{
+          btChat = readCharacteristic!.lastValueStream.timeout(
+              Duration(seconds: 8),
+              onTimeout: (list)async{
+                if(hasScanned)return;
+                await deviceToAdd!.disconnect(timeout: 1);
+                deviceToAdd!.removeBond();
+                btChat?.cancel();
+                setState(() {
+                  screenIndex = 0;
+                  Navigator.pop(context);
+                });
+                Fluttertoast.showToast(
+                    msg: "Error"
+                );
+              }
+          ).listen((data) async{
             String message = utf8.decode(data).trim();
-            print(utf8.decode(data));
             if(message == ""){
+              await Future<void>.delayed(const Duration(seconds: 1));
+              if(!loginSuccessful){
+                try{
+                  loginSuccessful = true;
+                  await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+                }catch(e){
+                }
+              }
             }
             if(message == 'LOGIN OK' && !hasScanned){
               loginSuccessful = true;
@@ -701,6 +717,7 @@ class DevicePageState extends State<DevicePage> {
             if(message == "Connect Success"){
               deviceToAdd!.disconnect(timeout: 1);
               deviceToAdd!.removeBond();
+              btChat!.cancel();
               setState(() {
                 screenIndex = 13;
               });
@@ -776,8 +793,7 @@ class DevicePageState extends State<DevicePage> {
       if(permissionGranted != PermissionStatus.granted){
       }
     }
-    FlutterBluePlus.scanResults.timeout( const Duration(seconds: 2));
-    var subscription = FlutterBluePlus.scanResults.listen((results) async{
+    var subscription = FlutterBluePlus.scanResults.timeout( const Duration(seconds: 2)).listen((results) async{
       for(ScanResult r in results){
         if(r.advertisementData.manufacturerData.keys.isNotEmpty){
           if(r.advertisementData.manufacturerData.keys.first == 3503){

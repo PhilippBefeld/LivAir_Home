@@ -57,27 +57,31 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
 
   int screenIndex = 0;
 
+  final storage = FlutterSecureStorage();
+
+  //deactivate loading data
   bool loaded = false;
   bool loadedInternet = false;
 
-  final displayController = TextEditingController();
-  final statusLEDController = TextEditingController();
   var value = 0.0;
-  final storage = FlutterSecureStorage();
+  //radon unit,
   String? unit;
+  //switch betweem thimgsboard and BT values
   bool useBluetoothData = false;
 
   bool changeDiagram = false;
   bool showDiagramDots = false;
   bool showAllData = false;
 
-
+  //websocket channel
   WebSocketChannel? channel;
+
+  //radon data
   List<dynamic> radonHistory = [];
   List<Tuple2<int,int>> radonHistoryTimestamps = [];
   List<int> radonValuesTimeseries = [];
 
-  //chart values
+  //chart
   List<ChartData> chartSpots = [];
   List<BarChartGroupData> chartBars = [];
   int selectedNumberOfDays = 1;
@@ -88,6 +92,14 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   int currentMaxAvgValueSpots = 100;
   int stepsIntoPast = 1;
 
+  //misc
+  List<String> tzLocations = [];
+  List<String> tzCodes = [];
+  String currentTZ = "";
+  String tzServer1 = "";
+  String tzServer2 = "";
+  String tzServer3 = "";
+  TextEditingController customNTPServerController = TextEditingController();
   DetailResponse? detailResponse;
   List<Details> details = [];
   String radonValue = "";
@@ -97,13 +109,18 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   int requestMsSinceEpoch = 0;
   bool transmitionMethodSettings = false;
 
-  //deviceInfoScreen values
+  //deviceInfoScreen
   String firmwareVersion = "";
   int calibrationDate = 0;
 
-  //deviceLightsScreen values
+  //general telemetry
+  bool sentSuccessfullBTTelemetery = false;
+
+  //deviceLightsScreen
   double d_led_fb = 1.0;
+  double d_led_fb_old = 1.0;
   double d_led_tb = 1.0;
+  double d_led_tb_old = 1.0;
   bool d_led_t = false;
   bool d_led_f = false;
   TextEditingController orangeMinValue = TextEditingController();
@@ -114,31 +131,24 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   int mezType = 1;
   int displayAnimation = 1;
 
-  List<String> tzLocations = [];
-  List<String> tzCodes = [];
-  String currentTZ = "";
-  String tzServer1 = "";
-  String tzServer2 = "";
-  String tzServer3 = "";
-  TextEditingController customNTPServerController = TextEditingController();
 
-  //exportDataScreen values
+  //exportDataScreen
   bool customTimeseriesSelected = false;
   DateTime customTimeseriesStart = DateTime.now();
   DateTime customTimeseriesEnd = DateTime.now();
 
-  //renameDeviceScreen value
+  //renameDeviceScreen
   TextEditingController renameController = TextEditingController();
 
-  //locationScreen values
+  //locationScreen
   TextEditingController deviceLocationController = TextEditingController();
 
-  //shareDeviceScreen values
+  //shareDeviceScreen
   TextEditingController emailController = TextEditingController();
   List<dynamic> viewerData = [];
   String emailToRemove = "";
 
-  //wifiScreen values
+  //wifiScreen
   String currentWifiName = "Not connected";
   StreamSubscription<List<ScanResult>>? subscription;
   StreamSubscription<List<int>>? subscriptionToDevice;
@@ -149,7 +159,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   BluetoothCharacteristic? readCharacteristic;
   TextEditingController wifiPasswordController = TextEditingController();
 
-  //offlineData values
+  //offlineData
   int radonCurrent = 0;
   int radonDaily = 0;
   int radonEver = 0;
@@ -158,21 +168,18 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   int BtTimestampCount = -1;
   int currentBtTimestampCount = -1;
 
-  //warningScreen values
+  //warningScreen
   TextEditingController thresHoldController = TextEditingController();
   int selectedHours = 0;
   int selectedMinutes = 0;
 
-  //clockScreen values
+  //clockScreen
   String timezoneCountry = "None selected";
   String timezoneCity = "None selected";
   List<String> tzOfSelection = [];
-  List<DropdownMenuItem<String>> tzOfSelectionWidgets = [
-    DropdownMenuItem(child: Text("None selected"),value: "None selected",)
-  ];
   String tzSelected = "";
 
-  //knx screen values
+  //knx screen
   bool knxProgMode = false;
   bool knxOnOff = false;
   TextEditingController knxPhysAddress = TextEditingController();
@@ -187,15 +194,23 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   String? knxGroupError4;
   String knxParam0 = "";
   String knxParam1 = "";
+  TextEditingController knxIP = TextEditingController();
+  TextEditingController knxSubnetMask = TextEditingController();
+  TextEditingController knxGateway = TextEditingController();
+  TextEditingController knxMultiCastAddress = TextEditingController();
+  String? knxIPError;
+  String? knxSubnetMaskError;
+  String? knxGatewayError;
+  String? knxMultiCastError;
 
-  //Cloud screen values
+  //Cloud screen
   bool cloudOnOff = false;
   TextEditingController cloudServer = TextEditingController();
   TextEditingController cloudPage = TextEditingController();
   TextEditingController cloudPaChain= TextEditingController();
   TextEditingController cloudPre = TextEditingController();
 
-  //MQTT screen values
+  //MQTT screen
   TextEditingController mqttClient = TextEditingController();
   TextEditingController mqttServer = TextEditingController();
   TextEditingController mqttUser = TextEditingController();
@@ -604,11 +619,13 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               try{
                 var dLedFBdata = telData["d_led_fb"];
                 if(dLedFBdata!=null)d_led_fb = int.parse(dLedFBdata[0][1]).toDouble();
+                if(dLedFBdata!=null)d_led_fb_old = int.parse(dLedFBdata[0][1]).toDouble();
               }catch(e){
               }
               try{
                 var dLedTBdata = telData["d_led_tb"];
                 if(dLedTBdata!=null)d_led_tb = int.parse(dLedTBdata[0][1]).toDouble();
+                if(dLedTBdata!=null)d_led_tb_old = int.parse(dLedTBdata[0][1]).toDouble();
               }catch(e){
               }
               try{
@@ -728,16 +745,14 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       screenIndex = 1;
                     });
                   } catch (e) {
-                    logger.e(e);
                   }
                 }
               }
-              //logger.d(jsonDecode(data));
             },
-        onError: (error) => print(error),
+        onError: (error){
+        },
       );
     }catch (e) {
-      logger.d(e);
       Fluttertoast.showToast(
           msg: AppLocalizations.of(context)!.failedLoadData
       );
@@ -747,30 +762,34 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   sendTelemetry(String name, int value, String btValue) async{
     if(telemetryRunning)return;
     telemetryRunning = true;
-    String id = device.keys.elementAt(0);
-    dio.options.headers['content-Type'] = 'application/json';
-    dio.options.headers['Accept'] = "application/json";
-    dio.options.headers['Authorization'] = "Bearer $token";
-    try{
-      if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
-        Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
-            data: {
-              "refreshToken": refreshToken
-            });
-        token = loginResponse.data["token"];
-        refreshToken = loginResponse.data["refreshToken"];
-      }
+    if(!transmitionMethodSettings) {
+      String id = device.keys.elementAt(0);
+      dio.options.headers['content-Type'] = 'application/json';
+      dio.options.headers['Accept'] = "application/json";
       dio.options.headers['Authorization'] = "Bearer $token";
-      dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
-        data: jsonEncode(
-            {
-              name: value,
-            }
-        ),
-      );
-    }catch(e){
+      try{
+        if(DateTime.fromMillisecondsSinceEpoch(JwtDecoder.decode(token)["exp"]*1000).isBefore(DateTime.now())){
+          Response loginResponse = await dio.post('https://dashboard.livair.io/api/auth/token',
+              data: {
+                "refreshToken": refreshToken
+              });
+          token = loginResponse.data["token"];
+          refreshToken = loginResponse.data["refreshToken"];
+        }
+        dio.options.headers['Authorization'] = "Bearer $token";
+        dio.post('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/$id/SHARED_SCOPE',
+          data: jsonEncode(
+              {
+                name: value,
+              }
+          ),
+        );
+        sentSuccessfullBTTelemetery = true;
+      }catch(e){
+      }
+      telemetryRunning = false;
+      return;
     }
-    if(!transmitionMethodSettings)return;
     try{
       showDialog(context: context, builder: (context) {
         return Scaffold(
@@ -812,7 +831,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
             List<int> bluetoothAdvertisementData = [];
             String bluetoothDeviceName = "";
             if(r.advertisementData.manufacturerData.keys.isNotEmpty){
-              logger.d(r.advertisementData.manufacturerData);
               if(r.advertisementData.manufacturerData.values.isNotEmpty){
                 bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
               }
@@ -827,7 +845,15 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 FlutterBluePlus.stopScan();
                 subscription!.cancel();
                 btDevice = r.device;
-                await btDevice!.connect();
+                try{
+                  await btDevice!.connect();
+                }catch(e){
+                  Navigator.of(context).pop();
+                  setState(() {
+
+                  });
+                  return;
+                }
                 try{
                   if (Platform.isAndroid) {
                     await r.device.requestMtu(300);
@@ -857,11 +883,20 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           String message = utf8.decode(data).trim();
                           logger.d(utf8.decode(data));
                           if(message == "" && !loginSuccessful){
+                            await Future<void>.delayed(const Duration(seconds: 1));
+                            if(!loginSuccessful){
+                              try{
+                                loginSuccessful = true;
+                                await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+                              }catch(e){
+                              }
+                            }
                           }
                           if(message == 'LOGIN OK'){
                             sentSuccessfully = true;
                             await writeCharacteristic!.write(utf8.encode(btValue));
                             await Future<void>.delayed( const Duration(milliseconds: 500));
+                            sentSuccessfullBTTelemetery = true;
                             await btDevice!.disconnect(timeout: 1);
                             btDevice!.removeBond();
                             subscriptionToDevice?.cancel();
@@ -900,6 +935,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
       await Future<void>.delayed( const Duration(seconds: 3));
       if(!deviceFound){
+        subscription!.cancel();
         Navigator.pop(context);
       }
       if(!sentSuccessfully  && loginSuccessful){
@@ -944,7 +980,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       );
     }catch(e){
     }
-    if(!transmitionMethodSettings)return;
+    if(!transmitionMethodSettings) {
+      telemetryRunning = false;
+      return;
+    }
     try{
       showDialog(context: context, builder: (context) {
         return Scaffold(
@@ -986,7 +1025,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
             List<int> bluetoothAdvertisementData = [];
             String bluetoothDeviceName = "";
             if(r.advertisementData.manufacturerData.keys.isNotEmpty){
-              logger.d(r.advertisementData.manufacturerData);
               if(r.advertisementData.manufacturerData.values.isNotEmpty){
                 bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
               }
@@ -1001,7 +1039,15 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 FlutterBluePlus.stopScan();
                 subscription!.cancel();
                 btDevice = r.device;
-                await btDevice!.connect();
+                try{
+                  await btDevice!.connect();
+                }catch(e){
+                  Navigator.of(context).pop();
+                  setState(() {
+
+                  });
+                  return;
+                }
                 try{
                   if (Platform.isAndroid) {
                     await r.device.requestMtu(300);
@@ -1031,6 +1077,14 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           String message = utf8.decode(data).trim();
                           logger.d(utf8.decode(data));
                           if(message == "" && !loginSuccessful){
+                            await Future<void>.delayed(const Duration(seconds: 1));
+                            if(!loginSuccessful){
+                              try{
+                                loginSuccessful = true;
+                                await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+                              }catch(e){
+                              }
+                            }
                           }
                           if(message == 'LOGIN OK'){
                             sentSuccessfully = true;
@@ -1074,6 +1128,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
       await Future<void>.delayed( const Duration(seconds: 3));
       if(!deviceFound){
+        subscription!.cancel();
         Navigator.pop(context);
       }
       if(!sentSuccessfully && loginSuccessful){
@@ -1317,32 +1372,39 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           title: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.black),
-                    onPressed: (){
-                      setState(() {
-                        try{
-                          channel!.sink.add({
-                            "cmds": [
-                              {
-                                "entityType": "DEVICE",
-                                "entityId": device.keys.elementAt(0),
-                                "scope": "CLIENT_SCOPE",
-                                "cmdId": 1,
-                                "unsubscribe": true
-                              }
-                            ]
-                          });
-                        }catch(e){
-                        }
-                        Navigator.pop(context);
-                      });
-                    },
-                  ),
-                  Text(device.values.elementAt(0).label!=null ? device.values.elementAt(0).label!  : device.values.elementAt(0).name, style: const TextStyle(color: Colors.black,fontSize: 20,fontWeight: FontWeight.w400),overflow: TextOverflow.fade,),
-                ],
+              Expanded(
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.black),
+                      onPressed: (){
+                        setState(() {
+                          try{
+                            channel!.sink.add({
+                              "cmds": [
+                                {
+                                  "entityType": "DEVICE",
+                                  "entityId": device.keys.elementAt(0),
+                                  "scope": "CLIENT_SCOPE",
+                                  "cmdId": 1,
+                                  "unsubscribe": true
+                                }
+                              ]
+                            });
+                          }catch(e){
+                          }
+                          Navigator.pop(context);
+                        });
+                      },
+                    ),
+                    Flexible(
+                        child: Tooltip(
+                            message: device.values.elementAt(0).label!=null ? device.values.elementAt(0).label!  : device.values.elementAt(0).name,
+                            child: Text(device.values.elementAt(0).label!=null ? device.values.elementAt(0).label!  : device.values.elementAt(0).name, style: const TextStyle(color: Colors.black,fontSize: 20,fontWeight: FontWeight.w400),overflow: TextOverflow.ellipsis,maxLines: 1,)
+                        )
+                    ),
+                  ],
+                ),
               ),
               Row(
                 children: [
@@ -1671,8 +1733,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              !useBluetoothData ? "${Duration(milliseconds: requestMsSinceEpoch-(radonHistoryTimestamps.isNotEmpty ? radonHistoryTimestamps.first.item1 : 0)).inMinutes} ${AppLocalizations.of(context)!.minsAgo}" :
-                              AppLocalizations.of(context)!.currentValue,
+                              !useBluetoothData ? Duration(milliseconds: requestMsSinceEpoch-(radonHistoryTimestamps.isNotEmpty ? radonHistoryTimestamps.first.item1 : 0)).inMinutes < 60 ? "${Duration(milliseconds: requestMsSinceEpoch-(radonHistoryTimestamps.isNotEmpty ? radonHistoryTimestamps.first.item1 : 0)).inMinutes} ${AppLocalizations.of(context)!.minsAgo}" :  Duration(milliseconds: requestMsSinceEpoch-(radonHistoryTimestamps.isNotEmpty ? radonHistoryTimestamps.first.item1 : 0)).inHours < 12 ? "${Duration(milliseconds: requestMsSinceEpoch-(radonHistoryTimestamps.isNotEmpty ? radonHistoryTimestamps.first.item1 : 0)).inHours} ${AppLocalizations.of(context)!.hoursAgo}" : "${Duration(milliseconds: requestMsSinceEpoch-(radonHistoryTimestamps.isNotEmpty ? radonHistoryTimestamps.first.item1 : 0)).inDays} ${AppLocalizations.of(context)!.daysAgo}" : AppLocalizations.of(context)!.currentValue,
                               style: const TextStyle(
                                   color: Color(0xff78909C),
                                   fontSize: 18,
@@ -3194,7 +3255,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
             List<int> bluetoothAdvertisementData = [];
             String bluetoothDeviceName = "";
             if (r.advertisementData.manufacturerData.keys.isNotEmpty) {
-              logger.d(r.advertisementData.manufacturerData);
               if (r.advertisementData.manufacturerData.values.isNotEmpty) {
                 bluetoothAdvertisementData =
                     r.advertisementData.manufacturerData.values.first;
@@ -3202,12 +3262,20 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               if (r.advertisementData.manufacturerData.keys.first == 3503)
                 bluetoothDeviceName +=
                     utf8.decode(bluetoothAdvertisementData.sublist(15, 23));
-              if (bluetoothDeviceName == device.values.first.name) {
+              if (true/*bluetoothDeviceName == device.values.first.name*/) {
                 deviceFound = true;
                 FlutterBluePlus.stopScan();
                 subscription!.cancel();
                 btDevice = r.device;
-                await btDevice!.connect();
+                try{
+                  await btDevice!.connect();
+                }catch(e){
+                  Navigator.of(context).pop();
+                  setState(() {
+
+                  });
+                  return;
+                }
                 try {
                   if (Platform.isAndroid) {
                     await r.device.requestMtu(300);
@@ -3227,9 +3295,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                               btDevice!.removeBond();
                               subscriptionToDevice?.cancel();
                               loaded = true;
+                              Navigator.pop(context);
                               setState(() {
                                 screenIndex = 1;
-                                Navigator.pop(context);
                               });
                               Fluttertoast.showToast(
                                   msg: "Error"
@@ -3238,22 +3306,30 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         ).listen((data) async {
                               String message = utf8.decode(data).trim();
                               logger.d(utf8.decode(data));
-                              if (message == "" && !loginSuccessful) {}
+                              if(message == "" && !loginSuccessful){
+                                await Future<void>.delayed(const Duration(seconds: 1));
+                                if(!loginSuccessful){
+                                  try{
+                                    loginSuccessful = true;
+                                    await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+                                  }catch(e){
+                                  }
+                                }
+                              }
                               if (message == 'LOGIN OK') {
-                                await writeCharacteristic!.write(
-                                    utf8.encode('ValsRead'));
-                                await Future<void>.delayed(
-                                    const Duration(milliseconds: 200));
-                                await btDevice!.disconnect(timeout: 1);
-                                btDevice!.removeBond();
-                                subscriptionToDevice?.cancel();
-                                loaded = true;
-                                setState(() {
-                                  screenIndex = 21;
-                                });
+                                await writeCharacteristic!.write(utf8.encode('ValsRead'));
                               }
                               if (message.length >= 2 && message.substring(0, 2) == "|A") {
-                                if(message.substring(2,4) == "03")  currentWifiName = message.substring(4,message.length);
+                                if(message.substring(2,4) == "16"){
+                                  currentWifiName = message.substring(4,message.length);
+                                  await btDevice!.disconnect(timeout: 1);
+                                  btDevice!.removeBond();
+                                  subscriptionToDevice?.cancel();
+                                  loaded = true;
+                                  setState(() {
+                                    screenIndex = 21;
+                                  });
+                                }
                               }
                             });
                       }
@@ -3272,10 +3348,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     }
                   }
                 } catch (e) {
-                  Navigator.pop(context);
                   await btDevice!.disconnect(timeout: 1);
                   btDevice!.removeBond();
                   subscriptionToDevice?.cancel();
+                  Navigator.pop(context);
                   setState(() {
                     screenIndex = 1;
                   });
@@ -3285,20 +3361,15 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           }
         }
       });
-      FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
-      await Future<void>.delayed(const Duration(seconds: 3));
+      FlutterBluePlus.startScan(timeout: const Duration(seconds: 4));
+      await Future<void>.delayed(const Duration(seconds: 4));
       if (!deviceFound) {
+        subscription!.cancel();
         Navigator.pop(context);
         Fluttertoast.showToast(
             msg: AppLocalizations.of(context)!.deviceNotFound
         );
       }
-      /*if (btDevice!= null && btDevice!.isConnected) {
-        Navigator.pop(context);
-        Fluttertoast.showToast(
-            msg: "The device wasn't found2"
-        );
-      }*/
       Navigator.pop(context);
     }catch(e){
       Navigator.pop(context);
@@ -3442,8 +3513,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           inactiveTrackColor: Colors.grey,
                           inactiveThumbColor: Colors.white30,
                           onChanged: (value) async{
-                            d_led_t = value;
-                            sendTelemetry("u_led_t", d_led_t ? 1 : 0, "S02:${d_led_t ? 1 : 0}");
+                            await sendTelemetry("u_led_t", d_led_t ? 1 : 0, "S02:${d_led_t ? 1 : 0}");
+                            if(sentSuccessfullBTTelemetery) d_led_t = value;
+                            sentSuccessfullBTTelemetery = false;
                             setState(() {
                             });
                           },
@@ -3473,11 +3545,13 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 min: 0.0,
                 max: 255.0,
                 value: d_led_tb,
-                onChangeEnd: (value){
+                onChangeEnd: (value) async{
+                  await sendTelemetry("u_led_tb", d_led_tb.toInt(), "S05:${d_led_tb.toInt()}");
+                  if(sentSuccessfullBTTelemetery)d_led_tb = value.round().toDouble();
+                  if(!sentSuccessfullBTTelemetery)d_led_tb = d_led_tb_old;
+                  sentSuccessfullBTTelemetery= false;
                   setState(() {
-                    d_led_tb = value.round().toDouble();
                   });
-                  sendTelemetry("u_led_tb", d_led_tb.toInt(), "S05:${d_led_tb.toInt()}");
                 },
                 onChanged: (value){
                   setState(() {
@@ -3503,10 +3577,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             );
                             return;
                           }
-                          sendTelemetry("u_led_tf", 0, "S06:0");
-                          displayAnimation = 0;
+                          await sendTelemetry("u_led_tf", 0, "S06:0");
+                          if(sentSuccessfullBTTelemetery) displayAnimation = 0;
+                          sentSuccessfullBTTelemetery= false;
                           setState(() {
-        
                           });
                         },
                         style: OutlinedButton.styleFrom(backgroundColor: displayAnimation != 0 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
@@ -3532,10 +3606,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             );
                             return;
                           }
-                          sendTelemetry("u_led_tf", 1, "S06:1");
-                          displayAnimation = 1;
+                          await sendTelemetry("u_led_tf", 1, "S06:1");
+                          if(sentSuccessfullBTTelemetery) displayAnimation = 1;
+                          sentSuccessfullBTTelemetery = false;
                           setState(() {
-        
                           });
                         },
                         style: OutlinedButton.styleFrom(backgroundColor: displayAnimation != 1 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
@@ -3549,7 +3623,15 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   ),
                 ],
               ),
-              const SizedBox(height: 40,),
+              SizedBox(
+                height: 30,
+              ),
+              Divider(
+                  color: Colors.grey[500]
+              ),
+              SizedBox(
+                height: 30,
+              ),
               Row(
                 children: [
                   Text(AppLocalizations.of(context)!.display, style: const TextStyle(fontSize: 12),)
@@ -3575,10 +3657,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           inactiveTrackColor: Colors.grey,
                           inactiveThumbColor: Colors.white30,
                           onChanged: (value) async{
-                            d_led_f = value;
                             await sendTelemetry("u_led_f", d_led_f ? 1 : 0, "S03${d_led_f ? 1 : 0}");
+                            if(sentSuccessfullBTTelemetery) d_led_f = value;
+                            sentSuccessfullBTTelemetery = false;
                             setState(() {
-        
                             });
                           },
                         ),
@@ -3603,11 +3685,13 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 min: 0.0,
                 max: 15.0,
                 value: d_led_fb,
-                onChangeEnd: (value){
+                onChangeEnd: (value) async{
+                  await sendTelemetry("u_led_fb", d_led_fb.toInt(), "S04:${d_led_fb.toInt()}");
+                  if(sentSuccessfullBTTelemetery) d_led_fb = value.round().toDouble();
+                  if(!sentSuccessfullBTTelemetery)d_led_fb = d_led_fb_old;
+                  sentSuccessfullBTTelemetery = false;
                   setState(() {
-                    d_led_fb = value.round().toDouble();
                   });
-                  sendTelemetry("u_led_fb", d_led_fb.toInt(), "S04:${d_led_fb.toInt()}");
                 },
                 onChanged: (value){
                   setState(() {
@@ -3633,10 +3717,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             );
                             return;
                           }
-                          sendTelemetry("u_view_switch", 0, "S11:0");
-                          clock=0;
+                          await sendTelemetry("u_view_switch", 0, "S11:0");
+                          if(sentSuccessfullBTTelemetery) clock=0;
+                          sentSuccessfullBTTelemetery = false;
                           setState(() {
-        
                           });
                         },
                         style: OutlinedButton.styleFrom(backgroundColor: clock != 0 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
@@ -3662,10 +3746,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             );
                             return;
                           }
-                          sendTelemetry("u_view_switch", 1, "S11:1");
-                          clock=1;
+                          await sendTelemetry("u_view_switch", 1, "S11:1");
+                          if(sentSuccessfullBTTelemetery) clock=1;
+                          sentSuccessfullBTTelemetery = false;
                           setState(() {
-        
                           });
                         },
                         style: OutlinedButton.styleFrom(backgroundColor: clock != 1 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
@@ -3690,10 +3774,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             );
                             return;
                           }
-                          sendTelemetry("u_view_switch", 2, "S11:2");
-                          clock=2;
+                          await sendTelemetry("u_view_switch", 2, "S11:2");
+                          if(sentSuccessfullBTTelemetery) clock=2;
+                          sentSuccessfullBTTelemetery = false;
                           setState(() {
-        
                           });
                         },
                         style: OutlinedButton.styleFrom(backgroundColor: clock != 2 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
@@ -3726,10 +3810,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             );
                             return;
                           }
-                          sendTelemetry("u_unit", 1, "S01:1");
-                          d_unit = 1;
+                          await sendTelemetry("u_unit", 1, "S01:1");
+                          if(sentSuccessfullBTTelemetery) d_unit = 1;
+                          sentSuccessfullBTTelemetery = false;
                           setState(() {
-        
                           });
                         },
                         style: OutlinedButton.styleFrom(backgroundColor: d_unit != 1 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
@@ -3755,10 +3839,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             );
                             return;
                           }
-                          sendTelemetry("u_unit", 0, "S01:0");
-                          d_unit = 0;
+                          await sendTelemetry("u_unit", 0, "S01:0");
+                          if(sentSuccessfullBTTelemetery) d_unit = 0;
+                          sentSuccessfullBTTelemetery = false;
                           setState(() {
-        
                           });
                         },
                         style: OutlinedButton.styleFrom(backgroundColor: d_unit != 0 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
@@ -3780,6 +3864,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   }
 
   deviceClockScreen(){
+    List<DropdownMenuItem<String>> tzOfSelectionWidgets = [
+      DropdownMenuItem(child: Text(AppLocalizations.of(context)!.noneSelected),value: "None selected",)
+    ];
     Map<String,String> tzMap = getTZMap();
     tzLocations = [];
     tzCodes = [];
@@ -3817,7 +3904,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   Text(AppLocalizations.of(context)!.sendSettWithBT, textAlign: TextAlign.center, style: TextStyle(fontSize: 12),),
                   Switch(
@@ -3842,7 +3929,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 ),
               ),
               SizedBox(
-                height: 15,
+                height: 25,
               ),
               Row(
                   children: [
@@ -3866,10 +3953,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             );
                             return;
                           }
-                          sendTelemetry("u_clock", 1, "S10:1");
-                          clockType=1;
+                          await sendTelemetry("u_clock", 1, "S10:1");
+                          if(sentSuccessfullBTTelemetery) clockType = 1;
+                          sentSuccessfullBTTelemetery = false;
                           setState(() {
-
                           });
                         },
                         style: OutlinedButton.styleFrom(backgroundColor: clockType != 1 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
@@ -3895,10 +3982,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             );
                             return;
                           }
-                          sendTelemetry("u_clock", 2, "S10:2");
-                          clockType=2;
+                          await sendTelemetry("u_clock", 2, "S10:2");
+                          if(sentSuccessfullBTTelemetery) clockType = 2;
+                          sentSuccessfullBTTelemetery = false;
                           setState(() {
-
                           });
                         },
                         style: OutlinedButton.styleFrom(backgroundColor: clockType != 2 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
@@ -3923,10 +4010,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             );
                             return;
                           }
-                          sendTelemetry("u_clock", 3, "S10:3");
-                          clockType=3;
+                          await sendTelemetry("u_clock", 3, "S10:3");
+                          if(sentSuccessfullBTTelemetery) clockType = 3;
+                          sentSuccessfullBTTelemetery = false;
                           setState(() {
-
                           });
                         },
                         style: OutlinedButton.styleFrom(backgroundColor: clockType!= 3 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
@@ -3940,12 +4027,18 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   ),
                 ],
               ),
-              const SizedBox(
-                height: 40,
+              SizedBox(
+                height: 20,
+              ),
+              Divider(
+                  color: Colors.grey[500]
+              ),
+              SizedBox(
+                height: 20,
               ),
               Text("${AppLocalizations.of(context)!.timezoneCurrent} ${currentTZ}",),
               const SizedBox(
-                height: 20,
+                height: 25,
               ),
               Column(
                 children: [
@@ -3972,7 +4065,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                               items: [
                                 DropdownMenuItem(
                                     value: "None selected",
-                                    child: Text("None selected")
+                                    child: Text(AppLocalizations.of(context)!.noneSelected)
                                 ),
                                 DropdownMenuItem<String>(
                                     value: "Africa",
@@ -4021,7 +4114,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                 tzOfSelectionWidgets = [
                                   DropdownMenuItem(
                                       value: "None selected",
-                                      child: Text("None selected")
+                                      child: Text(AppLocalizations.of(context)!.noneSelected)
                                   )
                                 ];
                                 tzOfSelection.forEach((element){
@@ -4161,6 +4254,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               SizedBox(
                 height: 20,
               ),
+              Divider(
+                  color: Colors.grey[500]
+              ),
+              SizedBox(
+                height: 20,
+              ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
@@ -4169,7 +4268,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     width: 10,
                   ),
                   SizedBox(
-                    width: 100,
+                    width: 200,
                     child: TextField(
                       style: TextStyle(fontSize: 12),
                       controller: customNTPServerController,
@@ -4178,45 +4277,58 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       ),
                     ),
                   ),
-                  SizedBox(
-                    width: 10,
-                  ),
-                  SizedBox(
-                    width: 100,
-                    child: OutlinedButton(
-                        onPressed: () async{
-                          try {
-                            final result = await InternetAddress.lookup('example.com');
-                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                            }
-                          } on SocketException catch (_) {
-                            Fluttertoast.showToast(
-                                msg: AppLocalizations.of(context)!.noInternetT
-                            );
-                            return;
+                ],
+              ),
+              SizedBox(
+                height: 20,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  OutlinedButton(
+                      onPressed: () async{
+                        try {
+                          final result = await InternetAddress.lookup('example.com');
+                          if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
                           }
-                          setNTPServer(customNTPServerController.text);
-                          tzServer3 = customNTPServerController.text;
-                          setState(() {
+                        } on SocketException catch (_) {
+                          Fluttertoast.showToast(
+                              msg: AppLocalizations.of(context)!.noInternetT
+                          );
+                          return;
+                        }
+                        setNTPServer(customNTPServerController.text);
+                        tzServer3 = customNTPServerController.text;
+                        setState(() {
 
-                          });
-                        },
-                        style: OutlinedButton.styleFrom(backgroundColor: Colors.white ,shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(AppLocalizations.of(context)!.apply, style: const TextStyle(color: Color(0xff0099F0),)),
-                          ],
-                        )
-                    ),
+                        });
+                      },
+                      style: OutlinedButton.styleFrom(backgroundColor: Colors.white ,shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(AppLocalizations.of(context)!.applyNTP, style: const TextStyle(color: Color(0xff0099F0),)),
+                        ],
+                      )
                   ),
                 ],
               ),
-              SizedBox(height: 40,),
+              SizedBox(
+                height: 20,
+              ),
+              Divider(
+                  color: Colors.grey[500]
+              ),
+              SizedBox(
+                height: 20,
+              ),
               Row(
                   children: [
                     Text(AppLocalizations.of(context)!.winterSummerTime)
                   ]
+              ),
+              SizedBox(
+                height: 10,
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -4235,10 +4347,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             );
                             return;
                           }
-                          sendTelemetry("u_mez_ea", 0, "S15:0");
-                          mezType = 0;
+                          await sendTelemetry("u_mez_ea", 0, "S15:0");
+                          if(sentSuccessfullBTTelemetery) mezType = 0;
+                          sentSuccessfullBTTelemetery = false;
                           setState(() {
-
                           });
                         },
                         style: OutlinedButton.styleFrom(backgroundColor: mezType != 0 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
@@ -4265,9 +4377,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             return;
                           }
                           sendTelemetry("u_mez_ea", 1, "S15:1");
-                          mezType = 1;
+                          if(sentSuccessfullBTTelemetery) mezType = 1;
+                          sentSuccessfullBTTelemetery = false;
                           setState(() {
-
                           });
                         },
                         style: OutlinedButton.styleFrom(backgroundColor: mezType != 1 ?  Colors.white : const Color(0xff0099F0),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40))),
@@ -4279,8 +4391,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         )
                     ),
                   ),
+
                 ],
               ),
+              SizedBox(
+                height: 50,
+              )
             ],
           ),
         ),
@@ -4308,7 +4424,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   btDevice!.disconnect(timeout: 1);
                   btDevice!.removeBond();
                 }catch(e){
-                  print(e);
                 }
                 setState(() {
                   screenIndex = 2;
@@ -4683,6 +4798,210 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 height: 20,
               ),
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: TextField(
+                      controller: knxIP,
+                      decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.ipAddress,
+                          floatingLabelStyle: TextStyle(color: Colors.black),
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
+                          enabledBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          focusedBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          disabledBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          fillColor: Colors.white,
+                          filled: true,
+
+                          hintText: AppLocalizations.of(context)!.ipAddress,
+                          hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                          errorText: knxIPError
+                      ),
+                      onChanged: (text){
+                        setState(() {
+                          if (text.isEmpty) {
+                            knxIPError = AppLocalizations.of(context)!.plsEnterAddress;
+                          } else if (!RegExp(r'^((25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){2}(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)$').hasMatch(knxIP.text)) {
+                            knxIPError = AppLocalizations.of(context)!.invalidAddress;
+                          } else {
+                            knxIPError = null;
+                          }
+                        });
+                      },
+                    ),
+                  ),
+
+                ],
+              ),
+              SizedBox(
+                height: 15,
+              ),
+              Divider(
+                  color: Colors.grey[500]
+              ),
+              SizedBox(
+                height: 20,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: TextField(
+                      controller: knxSubnetMask,
+                      decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.subnetMask,
+                          floatingLabelStyle: TextStyle(color: Colors.black),
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
+                          enabledBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          focusedBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          disabledBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          fillColor: Colors.white,
+                          filled: true,
+
+                          hintText: AppLocalizations.of(context)!.subnetMask,
+                          hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                          errorText: knxSubnetMaskError
+                      ),
+                      onChanged: (text){
+                        setState(() {
+                          if (text.isEmpty) {
+                            knxSubnetMaskError = AppLocalizations.of(context)!.plsEnterAddress;
+                          } else if (!RegExp(r'^((25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){2}(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)$').hasMatch(knxSubnetMask.text)) {
+                            knxSubnetMaskError = AppLocalizations.of(context)!.invalidAddress;
+                          } else {
+                            knxSubnetMaskError = null;
+                          }
+                        });
+                      },
+                    ),
+                  ),
+
+                ],
+              ),
+              SizedBox(
+                height: 15,
+              ),
+              Divider(
+                  color: Colors.grey[500]
+              ),
+              SizedBox(
+                height: 20,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: TextField(
+                      controller: knxGateway,
+                      decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.gateway,
+                          floatingLabelStyle: TextStyle(color: Colors.black),
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
+                          enabledBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          focusedBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          disabledBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          fillColor: Colors.white,
+                          filled: true,
+
+                          hintText: AppLocalizations.of(context)!.gateway,
+                          hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                          errorText: knxGatewayError
+                      ),
+                      onChanged: (text){
+                        setState(() {
+                          if (text.isEmpty) {
+                            knxGatewayError = AppLocalizations.of(context)!.plsEnterAddress;
+                          } else if (!RegExp(r'^((25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){2}(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)$').hasMatch(knxGateway.text)) {
+                            knxGatewayError = AppLocalizations.of(context)!.invalidAddress;
+                          } else {
+                            knxGatewayError = null;
+                          }
+                        });
+                      },
+                    ),
+                  ),
+
+                ],
+              ),
+              SizedBox(
+                height: 15,
+              ),
+              Divider(
+                  color: Colors.grey[500]
+              ),
+              SizedBox(
+                height: 20,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: TextField(
+                      controller: knxMultiCastAddress,
+                      decoration: InputDecoration(
+                          labelText: AppLocalizations.of(context)!.multiCastAddress,
+                          floatingLabelStyle: TextStyle(color: Colors.black),
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
+                          enabledBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          focusedBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          disabledBorder: const OutlineInputBorder(
+                            borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                          ),
+                          fillColor: Colors.white,
+                          filled: true,
+
+                          hintText: AppLocalizations.of(context)!.multiCastAddress,
+                          hintStyle: TextStyle(color: Colors.grey[500],fontSize: 12),
+                          errorText: knxMultiCastError
+                      ),
+                      onChanged: (text){
+                        setState(() {
+                          if (text.isEmpty) {
+                            knxMultiCastError = AppLocalizations.of(context)!.plsEnterAddress;
+                          } else if (!RegExp(r'^((25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){2}(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)$').hasMatch(knxMultiCastAddress.text)) {
+                            knxMultiCastError = AppLocalizations.of(context)!.invalidAddress;
+                          } else {
+                            knxMultiCastError = null;
+                          }
+                        });
+                      },
+                    ),
+                  ),
+
+                ],
+              ),
+              SizedBox(
+                height: 20,
+              ),
+              Divider(
+                  color: Colors.grey[500]
+              ),
+              SizedBox(
+                height: 20,
+              ),
+              Row(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   Text(AppLocalizations.of(context)!.bootTime),
@@ -4872,8 +5191,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   ],
                 ),
               ),
+
               SizedBox(
-                height: 20,
+                height: 15,
               ),
               Divider(
                   color: Colors.grey[500]
@@ -4886,8 +5206,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 children: [
                   OutlinedButton(
                     onPressed: (){
-                      if(knxGroupError1!=null || knxGroupError2!=null || knxGroupError3!=null || knxGroupError4!=null) return;
-                      sendBTLine(["S56:${knxPhysAddress.text}","S57:${knxGroup1.text.replaceAll("/", ".")}&${knxGroup2.text.replaceAll("/", ".")}&${knxGroup3.text.replaceAll("/", ".")}&${knxGroup4.text.replaceAll("/", ".")}", "S58:${knxParam0}", "S59:${knxParam1}"]);
+                      if(knxGroupError1!=null || knxGroupError2!=null || knxGroupError3!=null || knxGroupError4!=null || knxIPError!=null || knxSubnetMaskError!=null || knxGatewayError!=null || knxMultiCastError!=null) return;
+                      sendBTLine(["S56:${knxPhysAddress.text}","S57:${knxGroup1.text.replaceAll("/", ".")}&${knxGroup2.text.replaceAll("/", ".")}&${knxGroup3.text.replaceAll("/", ".")}&${knxGroup4.text.replaceAll("/", ".")}", "S58:${knxParam0}", "S59:${knxParam1}", "S52:${knxIP.text}", "S62:${knxSubnetMask.text}", "S61:${knxGateway.text}", "S60:${knxMultiCastAddress.text}"]);
                       setState(() {
 
                       });
@@ -4927,7 +5247,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   btDevice!.disconnect(timeout: 1);
                   btDevice!.removeBond();
                 }catch(e){
-                  print(e);
                 }
                 setState(() {
                   screenIndex = 2;
@@ -5138,7 +5457,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   btDevice!.disconnect(timeout: 1);
                   btDevice!.removeBond();
                 }catch(e){
-                  print(e);
                 }
                 setState(() {
                   screenIndex = 2;
@@ -5458,7 +5776,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
             List<int> bluetoothAdvertisementData = [];
             String bluetoothDeviceName = "";
             if(r.advertisementData.manufacturerData.keys.isNotEmpty){
-              logger.d(r.advertisementData.manufacturerData);
               if(r.advertisementData.manufacturerData.values.isNotEmpty){
                 bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
               }
@@ -5473,7 +5790,15 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 FlutterBluePlus.stopScan();
                 subscription!.cancel();
                 btDevice = r.device;
-                await btDevice!.connect();
+                try{
+                  await btDevice!.connect();
+                }catch(e){
+                  Navigator.of(context).pop();
+                  setState(() {
+
+                  });
+                  return;
+                }
                 try{
                   if (Platform.isAndroid) {
                     await r.device.requestMtu(300);
@@ -5503,6 +5828,14 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           String message = utf8.decode(data).trim();
                           logger.d(utf8.decode(data));
                           if(message == "" && !loginSuccessful){
+                            await Future<void>.delayed(const Duration(seconds: 1));
+                            if(!loginSuccessful){
+                              try{
+                                loginSuccessful = true;
+                                await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
+                              }catch(e){
+                              }
+                            }
                           }
                           if(message == 'LOGIN OK'){
                             sentSuccessfully = true;
@@ -5557,6 +5890,18 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           if((message.split(":").first == "G59" ) || (message.split(":").first ==  "S59")){
                             knxParam1 = message.split(":").last;
                           }
+                          if((message.split(":").first == "G52" ) || (message.split(":").first ==  "S52")){
+                            knxIP.text = message.split(":").last;
+                          }
+                          if((message.split(":").first == "G62" ) || (message.split(":").first ==  "S62")){
+                            knxSubnetMask.text = message.split(":").last;
+                          }
+                          if((message.split(":").first == "G61" ) || (message.split(":").first ==  "S61")){
+                            knxGateway.text = message.split(":").last;
+                          }
+                          if((message.split(":").first == "G60" ) || (message.split(":").first ==  "S60")){
+                            knxMultiCastAddress.text = message.split(":").last;
+                          }
                           if((message.split(":").first == "G70") || (message.split(":").first ==  "S70")){
                             mqttOnOff = "1" == message.split(":").last ? true : false;
                           }
@@ -5608,9 +5953,11 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
       await Future<void>.delayed( const Duration(seconds: 3));
       if(!deviceFound){
+        subscription!.cancel();
         Navigator.pop(context);
       }
       if(!sentSuccessfully && loginSuccessful){
+        subscription!.cancel();
         await btDevice!.disconnect(timeout: 1);
         btDevice!.removeBond();
         subscriptionToDevice?.cancel();
@@ -5618,6 +5965,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       }
     }catch(e){
       try{
+        subscription!.cancel();
         await btDevice!.disconnect(timeout: 1);
         btDevice!.removeBond();
         subscriptionToDevice?.cancel();
@@ -5647,7 +5995,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   btDevice!.disconnect(timeout: 1);
                   btDevice!.removeBond();
                 }catch(e){
-                  print(e);
                 }
                 setState(() {
                   screenIndex = 2;
@@ -5836,10 +6183,18 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
             }
             if(r.advertisementData.manufacturerData.keys.first == 3503) bluetoothDeviceName += utf8.decode(bluetoothAdvertisementData.sublist(15,23));
           }
-          if(bluetoothDeviceName == device.values.first.name) {
+          if(true/*bluetoothDeviceName == device.values.first.name*/) {
             deviceFound = true;
             btDevice = r.device;
-            await r.device.connect();
+            try{
+              await btDevice!.connect();
+            }catch(e){
+              Navigator.of(context).pop();
+              setState(() {
+
+              });
+              return;
+            }
             if (Platform.isAndroid) {
               await r.device.requestMtu(100);
             }
@@ -5850,8 +6205,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   await characteristic.setNotifyValue(true);
                   readCharacteristic = characteristic;
                   subscriptionToDevice = readCharacteristic!.lastValueStream.timeout(
-                      Duration(seconds: 2),
+                      Duration(seconds: 8),
                       onTimeout: (list)async{
+                        if(hasScanned)return;
                         await btDevice!.disconnect(timeout: 1);
                         btDevice!.removeBond();
                         subscriptionToDevice?.cancel();
@@ -5874,7 +6230,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           loginSuccessful = true;
                           await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
                         }catch(e){
-                          logger.e("ERROR");
                         }
                       }
                     }
@@ -5930,7 +6285,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       loginSuccessful = true;
                       await writeCharacteristic!.write(utf8.encode('k47t58W43Lds8'));
                     }catch(e){
-                      logger.e("ERROR");
                     }
                   }
                 }
@@ -5956,10 +6310,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
             msg: "Error"
         );
       }catch(e){
-        logger.e("ERROR");
       }
     }
     if(!deviceFound){
+      subscription!.cancel();
       Navigator.pop(context);
       Fluttertoast.showToast(
           msg: AppLocalizations.of(context)!.deviceNotFound
@@ -6017,7 +6371,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           List<int> bluetoothAdvertisementData = [];
           String bluetoothDeviceName = "";
           if(r.advertisementData.manufacturerData.keys.isNotEmpty){
-            logger.d(r.advertisementData.manufacturerData);
             if(r.advertisementData.manufacturerData.values.isNotEmpty){
               bluetoothAdvertisementData = r.advertisementData.manufacturerData.values.first;
             }
@@ -6032,7 +6385,14 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               FlutterBluePlus.stopScan();
               subscription!.cancel();
               btDevice = r.device;
-              await btDevice!.connect();
+              try{
+                await btDevice!.connect();
+              }catch(e){
+                setState(() {
+
+                });
+                return;
+              }
               try{
                 if (Platform.isAndroid) {
                   await r.device.requestMtu(300);
@@ -6195,6 +6555,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     FlutterBluePlus.startScan(timeout: const Duration(seconds: 3));
     await Future<void>.delayed( const Duration(seconds: 3));
     if(!deviceFound){
+      subscription!.cancel();
       Navigator.pop(context);
       Fluttertoast.showToast(
           msg: AppLocalizations.of(context)!.deviceNotFound
@@ -6453,12 +6814,17 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 10,),
-                Text(
-                  AppLocalizations.of(context)!.exportDialog, style: const TextStyle(fontSize: 16),),
-                const SizedBox(height: 30,),
-                Text(AppLocalizations.of(context)!.timeFrame, style: const TextStyle(fontSize: 12),),
-                const SizedBox(height: 8,),
+                const SizedBox(
+                  height: 10,
+                ),
+                Text(AppLocalizations.of(context)!.exportDialog, style: const TextStyle(fontSize: 18),),
+                const SizedBox(
+                  height: 30,
+                ),
+                Text(AppLocalizations.of(context)!.timeFrame, style: const TextStyle(fontSize: 14),),
+                const SizedBox(
+                  height: 8,
+                ),
                 SizedBox(
                   height: 35,
                   child: ListView(
@@ -6521,7 +6887,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 Text(
                   AppLocalizations.of(context)!.timePeriod,
                   style: const TextStyle(
-                      fontSize: 12
+                      fontSize: 14
                   ),
                 ),
                 Row(
@@ -6541,7 +6907,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         setState(() => customTimeseriesStart = newDate);
                       },
                       style: OutlinedButton.styleFrom(backgroundColor: Colors.white, side: const BorderSide(width: 1,color: Color(0xffECEFF1))),
-                      child: Text("${AppLocalizations.of(context)!.from} ${DateFormat('yyyy-MM-dd').format(customTimeseriesStart)}"),
+                      child: Text("${AppLocalizations.of(context)!.from} ${DateFormat('yyyy-MM-dd').format(customTimeseriesStart)}", style: TextStyle(color: const Color(0xff0099f0)),),
                     ),
                     OutlinedButton(
                       onPressed: () async {
@@ -6560,7 +6926,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         setState(() => customTimeseriesEnd = newDate);
                       },
                       style: OutlinedButton.styleFrom(backgroundColor: Colors.white, side: const BorderSide(width: 1,color: Color(0xffECEFF1))),
-                      child: Text("${AppLocalizations.of(context)!.until} ${DateFormat('yyyy-MM-dd').format(customTimeseriesEnd)}"),
+                      child: Text("${AppLocalizations.of(context)!.until} ${DateFormat('yyyy-MM-dd').format(customTimeseriesEnd)}", style: TextStyle(color: const Color(0xff0099f0)),),
                     ),
                   ],
                 )
@@ -7029,7 +7395,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         )
       );
     }on DioException catch (e){
-      logger.e(e.message);
       Fluttertoast.showToast(
           msg: AppLocalizations.of(context)!.failedSendData
       );
@@ -7535,7 +7900,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           }
                       );
                     }on DioException catch(e){
-                      logger.d(e.response);
                       Fluttertoast.showToast(
                           msg: "Error"
                       );

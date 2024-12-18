@@ -235,7 +235,7 @@
     "timezoneCurrent": "Timezone - current:",
     "set": "Set",
     "asTimezone": "as timezone",
-    "changeNtpServer": "Change NTP server:",
+    "changeNtpServer": "NTP server:",
     "apply": "Apply",
     "winterSummerTime": "Summer-Winter time",
     "withoutChange": "Without change",
@@ -249,7 +249,7 @@
     "skip": "Skip",
     "selectTimezone": "Select timezone:",
     "diagramType": "Diagram type",
-    "showRealtime": "Show realtime values",
+    "showRealtime": "Show realtime values or smoothed graph",
     "bootKNX": "Boot for KNX parameter programming (will restart device)",
     "knxOnOff": "KNX on/off",
     "knxProgMode": "KNX programming mode",
@@ -281,5 +281,14 @@
     "bootTime": "Booting time",
     "send": "Send",
     "deact": "Deact.",
-    "deviceWillRestart": "The device will restart\nafter applying the changes."
+    "deviceWillRestart": "The device will restart\nafter applying the changes.",
+    "statusNotVisibleAsViewer": "Status not visible as viewer",
+    "notSyncedYet": "Not synced yet",
+    "lastSync": "Last sync:",
+    "noneSelected" : "None selected",
+    "applyNTP": "Apply selected NTP server",
+    "ipAddress": "IP address",
+    "subnetMask": "Subnet mask",
+    "gateway": "Gateway",
+    "multiCastAddress": "Multi cast address"
 }

@@ -7,7 +7,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
-import 'package:logger/logger.dart';
 import 'package:dio/dio.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -29,7 +28,6 @@ class WarningsPageState extends State<WarningsPage>{
 
   String token;
   String refreshToken;
-  final Logger logger = Logger();
   final dio = Dio();
 
 
@@ -87,7 +85,6 @@ class WarningsPageState extends State<WarningsPage>{
       dio.options.headers['Authorization'] = "Bearer $token";
       response = await dio.get('https://dashboard.livair.io/api/livAir/warnings');
     }catch(e){
-      print(e);
     }
     List<dynamic> data = response.data;
     for (var element in data) {
@@ -205,64 +202,70 @@ class WarningsPageState extends State<WarningsPage>{
             ),
           ],
         ),
-        body: Column(
-          children: [
-            Expanded(
-              child: ListView.separated(
-                  separatorBuilder: (context, index) => const SizedBox(height: 1),
-                  itemCount: warnings.length,
-                  itemBuilder: (BuildContext context, int index){
-                    return GestureDetector(
-                        onTap: (){
+        body: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView.separated(
+                    separatorBuilder: (context, index) => const SizedBox(height: 1),
+                    itemCount: warnings.length,
+                    itemBuilder: (BuildContext context, int index){
+                      return GestureDetector(
+                          onTap: (){
 
-                        },
-                        child: Container(
-                          height: 114,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text("${warnings.elementAt(index).values.elementAt(1)}",
-                                    style: const TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.w600),
-                                  ),
-                                  const SizedBox(height: 16,),
-                                  Text("      ${warnings.elementAt(index).values.elementAt(2)} ${warnings.elementAt(index).values.elementAt(4)}",
-                                    style: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w400),
-                                  ),
-                                  Text(Duration(minutes: warnings.elementAt(index).values.elementAt(3)).toString().substring(0,4),
-                                    style: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w400),
-                                  ),
-                                ],
-                              ),
-                              IconButton(
-                                  onPressed: () async{
-                                    try {
-                                      final result = await InternetAddress.lookup('example.com');
-                                      if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                          },
+                          child: Container(
+                            height: 114,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Flexible(
+                                      child: Text("${warnings.elementAt(index).values.elementAt(1)}",
+                                        style: const TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.w600, overflow: TextOverflow.ellipsis),
+                                        maxLines: 1,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16,),
+                                    Text("${warnings.elementAt(index).values.elementAt(2)} ${warnings.elementAt(index).values.elementAt(4)}",
+                                      style: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w400, overflow: TextOverflow.ellipsis)
+                                    ),
+                                    Text(Duration(minutes: warnings.elementAt(index).values.elementAt(3)).toString().substring(0,4),
+                                      style: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w400),
+                                    ),
+                                  ],
+                                ),
+                                IconButton(
+                                    onPressed: () async{
+                                      try {
+                                        final result = await InternetAddress.lookup('example.com');
+                                        if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                                        }
+                                      } on SocketException catch (_) {
+                                        Fluttertoast.showToast(
+                                            msg: AppLocalizations.of(context)!.noInternetT
+                                        );
+                                        return;
                                       }
-                                    } on SocketException catch (_) {
-                                      Fluttertoast.showToast(
-                                          msg: AppLocalizations.of(context)!.noInternetT
-                                      );
-                                      return;
-                                    }
-                                    print(warnings);
-                                    selectedDevice = warnings.elementAt(index).values.elementAt(0);
-                                    deleteWarningDialog();
-                                  },
-                                  color: Colors.black,
-                                  icon: const ImageIcon(AssetImage('lib/images/TrashbinButton.png'),)
-                              )
-                            ],
-                          ),
-                        )
-                    );
-                  },
-              ),
-            )
-          ],
+                                      selectedDevice = warnings.elementAt(index).values.elementAt(0);
+                                      deleteWarningDialog();
+                                    },
+                                    color: Colors.black,
+                                    icon: const ImageIcon(AssetImage('lib/images/TrashbinButton.png'),)
+                                )
+                              ],
+                            ),
+                          )
+                      );
+                    },
+                ),
+              )
+            ],
+          ),
         ),
       );
     }
@@ -359,7 +362,6 @@ class WarningsPageState extends State<WarningsPage>{
           )
       );
       channel.stream.listen((data) {
-        print(jsonDecode(data));
         List<dynamic> deviceData = jsonDecode(data)["data"]["data"];
         for(var element in deviceData){
           deviceIds.add(element["entityId"]["id"]);
@@ -375,6 +377,7 @@ class WarningsPageState extends State<WarningsPage>{
 
     }
   }
+
   showSelectThresholdScreen(){
     return Scaffold(
       appBar: AppBar(
@@ -551,6 +554,11 @@ class WarningsPageState extends State<WarningsPage>{
                 const SizedBox(width: 20,),
               ],
             ),
+            Row(
+              children: [
+
+              ],
+            ),
             const SizedBox(height: 20),
             Row(
               children: [
@@ -611,7 +619,6 @@ class WarningsPageState extends State<WarningsPage>{
           ),
       );
     }catch(e){
-      print(e);
     }
     selectedMinutes = 0;
     selectedHours = 0;
@@ -684,13 +691,11 @@ class WarningsPageState extends State<WarningsPage>{
     dio.options.headers['Accept'] = "application/json";
     dio.options.headers['Authorization'] = "Bearer $token";
 
-    print(selectedDevice);
     try{
       dio.delete(
         "https://dashboard.livair.io/api/livAir/warning/${selectedDevice}",
       );
     }catch(e){
-      print(e);
     }
     selectedDevice = "";
     Navigator.pop(context);

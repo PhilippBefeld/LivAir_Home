@@ -53,7 +53,7 @@ class _DestinationViewState extends State<DestinationView> {
 
 
   int _currentIndex = 0;
-  int screenIndex = 0;
+  int onboardingScreenIndex = 0;
   final storage = const FlutterSecureStorage();
   bool hasCompletedOnBoarding = false;
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
@@ -129,9 +129,12 @@ class _DestinationViewState extends State<DestinationView> {
               ],
             ),
           ),
-        ) : Scaffold(
-          body: Center(
-            child: SingleChildScrollView(child: setPageOnBoarding(screenIndex)),
+        ) :
+        PopScope(
+          child: Scaffold(
+            body: Center(
+              child: SingleChildScrollView(child: setPageOnBoarding(onboardingScreenIndex)),
+            ),
           ),
         );
       }
@@ -174,7 +177,7 @@ class _DestinationViewState extends State<DestinationView> {
                     child: OutlinedButton(
                         onPressed: () {
                           setState(() {
-                            screenIndex = 1;
+                            onboardingScreenIndex = 1;
                           });
                         },
                         style: OutlinedButton.styleFrom(
@@ -250,7 +253,7 @@ class _DestinationViewState extends State<DestinationView> {
                   TextButton(
                       onPressed: (){
                         setState(() {
-                          screenIndex = 2;
+                          onboardingScreenIndex = 2;
                         });
                       },
                       child: Text(AppLocalizations.of(context)!.contin)
@@ -283,6 +286,7 @@ class _DestinationViewState extends State<DestinationView> {
                   TextButton(
                     onPressed: (){
                       AlertDialog alert = AlertDialog(
+                        backgroundColor: Colors.white,
                         title: Text(AppLocalizations.of(context)!.findCode, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18),),
                         content: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -328,7 +332,7 @@ class _DestinationViewState extends State<DestinationView> {
                     child: OutlinedButton(
                         onPressed: () async{
                           setState(() {
-                            screenIndex = 3;
+                            onboardingScreenIndex = 3;
                           });
                         },
                         style: OutlinedButton.styleFrom(
@@ -345,7 +349,6 @@ class _DestinationViewState extends State<DestinationView> {
               const SizedBox(height: 10,),
               Row(
                 children: [
-                  const SizedBox(height: 10,),
                   Expanded(
                     child: OutlinedButton(
                         onPressed: () async{
@@ -385,8 +388,9 @@ class _DestinationViewState extends State<DestinationView> {
         : 300.0;
     return Column(
       children: [
-        Expanded(
-          flex: 5,
+        SizedBox(
+          height: MediaQuery.of(context).size.height-90,
+          width: MediaQuery.of(context).size.width,
           child: QRView(
               key: qrKey,
               onQRViewCreated: qrViewController,
@@ -397,6 +401,34 @@ class _DestinationViewState extends State<DestinationView> {
                 borderLength: 30,
                 borderWidth: 10,
               ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: SizedBox(
+            height: 50,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                      onPressed: () async{
+                        setState(() {
+                          onboardingScreenIndex = 2;
+                        });
+                      },
+                      style: OutlinedButton.styleFrom(
+                          side: const BorderSide(width: 2,color: Color(0xff0099f0)),
+                          foregroundColor: Colors.white,
+                          backgroundColor: Colors.white,
+                          minimumSize: const Size(160,50)
+                      ),
+                      child: Text(AppLocalizations.of(context)!.cancel  ,style: const TextStyle(color: Color(0xff0099f0)),)
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -410,7 +442,7 @@ class _DestinationViewState extends State<DestinationView> {
     sub = controller.scannedDataStream.listen((scanData) {
       result = scanData;
       setState(() {
-        screenIndex = 4;
+        onboardingScreenIndex = 4;
       });
       sub!.cancel();
       controller.dispose();
@@ -487,7 +519,7 @@ class _DestinationViewState extends State<DestinationView> {
                       counter++;
                       if(counter==foundAccesspointCount){
                         setState(() {
-                          screenIndex = 5;
+                          onboardingScreenIndex = 5;
                         });
                       }
                     }
@@ -536,7 +568,7 @@ class _DestinationViewState extends State<DestinationView> {
                 }catch(e){
                 }
                 setState(() {
-                  screenIndex = 2;
+                  onboardingScreenIndex = 2;
                 });
               },
             ),
@@ -561,7 +593,7 @@ class _DestinationViewState extends State<DestinationView> {
                   return OutlinedButton(
                       onPressed: () {
                         setState(() {
-                          screenIndex = 6;
+                          onboardingScreenIndex = 6;
                           selectedWifiAccesspoint = foundAccessPoints.keys.elementAt(index);
                         });
                       },
@@ -610,7 +642,7 @@ class _DestinationViewState extends State<DestinationView> {
                 }catch(e){
                 }
                 setState(() {
-                  screenIndex = 2;
+                  onboardingScreenIndex = 2;
                 });
               },
             ),

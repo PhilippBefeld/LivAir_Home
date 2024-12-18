@@ -285,12 +285,11 @@ class NotificationsPageState extends State<NotificationsPage>{
                   if(msSinceCreation.inDays.toInt() !=0){
                     timeSinceCreation = "${msSinceCreation.inDays} ${AppLocalizations.of(context)!.daysAgo}";
                   }
-                  Map<String,dynamic> test = notifications.elementAt(index);
-                  Map<String,dynamic> test2 = jsonDecode(test["value"]);
-                  print(test);
+                  Map<String,dynamic> notificationList = notifications.elementAt(index);
+                  Map<String,dynamic> notification = jsonDecode(notificationList["value"]);
 
                   return Container(
-                    height: 100,
+                    height: 120,
                     color: selectedNotifications.contains(index) ? const Color(0xffb0bec5) : Colors.white,
                     child: Padding(
                       padding: const EdgeInsets.all(20.0),
@@ -301,18 +300,18 @@ class NotificationsPageState extends State<NotificationsPage>{
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                children: [
-                                  Text(test2["subject"], style: const TextStyle(color: Colors.black, fontSize: 16),),
-                                ],
-                              ),
+                              Flexible(child: Text(notification["subject"], style: const TextStyle(color: Colors.black, fontSize: 16, overflow: TextOverflow.ellipsis),maxLines: 1,)),
                               Text(timeSinceCreation),
                             ],
                           ),
                           const SizedBox(height: 15,),
                           Row(
                             children: [
-                              Text("${test2["body"]}", style: const TextStyle(color: Colors.black),),
+                              Flexible(
+                                  child: Text("${notification["body"]}", style: const TextStyle(color: Colors.black),
+                                    maxLines: 2,
+                                  )
+                              ),
                             ],
                           )
                         ],

@@ -35,7 +35,7 @@ class MyDeviceWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var radonNow = (lastSync<3600000 || lastSync == -1) ? unit == "Bq/m³" ? radonValue : (radonValue*27) : 0;
+    var radonNow = (lastSync>3600000 || lastSync == -1 || lastSync < 0) ? 0 : unit == "Bq/m³" ? radonValue : (radonValue*27);
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -58,8 +58,8 @@ class MyDeviceWidget extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.start,
                       children: [
                         Flexible(
-                          child: FittedBox(
-                            fit: BoxFit.fitWidth,
+                          child: Tooltip(
+                            message: name,
                             child: Text(
                               name,
                               maxLines: 1,
@@ -68,6 +68,7 @@ class MyDeviceWidget extends StatelessWidget {
                                 fontWeight: FontWeight.bold,
                                 fontSize: 20
                               ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ),
@@ -77,7 +78,7 @@ class MyDeviceWidget extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      radonValue != "-1" ? RichText(
+                      RichText(
                           text: TextSpan(
                               text: radonNow.toString(),
                               style: TextStyle(
@@ -96,7 +97,7 @@ class MyDeviceWidget extends StatelessWidget {
                                 )
                               ]
                           )
-                      ) : const Text(""),
+                      ),
                     ],
                   )
                 ],
@@ -108,7 +109,7 @@ class MyDeviceWidget extends StatelessWidget {
                 children: [
                   isBtAvailable != null ? isBtAvailable! ? (Duration(milliseconds: lastSync).inMinutes<=10) && (lastSync !=-1) ? const Row(children: [Icon(Icons.bluetooth, color: Color(0xff0099F0),),ImageIcon(AssetImage('lib/images/isOnline.png'),color: Color(0xff0099F0),)],) : const Icon(Icons.bluetooth, color: Color(0xff0099F0),) : const ImageIcon(AssetImage('lib/images/isOnline.png'),color: Color(0xff0099F0),) : ((Duration(milliseconds: lastSync).inMinutes>10) || (lastSync ==-1)) ? const ImageIcon(AssetImage('lib/images/isOnline.png'),color: Color(0xffCFD8DC),) : const ImageIcon(AssetImage('lib/images/isOnline.png'),color: Color(0xff0099F0)),
                   const SizedBox(width: 10),
-                  lastSync == -1 ? isViewer ? Text("Status not visible as viewer") : Text("Not synced yet") : lastSync<3600000 ? Text("Last sync: ${Duration(milliseconds: lastSync).inMinutes} ${AppLocalizations.of(context)!.minsAgo}") : lastSync<3600000*3 ? Text("Last sync: ${Duration(milliseconds: lastSync).inHours}h ${Duration(milliseconds: lastSync%3600000).inMinutes} ${AppLocalizations.of(context)!.minsAgo}") : lastSync<86400000 ? Text("Last sync: ${Duration(milliseconds: lastSync).inHours} ${AppLocalizations.of(context)!.hoursAgo}") : Text("Last sync: ${Duration(milliseconds: lastSync).inDays} ${AppLocalizations.of(context)!.daysAgo}")
+                  lastSync == -1 ? isViewer ? Text(AppLocalizations.of(context)!.statusNotVisibleAsViewer) : Text(AppLocalizations.of(context)!.notSyncedYet) : lastSync<3600000 ? Text("${AppLocalizations.of(context)!.lastSync} ${Duration(milliseconds: lastSync).inMinutes} ${AppLocalizations.of(context)!.minsAgo}") : lastSync<3600000*3 ? Text("${AppLocalizations.of(context)!.lastSync} ${Duration(milliseconds: lastSync).inHours}h ${Duration(milliseconds: lastSync%3600000).inMinutes} ${AppLocalizations.of(context)!.minsAgo}") : lastSync<86400000 ? Text("${AppLocalizations.of(context)!.lastSync} ${Duration(milliseconds: lastSync).inHours} ${AppLocalizations.of(context)!.hoursAgo}") : Text("${AppLocalizations.of(context)!.lastSync} ${Duration(milliseconds: lastSync).inDays} ${AppLocalizations.of(context)!.daysAgo}")
                 ]
               ),
             ],

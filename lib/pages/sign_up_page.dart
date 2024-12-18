@@ -5,7 +5,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:logger/logger.dart';
 import 'package:livair_home/pages/root_page.dart';
 import '../components/my_button.dart';
 import '../components/my_textfield.dart';
@@ -30,7 +29,6 @@ class SignUpPageState extends State<SignUpPage>{
   String refreshToken;
 
   final Dio dio = Dio();
-  final Logger logger = Logger();
 
   SignUpPageState(this.token, this.refreshToken);
 
@@ -111,7 +109,6 @@ class SignUpPageState extends State<SignUpPage>{
           );
         }catch(e){
           Navigator.pop(context);
-          logger.e(e);
         }
       }else{
         Navigator.pop(context);
@@ -159,7 +156,6 @@ class SignUpPageState extends State<SignUpPage>{
       token = response.data['token'];
       dio.options.headers['Authorization'] = "Bearer $token";
     }on DioError catch(e){
-      logger.e(e.response);
     }
 
     try{
@@ -176,7 +172,6 @@ class SignUpPageState extends State<SignUpPage>{
         ),
       );
     }on DioError catch(e){
-      logger.e(e.response);
     }
 
     openDialog() => showDialog(
