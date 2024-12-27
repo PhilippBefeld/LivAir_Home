@@ -17,6 +17,7 @@ import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:google_places_flutter/google_places_flutter.dart';
 import 'package:location/location.dart';
+import 'package:qr_code_scanner/qr_code_scanner.dart';
 
 class DevicePage extends StatefulWidget {
 
@@ -73,6 +74,9 @@ class DevicePageState extends State<DevicePage> {
   String newDeviceName = "";
   TextEditingController deviceLocationController = TextEditingController();
   String newDeviceLocation = "";
+
+  final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
+  Barcode? result;
 
   Future<dynamic> getAllDevices() async{
     if(!firstTry)return;
@@ -823,7 +827,6 @@ class DevicePageState extends State<DevicePage> {
   }
 
   claimDeviceScreen(){
-
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -931,6 +934,7 @@ class DevicePageState extends State<DevicePage> {
               },
             ),
           ),
+
           Row(
             children: [
               Expanded(
@@ -1011,24 +1015,105 @@ class DevicePageState extends State<DevicePage> {
                             ),
                           ],
                         ),
-                        Row(
+                        Column(
                           children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                  onPressed: (){
-                                    newDeviceId = newDeviceIdController.text;
-                                    setState(() {
-                                      screenIndex = 13;
-                                    });
-                                  },
-                                  style: OutlinedButton.styleFrom(
-                                      side: const BorderSide(width: 0),
-                                      foregroundColor: Colors.black,
-                                      backgroundColor: Colors.white,
-                                      minimumSize: const Size(60,50)
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                      onPressed: (){
+                                        newDeviceIdController.text = "";
+                                        AlertDialog alert = AlertDialog(
+                                          title: Text(AppLocalizations.of(context)!.scanForCode, style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 20),),
+                                          content: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              SizedBox(
+                                                height: MediaQuery.of(context).size.width-100,
+                                                width: MediaQuery.of(context).size.width-100,
+                                                child: QRView(
+                                                  key: qrKey,
+                                                  onQRViewCreated: onQRViewCreated,
+                                                  overlay: QrScannerOverlayShape(
+                                                    cutOutSize: 250,
+                                                    borderColor: Colors.red,
+                                                    borderRadius: 10,
+                                                    borderLength: 30,
+                                                    borderWidth: 10,
+                                                  ),
+                                                ),
+                                              ),
+                                              Padding(
+                                                padding: const EdgeInsets.all(20.0),
+                                                child: SizedBox(
+                                                  height: 50,
+                                                  child: Row(
+                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                                    children: [
+                                                      Expanded(
+                                                        child: OutlinedButton(
+                                                            onPressed: () async{
+                                                              Navigator.of(context).pop();
+                                                            },
+                                                            style: OutlinedButton.styleFrom(
+                                                                side: const BorderSide(width: 2,color: Color(0xff0099f0)),
+                                                                foregroundColor: Colors.white,
+                                                                backgroundColor: Colors.white,
+                                                                minimumSize: const Size(160,50)
+                                                            ),
+                                                            child: Text(AppLocalizations.of(context)!.cancel  ,style: const TextStyle(color: Color(0xff0099f0)),)
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ]
+                                          ),
+                                        );
+                                        showDialog(
+                                          context: context,
+                                          builder: (BuildContext context){
+                                            return alert;
+                                          },
+                                        );
+                                      },
+                                      style: OutlinedButton.styleFrom(
+                                          side: const BorderSide(width: 0),
+                                          foregroundColor: Colors.black,
+                                          backgroundColor: Colors.white,
+                                          minimumSize: const Size(60,50)
+                                      ),
+                                      child: Text(AppLocalizations.of(context)!.scanForCode ,style: const TextStyle(color: Colors.black),)
                                   ),
-                                  child: Text(AppLocalizations.of(context)!.contin,style: const TextStyle(color: Colors.black),)
-                              ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(
+                              height: 20,
+                            ),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                      onPressed: (){
+                                        newDeviceId = newDeviceIdController.text;
+                                        setState(() {
+                                          screenIndex = 13;
+                                        });
+                                      },
+                                      style: OutlinedButton.styleFrom(
+                                          side: const BorderSide(width: 0),
+                                          foregroundColor: Colors.black,
+                                          backgroundColor: Colors.white,
+                                          minimumSize: const Size(60,50)
+                                      ),
+                                      child: Text(AppLocalizations.of(context)!.contin,style: const TextStyle(color: Colors.black),)
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         )
@@ -1040,6 +1125,18 @@ class DevicePageState extends State<DevicePage> {
           );
         }
     );
+  }
+
+  onQRViewCreated(QRViewController controller){
+    controller = controller;
+    controller.resumeCamera();
+    StreamSubscription? sub;
+    sub = controller.scannedDataStream.listen((scanData) {
+      newDeviceIdController.text = scanData.code ?? "";
+      sub!.cancel();
+      controller.dispose();
+      print("hello");
+    });
   }
 
   showColorInfo(){

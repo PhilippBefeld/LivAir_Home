@@ -14,6 +14,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:tuple/tuple.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:logger/logger.dart';
@@ -66,6 +67,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   var value = 0.0;
   //radon unit,
   String? unit;
+  String? deviceInternetIP;
   //switch betweem thimgsboard and BT values
   bool useBluetoothData = false;
 
@@ -337,7 +339,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   "entityType":"DEVICE",
                   "entityId":id,
                   "scope":"CLIENT_SCOPE",
-                  "cmdId":1
+                  "cmdId":0
                 }
                 ],
             "tsSubCmds":[],
@@ -362,7 +364,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 "entityType":"DEVICE",
                 "entityId":id,
                 "scope":"CLIENT_SCOPE",
-                "cmdId":1
+                "cmdId":0
               }
               ],
             "historyCmds":[],
@@ -706,6 +708,11 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 if(dUnitData!=null) currentWifiName = dUnitData[0][1];
               }catch(e){
               }
+              try{
+                var dUnitData = telData["localIp"];
+                if(dUnitData!=null) deviceInternetIP = dUnitData[0][1];
+              }catch(e){
+              }
               List<dynamic> updateData = [];
               if(jsonDecode(data)["cmdId"]!=null && jsonDecode(data)["update"]!=null)updateData = jsonDecode(data)["update"];
               if(updateData.isNotEmpty) {
@@ -763,6 +770,17 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     if(telemetryRunning)return;
     telemetryRunning = true;
     if(!transmitionMethodSettings) {
+      try {
+        final result = await InternetAddress.lookup('example.com');
+        if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+        }
+      } on SocketException catch (_) {
+        Fluttertoast.showToast(
+            msg: AppLocalizations.of(context)!.noInternetT
+        );
+        telemetryRunning = false;
+        return;
+      }
       String id = device.keys.elementAt(0);
       dio.options.headers['content-Type'] = 'application/json';
       dio.options.headers['Accept'] = "application/json";
@@ -3513,7 +3531,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           inactiveTrackColor: Colors.grey,
                           inactiveThumbColor: Colors.white30,
                           onChanged: (value) async{
-                            await sendTelemetry("u_led_t", d_led_t ? 1 : 0, "S02:${d_led_t ? 1 : 0}");
+                            await sendTelemetry("u_led_t", value ? 1 : 0, "S02:${value ? 1 : 0}");
                             if(sentSuccessfullBTTelemetery) d_led_t = value;
                             sentSuccessfullBTTelemetery = false;
                             setState(() {
@@ -3547,7 +3565,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 value: d_led_tb,
                 onChangeEnd: (value) async{
                   await sendTelemetry("u_led_tb", d_led_tb.toInt(), "S05:${d_led_tb.toInt()}");
-                  if(sentSuccessfullBTTelemetery)d_led_tb = value.round().toDouble();
+                  if(sentSuccessfullBTTelemetery) {
+                    d_led_tb = value.round().toDouble();
+                    d_led_tb_old = d_led_tb;
+                  }
                   if(!sentSuccessfullBTTelemetery)d_led_tb = d_led_tb_old;
                   sentSuccessfullBTTelemetery= false;
                   setState(() {
@@ -3657,7 +3678,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           inactiveTrackColor: Colors.grey,
                           inactiveThumbColor: Colors.white30,
                           onChanged: (value) async{
-                            await sendTelemetry("u_led_f", d_led_f ? 1 : 0, "S03${d_led_f ? 1 : 0}");
+                            await sendTelemetry("u_led_f", value ? 1 : 0, "S03${value ? 1 : 0}");
                             if(sentSuccessfullBTTelemetery) d_led_f = value;
                             sentSuccessfullBTTelemetery = false;
                             setState(() {
@@ -3687,7 +3708,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 value: d_led_fb,
                 onChangeEnd: (value) async{
                   await sendTelemetry("u_led_fb", d_led_fb.toInt(), "S04:${d_led_fb.toInt()}");
-                  if(sentSuccessfullBTTelemetery) d_led_fb = value.round().toDouble();
+                  if(sentSuccessfullBTTelemetery) {
+                    d_led_fb = value.round().toDouble();
+                    d_led_fb_old = d_led_fb;
+                  }
                   if(!sentSuccessfullBTTelemetery)d_led_fb = d_led_fb_old;
                   sentSuccessfullBTTelemetery = false;
                   setState(() {
@@ -3707,16 +3731,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     width: 100,
                     child: OutlinedButton(
                         onPressed: () async{
-                          try {
-                            final result = await InternetAddress.lookup('example.com');
-                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                            }
-                          } on SocketException catch (_) {
-                            Fluttertoast.showToast(
-                                msg: AppLocalizations.of(context)!.noInternetT
-                            );
-                            return;
-                          }
                           await sendTelemetry("u_view_switch", 0, "S11:0");
                           if(sentSuccessfullBTTelemetery) clock=0;
                           sentSuccessfullBTTelemetery = false;
@@ -3736,16 +3750,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     width: 100,
                     child: OutlinedButton(
                         onPressed: () async{
-                          try {
-                            final result = await InternetAddress.lookup('example.com');
-                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                            }
-                          } on SocketException catch (_) {
-                            Fluttertoast.showToast(
-                                msg: AppLocalizations.of(context)!.noInternetT
-                            );
-                            return;
-                          }
                           await sendTelemetry("u_view_switch", 1, "S11:1");
                           if(sentSuccessfullBTTelemetery) clock=1;
                           sentSuccessfullBTTelemetery = false;
@@ -3764,16 +3768,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   SizedBox(
                     child: OutlinedButton(
                         onPressed: () async{
-                          try {
-                            final result = await InternetAddress.lookup('example.com');
-                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                            }
-                          } on SocketException catch (_) {
-                            Fluttertoast.showToast(
-                                msg: AppLocalizations.of(context)!.noInternetT
-                            );
-                            return;
-                          }
                           await sendTelemetry("u_view_switch", 2, "S11:2");
                           if(sentSuccessfullBTTelemetery) clock=2;
                           sentSuccessfullBTTelemetery = false;
@@ -3800,16 +3794,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     width: 160,
                     child: OutlinedButton(
                         onPressed: () async{
-                          try {
-                            final result = await InternetAddress.lookup('example.com');
-                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                            }
-                          } on SocketException catch (_) {
-                            Fluttertoast.showToast(
-                                msg: AppLocalizations.of(context)!.noInternetT
-                            );
-                            return;
-                          }
                           await sendTelemetry("u_unit", 1, "S01:1");
                           if(sentSuccessfullBTTelemetery) d_unit = 1;
                           sentSuccessfullBTTelemetery = false;
@@ -3829,16 +3813,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     width: 160,
                     child: OutlinedButton(
                         onPressed: () async{
-                          try {
-                            final result = await InternetAddress.lookup('example.com');
-                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                            }
-                          } on SocketException catch (_) {
-                            Fluttertoast.showToast(
-                                msg: AppLocalizations.of(context)!.noInternetT
-                            );
-                            return;
-                          }
                           await sendTelemetry("u_unit", 0, "S01:0");
                           if(sentSuccessfullBTTelemetery) d_unit = 0;
                           sentSuccessfullBTTelemetery = false;
@@ -3943,16 +3917,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     width: 100,
                     child: OutlinedButton(
                         onPressed: () async{
-                          try {
-                            final result = await InternetAddress.lookup('example.com');
-                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                            }
-                          } on SocketException catch (_) {
-                            Fluttertoast.showToast(
-                                msg: AppLocalizations.of(context)!.noInternetT
-                            );
-                            return;
-                          }
                           await sendTelemetry("u_clock", 1, "S10:1");
                           if(sentSuccessfullBTTelemetery) clockType = 1;
                           sentSuccessfullBTTelemetery = false;
@@ -3972,16 +3936,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     width: 100,
                     child: OutlinedButton(
                         onPressed: () async{
-                          try {
-                            final result = await InternetAddress.lookup('example.com');
-                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                            }
-                          } on SocketException catch (_) {
-                            Fluttertoast.showToast(
-                                msg: AppLocalizations.of(context)!.noInternetT
-                            );
-                            return;
-                          }
                           await sendTelemetry("u_clock", 2, "S10:2");
                           if(sentSuccessfullBTTelemetery) clockType = 2;
                           sentSuccessfullBTTelemetery = false;
@@ -4000,16 +3954,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   SizedBox(
                     child: OutlinedButton(
                         onPressed: () async{
-                          try {
-                            final result = await InternetAddress.lookup('example.com');
-                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                            }
-                          } on SocketException catch (_) {
-                            Fluttertoast.showToast(
-                                msg: AppLocalizations.of(context)!.noInternetT
-                            );
-                            return;
-                          }
                           await sendTelemetry("u_clock", 3, "S10:3");
                           if(sentSuccessfullBTTelemetery) clockType = 3;
                           sentSuccessfullBTTelemetery = false;
@@ -4337,16 +4281,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     width: 160,
                     child: OutlinedButton(
                         onPressed: () async{
-                          try {
-                            final result = await InternetAddress.lookup('example.com');
-                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                            }
-                          } on SocketException catch (_) {
-                            Fluttertoast.showToast(
-                                msg: AppLocalizations.of(context)!.noInternetT
-                            );
-                            return;
-                          }
                           await sendTelemetry("u_mez_ea", 0, "S15:0");
                           if(sentSuccessfullBTTelemetery) mezType = 0;
                           sentSuccessfullBTTelemetery = false;
@@ -4366,16 +4300,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     width: 160,
                     child: OutlinedButton(
                         onPressed: () async{
-                          try {
-                            final result = await InternetAddress.lookup('example.com');
-                            if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                            }
-                          } on SocketException catch (_) {
-                            Fluttertoast.showToast(
-                                msg: AppLocalizations.of(context)!.noInternetT
-                            );
-                            return;
-                          }
                           sendTelemetry("u_mez_ea", 1, "S15:1");
                           if(sentSuccessfullBTTelemetery) mezType = 1;
                           sentSuccessfullBTTelemetery = false;
@@ -5473,6 +5397,18 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
           padding: const EdgeInsets.all(20.0),
           child: Column(
             children: [
+              Row(
+                children: [
+                  Text("Webserver"),
+                  TextButton(onPressed: () async {
+                    final Uri url = Uri.parse('https://${device.values.first.name}.local');
+                    if (!await launchUrl(url)) {
+                      throw Exception('Could not launch $url');
+                    }
+                  }, child: Text('https://${device.values.first.name}.local'))
+                ],
+              ),
+              const SizedBox(height: 10,),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -7740,6 +7676,55 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
             Text(AppLocalizations.of(context)!.calibrationDate),
             const SizedBox(height: 10,),
             Text(DateTime.fromMillisecondsSinceEpoch(calibrationDate).toIso8601String().split("T").first, style: const TextStyle(fontWeight: FontWeight.w600),),
+            const SizedBox(height: 20,),
+            device.values.elementAt(0).floor != "viewer" ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Internet IP"),
+                const SizedBox(height: 10,),
+                Text("$deviceInternetIP", style: const TextStyle(fontWeight: FontWeight.w600),),
+                const SizedBox(height: 20,),
+                Text(AppLocalizations.of(context)!.currentWifi),
+                const SizedBox(height: 10,),
+                Text(currentWifiName, style: const TextStyle(fontWeight: FontWeight.w600),),
+                const SizedBox(height: 20,),
+                Text("Webserver"),
+                const SizedBox(height: 10,),
+                TextButton(
+                    onPressed: () async {
+                      final Uri url = Uri.parse('https://${device.values.first.name}.local');
+                      if (!await launchUrl(url)) {
+                        Fluttertoast.showToast(
+                            msg: "Error"
+                        );
+                      }
+                    },
+                    child: Text('https://${device.values.first.name}.local',style: TextStyle(color: Colors.black),)),
+                const SizedBox(height: 10,),
+                TextButton(
+                    onPressed: () async {
+                      final Uri url = Uri.parse('https://${device.values.first.name}.local/xml');
+                      if (!await launchUrl(url)) {
+                        Fluttertoast.showToast(
+                            msg: "Error"
+                        );
+                      }
+                    },
+                    child: Text('https://${device.values.first.name}.local/xml',style: TextStyle(color: Colors.black),)),
+                const SizedBox(height: 10,),
+                TextButton(
+                    onPressed: () async {
+                      final Uri url = Uri.parse('https://${device.values.first.name}.local/json');
+                      if (!await launchUrl(url)) {
+                        Fluttertoast.showToast(
+                            msg: "Error"
+                        );
+                      }
+                    },
+                    child: Text('https://${device.values.first.name}.local/json',style: TextStyle(color: Colors.black),)),
+              ],
+            )
+            : SizedBox(),
           ],
         ),
       ),

@@ -101,6 +101,7 @@ class SignInPageState extends State<SignInPage> {
             storage.write(key: 'unit', value: unitData.data);
           }
         }
+        //only storage is used for language
         var languageData = await dio.get('https://dashboard.livair.io/api/livAir/language',options: Options(responseType: ResponseType.plain));
       }catch(e){
       }
@@ -243,6 +244,8 @@ class SignInPageState extends State<SignInPage> {
       if(await storage.containsKey(key: "language")){
         if(await storage.read(key: "language") != "english"){
           MVP.of(context)!.setLocale(const Locale.fromSubtags(languageCode: 'de'));
+        }else{
+          MVP.of(context)!.setLocale(const Locale.fromSubtags(languageCode: 'en'));
         }
       }
       if(await storage.containsKey(key: "autoSignIn")){
@@ -260,7 +263,7 @@ class SignInPageState extends State<SignInPage> {
 
   }
 
-
+  //not used, will not work with thingsboard, needs special thingsboard api for google login
   googleSignIn()async{
     GoogleSignIn googleSignIn = GoogleSignIn(
       scopes: [

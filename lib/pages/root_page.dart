@@ -55,7 +55,9 @@ class _DestinationViewState extends State<DestinationView> {
   int _currentIndex = 0;
   int onboardingScreenIndex = 0;
   final storage = const FlutterSecureStorage();
+
   bool hasCompletedOnBoarding = false;
+
   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
   Barcode? result;
 
@@ -341,7 +343,7 @@ class _DestinationViewState extends State<DestinationView> {
                             backgroundColor: Colors.white,
                             minimumSize: const Size(60,50)
                         ),
-                        child: Text(AppLocalizations.of(context)!.scanForCode  ,style: const TextStyle(color: Color(0xff0099f0)),)
+                        child: Text(AppLocalizations.of(context)!.scanForCode,style: const TextStyle(color: Color(0xff0099f0)),)
                     ),
                   ),
                 ],

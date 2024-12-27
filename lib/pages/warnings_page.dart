@@ -211,6 +211,7 @@ class WarningsPageState extends State<WarningsPage>{
                     separatorBuilder: (context, index) => const SizedBox(height: 1),
                     itemCount: warnings.length,
                     itemBuilder: (BuildContext context, int index){
+                      print(warnings[index].toString());
                       return GestureDetector(
                           onTap: (){
 
@@ -234,7 +235,7 @@ class WarningsPageState extends State<WarningsPage>{
                                     Text("${warnings.elementAt(index).values.elementAt(2)} ${warnings.elementAt(index).values.elementAt(4)}",
                                       style: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w400, overflow: TextOverflow.ellipsis)
                                     ),
-                                    Text(Duration(minutes: warnings.elementAt(index).values.elementAt(3)).toString().substring(0,4),
+                                    Text("${Duration(minutes: warnings.elementAt(index).values.elementAt(3)).toString().substring(0,2).replaceAll(":", "")}h ${Duration(minutes: warnings.elementAt(index).values.elementAt(3)).toString().substring(2,5).replaceAll(":", "")}m",
                                       style: const TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w400),
                                     ),
                                   ],
