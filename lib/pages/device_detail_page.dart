@@ -429,7 +429,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       );
       channel!.stream.listen(
             (data) {
-              logger.d(data);
               if(jsonDecode(data)["subscriptionId"] == 1 && firstTry){
                 firstTry = false;
                 requestMsSinceEpoch = DateTime.now().millisecondsSinceEpoch;
@@ -899,7 +898,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             }
                         ).listen((data) async{
                           String message = utf8.decode(data).trim();
-                          logger.d(utf8.decode(data));
+                          //logger.d(utf8.decode(data));
                           if(message == "" && !loginSuccessful){
                             await Future<void>.delayed(const Duration(seconds: 1));
                             if(!loginSuccessful){
@@ -913,12 +912,14 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           if(message == 'LOGIN OK'){
                             sentSuccessfully = true;
                             await writeCharacteristic!.write(utf8.encode(btValue));
-                            await Future<void>.delayed( const Duration(milliseconds: 500));
                             sentSuccessfullBTTelemetery = true;
                             await btDevice!.disconnect(timeout: 1);
                             btDevice!.removeBond();
                             subscriptionToDevice?.cancel();
                             Navigator.pop(context);
+                            setState(() {
+
+                            });
                           }
                         });
                       }
@@ -934,6 +935,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             btDevice!.removeBond();
                             subscriptionToDevice?.cancel();
                             Navigator.pop(context);
+                            setState(() {
+
+                            });
                           }
                         }
                       }
@@ -1093,7 +1097,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             }
                         ).listen((data) async{
                           String message = utf8.decode(data).trim();
-                          logger.d(utf8.decode(data));
+                          //logger.d(utf8.decode(data));
                           if(message == "" && !loginSuccessful){
                             await Future<void>.delayed(const Duration(seconds: 1));
                             if(!loginSuccessful){
@@ -1234,6 +1238,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       currentMinValue = radonValuesTimeseries.reduce(min);
     }
     if(showAllData){
+      if(spots.length == 0){
+        return [
+          ChartData(DateTime.fromMillisecondsSinceEpoch(startTimeseries + (Duration(days: selectedNumberOfDays).inMilliseconds)), null),
+          ChartData(DateTime.fromMillisecondsSinceEpoch(startTimeseries), null)
+        ];
+      }
       List<ChartData> newSpots = [];
       int counter = 0;
       int p = 0;
@@ -1256,6 +1266,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         newSpots.add(ChartData(DateTime.fromMillisecondsSinceEpoch(spots[spots.length-1].x.millisecondsSinceEpoch - Duration(minutes: 10).inMilliseconds*p), null));
         p++;
       }
+      newSpots.add(ChartData(DateTime.fromMillisecondsSinceEpoch(requestMsSinceEpoch - (Duration(days: selectedNumberOfDays).inMilliseconds * (stepsIntoPast-1))), null));
       return newSpots.reversed.toList();
     }
     List<ChartData> newSpots = [];
@@ -3323,7 +3334,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             }
                         ).listen((data) async {
                               String message = utf8.decode(data).trim();
-                              logger.d(utf8.decode(data));
+                              //logger.d(utf8.decode(data));
                               if(message == "" && !loginSuccessful){
                                 await Future<void>.delayed(const Duration(seconds: 1));
                                 if(!loginSuccessful){
@@ -3339,7 +3350,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                               }
                               if (message.length >= 2 && message.substring(0, 2) == "|A") {
                                 if(message.substring(2,4) == "16"){
-                                  currentWifiName = message.substring(4,message.length);
+                                  currentWifiName = message.substring(4,message.length-1);
                                   await btDevice!.disconnect(timeout: 1);
                                   btDevice!.removeBond();
                                   subscriptionToDevice?.cancel();
@@ -5762,7 +5773,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             }
                         ).listen((data) async{
                           String message = utf8.decode(data).trim();
-                          logger.d(utf8.decode(data));
+                          //logger.d(utf8.decode(data));
                           if(message == "" && !loginSuccessful){
                             await Future<void>.delayed(const Duration(seconds: 1));
                             if(!loginSuccessful){
@@ -5890,7 +5901,11 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       await Future<void>.delayed( const Duration(seconds: 3));
       if(!deviceFound){
         subscription!.cancel();
+        screenIndex = 1;
         Navigator.pop(context);
+        Fluttertoast.showToast(
+            msg: AppLocalizations.of(context)!.deviceNotFound
+        );
       }
       if(!sentSuccessfully && loginSuccessful){
         subscription!.cancel();
@@ -5905,6 +5920,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         await btDevice!.disconnect(timeout: 1);
         btDevice!.removeBond();
         subscriptionToDevice?.cancel();
+        screenIndex = 1;
         Navigator.pop(context);
       }catch(e){
       }
@@ -6158,7 +6174,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       }
                   ).listen((data) async{
                     String message = utf8.decode(data).trim();
-                    logger.d(utf8.decode(data));
+                    //logger.d(utf8.decode(data));
                     if(message == "" && !loginSuccessful){
                       await Future<void>.delayed(const Duration(seconds: 1));
                       if(!loginSuccessful){
@@ -6300,7 +6316,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     }
     FlutterBluePlus.stopScan();
     bool deviceFound = false;
-    bool listening = false;
     subscription = FlutterBluePlus.scanResults.listen((results) async {
       for (ScanResult r in results) {
         if (!deviceFound) {
@@ -6366,13 +6381,13 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             });
                             if(!hasData){
                               Fluttertoast.showToast(
-                                  msg: "Error"
+                                  msg: "Connection Lost"
                               );
                             }
                           }
                       ).listen((data) async{
                         String message = utf8.decode(data).trim();
-                        logger.d(utf8.decode(data));
+                        //logger.d(utf8.decode(data));
                         if(message == "" && !loginSuccessful){
                         }
                         if(message == 'LOGIN OK'){
@@ -6404,15 +6419,14 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           BtTimestampCount = int.parse(message.substring(4, message.length-1));
                         }
                         if(message.length >= 2 && message.substring(0,2)=="|A"){
-                          if(message.substring(2,4) == "01")  d_unit = int.parse(message.substring(4));
-                          if(message.substring(2,4) == "02")  d_led_t = message.substring(4) == "1";
-                          if(message.substring(2,4) == "03")  d_led_f = message.substring(4) == "1";
-                          if(message.substring(2,4) == "04")  d_led_tb = double.parse(message.substring(4,message.length));
-                          if(message.substring(2,4) == "05")  d_led_fb = double.parse(message.substring(4,message.length));
-                          if(message.substring(2,4) == "03")  currentWifiName = message.substring(4,message.length);
-
+                          if(message.substring(2,4) == "01")  d_unit = int.parse(message.substring(4,message.length-1));
+                          if(message.substring(2,4) == "02")  d_led_t = message.substring(4,message.length-1) == "1";
+                          if(message.substring(2,4) == "03")  d_led_f = message.substring(4,message.length-1) == "1";
+                          if(message.substring(2,4) == "04")  d_led_fb = double.parse(message.substring(4,message.length-1));
+                          if(message.substring(2,4) == "05")  d_led_tb = double.parse(message.substring(4,message.length-1));
+                          if(message.substring(2,4) == "03")  currentWifiName = message.substring(4,message.length-1);
                         }
-                        if(readGraph){
+                        if(readGraph &&BtTimestampCount>0){
                           var bluetoothRadonHistory = message.split(";");
                           for (var timestamp in bluetoothRadonHistory) {
                             currentBtTimestampCount++;
@@ -6479,6 +6493,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 btDevice!.removeBond();
                 subscriptionToDevice?.cancel();
                 loaded = true;
+                Fluttertoast.showToast(
+                    msg: "Connection Error"
+                );
                 setState(() {
                   screenIndex = 1;
                 });
@@ -7692,36 +7709,36 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 const SizedBox(height: 10,),
                 TextButton(
                     onPressed: () async {
-                      final Uri url = Uri.parse('https://${device.values.first.name}.local');
-                      if (!await launchUrl(url)) {
+                      final Uri url = Uri.parse('http://${device.values.first.name}.local');
+                      if (!await launchUrl(url, webViewConfiguration: WebViewConfiguration())) {
                         Fluttertoast.showToast(
                             msg: "Error"
                         );
                       }
                     },
-                    child: Text('https://${device.values.first.name}.local',style: TextStyle(color: Colors.black),)),
+                    child: Text('http://${device.values.first.name}.local',style: TextStyle(color: Colors.black),)),
                 const SizedBox(height: 10,),
                 TextButton(
                     onPressed: () async {
-                      final Uri url = Uri.parse('https://${device.values.first.name}.local/xml');
+                      final Uri url = Uri.parse('http://${device.values.first.name}.local/xml');
                       if (!await launchUrl(url)) {
                         Fluttertoast.showToast(
                             msg: "Error"
                         );
                       }
                     },
-                    child: Text('https://${device.values.first.name}.local/xml',style: TextStyle(color: Colors.black),)),
+                    child: Text('http://${device.values.first.name}.local/xml',style: TextStyle(color: Colors.black),)),
                 const SizedBox(height: 10,),
                 TextButton(
                     onPressed: () async {
-                      final Uri url = Uri.parse('https://${device.values.first.name}.local/json');
+                      final Uri url = Uri.parse('http://${device.values.first.name}.local/json');
                       if (!await launchUrl(url)) {
                         Fluttertoast.showToast(
                             msg: "Error"
                         );
                       }
                     },
-                    child: Text('https://${device.values.first.name}.local/json',style: TextStyle(color: Colors.black),)),
+                    child: Text('http://${device.values.first.name}.local/json',style: TextStyle(color: Colors.black),)),
               ],
             )
             : SizedBox(),
@@ -8460,7 +8477,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         SizedBox(
                           width: 300,
                           child: LinearProgressIndicator(
-                            value: currentBtTimestampCount/BtTimestampCount,
+                            value: BtTimestampCount != 0 ? currentBtTimestampCount/BtTimestampCount : 0,
                             valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
                           ),
                         ),

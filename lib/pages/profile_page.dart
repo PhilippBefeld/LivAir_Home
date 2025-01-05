@@ -103,7 +103,6 @@ class ProfilePageState extends State<ProfilePage>{
         emailController.text = responseData["email"];
         language = responseData["additionalInfo"]["lang"] == "en_US" ? "english" : "german";
       }catch(e){
-        logger.e(e);
       }
       setState(() {
       });
@@ -130,7 +129,6 @@ class ProfilePageState extends State<ProfilePage>{
         data: responseData
       );
     }catch(e){
-      logger.e(e);
     }
     setState(() {
       getProfileData();
@@ -273,7 +271,6 @@ class ProfilePageState extends State<ProfilePage>{
         appBarTitle = AppLocalizations.of(context)!.generalSettingsT;
       });
     }catch(e){
-      logger.e(e);
     }
   }
 
@@ -1533,7 +1530,6 @@ class ProfilePageState extends State<ProfilePage>{
         showAppBar = true;
       });
     }on DioError catch (e){
-      logger.e(e.message);
     }
   }
 
@@ -1569,7 +1565,6 @@ class ProfilePageState extends State<ProfilePage>{
         showAppBar = true;
       });
     }on DioError catch (e){
-      logger.e(e.message);
     }
   }
 
@@ -1606,7 +1601,6 @@ class ProfilePageState extends State<ProfilePage>{
         showAppBar = true;
       });
     }on DioError catch (e){
-      logger.e(e.message);
     }
   }
 
@@ -1621,7 +1615,6 @@ class ProfilePageState extends State<ProfilePage>{
       );
       viewerData = response.data;
     }catch(e){
-      print(e);
     }
   }
 
@@ -1639,7 +1632,6 @@ class ProfilePageState extends State<ProfilePage>{
           })
       );
     }on DioError catch(e){
-      print(e.response);
     }
     devicesToUnshare = [];
     emailToRemove = "";
@@ -1725,7 +1717,6 @@ class ProfilePageState extends State<ProfilePage>{
           )
       );
       channel.stream.listen((data) {
-        print(jsonDecode(data));
         List<dynamic> deviceData = jsonDecode(data)["data"]["data"];
         for(var element in deviceData){
           deviceIds.add(element["entityId"]["id"]);

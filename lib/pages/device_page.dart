@@ -1135,7 +1135,6 @@ class DevicePageState extends State<DevicePage> {
       newDeviceIdController.text = scanData.code ?? "";
       sub!.cancel();
       controller.dispose();
-      print("hello");
     });
   }
 

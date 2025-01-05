@@ -63,7 +63,6 @@ class SignUpPageState extends State<SignUpPage>{
     try {
       var account = await googleSignIn.signIn();
     } catch (error) {
-      print(error);
       return;
     }
   }

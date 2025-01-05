@@ -684,7 +684,6 @@ class _DestinationViewState extends State<DestinationView> {
                   child: OutlinedButton(
                       onPressed: () {
                         writeCharacteristic!.write(utf8.encode("CONNECT:${foundAccessPoints[selectedWifiAccesspoint]},|${wifiPasswordController.text}"));
-                        print("CONNECT:${foundAccessPoints[selectedWifiAccesspoint]},|${wifiPasswordController.text}");
                       },
                       style: OutlinedButton.styleFrom(
                           side: const BorderSide(width: 0),

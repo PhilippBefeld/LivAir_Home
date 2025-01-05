@@ -280,7 +280,6 @@ class SignInPageState extends State<SignInPage> {
       var account = await googleSignIn.signIn();
       googleEmail = account!.email;
     } catch (error) {
-      print(error);
       return;
     }
   }
@@ -473,10 +472,7 @@ class SignInPageState extends State<SignInPage> {
                                     hintStyle: TextStyle(color: Colors.grey[850],fontSize: 14),
                                   ),
                                   onChanged: (value){
-                                    if(checkLogInEmail()){
-                                      setState(() {
-                                      });
-                                    }
+                                    checkLogInEmail();
                                   },
                                 ),
                               ),
@@ -596,7 +592,13 @@ class SignInPageState extends State<SignInPage> {
                                       );
                                       return;
                                     }
-                                    if(emailIsCorrect)logIn();
+                                    if(emailIsCorrect){
+                                      logIn();
+                                    }else{
+                                      Fluttertoast.showToast(
+                                          msg: AppLocalizations.of(context)!.checkEmail_toast
+                                      );
+                                    }
                                   },
                                   style: OutlinedButton.styleFrom(
                                       side: const BorderSide(width: 2,color: Color(0xff0099f0)),

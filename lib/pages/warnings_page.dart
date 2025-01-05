@@ -211,7 +211,6 @@ class WarningsPageState extends State<WarningsPage>{
                     separatorBuilder: (context, index) => const SizedBox(height: 1),
                     itemCount: warnings.length,
                     itemBuilder: (BuildContext context, int index){
-                      print(warnings[index].toString());
                       return GestureDetector(
                           onTap: (){
 
