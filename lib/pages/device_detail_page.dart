@@ -3849,9 +3849,17 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   }
 
   deviceClockScreen(){
-    List<DropdownMenuItem<String>> tzOfSelectionWidgets = [
+     List<DropdownMenuItem<String>> tzOfSelectionWidgets = [
       DropdownMenuItem(child: Text(AppLocalizations.of(context)!.noneSelected),value: "None selected",)
     ];
+     tzOfSelection.forEach((element){
+       tzOfSelectionWidgets.add(
+           DropdownMenuItem(
+               value: element.split("/").sublist(1).join("-"),
+               child: Text(element.split("/").sublist(1).join("-"))
+           )
+       );
+     });
     Map<String,String> tzMap = getTZMap();
     tzLocations = [];
     tzCodes = [];
@@ -3873,6 +3881,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
             IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.black),
               onPressed: (){
+                tzOfSelection = [];
+                timezoneCountry = "None selected";
+                timezoneCity = "None selected";
                 setState(() {
                   screenIndex = 2;
                 });
@@ -4072,14 +4083,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                       child: Text(AppLocalizations.of(context)!.noneSelected)
                                   )
                                 ];
-                                tzOfSelection.forEach((element){
-                                  tzOfSelectionWidgets.add(
-                                      DropdownMenuItem(
-                                          value: element.split("/").sublist(1).join("-"),
-                                          child: Text(element.split("/").sublist(1).join("-"))
-                                      )
-                                  );
-                                });
+
                                 timezoneCountry = obj.toString();
                                 setState(() {
                                 });
@@ -4121,6 +4125,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                     tzSelected = timezoneCountry+"/"+timezoneCity;
                                     setState(() {
                                     });
+                                  },
+                                  onTap: (){
+                                    print(tzOfSelectionWidgets.length);
                                   },
                                   value: timezoneCity
                               ),
@@ -7974,6 +7981,93 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         .hasMatch(emailController.text);
   }
 
+  @override
+  Widget build(BuildContext context) {
+    bool isWide = MediaQuery.of(context).orientation != Orientation.landscape;
+    return WillPopScope(
+        onWillPop: () async{
+          if(screenIndex == 1){
+            Navigator.of(context).pop();
+            return false;
+          }
+          if(screenIndex == 20 || screenIndex == 21 || screenIndex == 211 || screenIndex == 22 || screenIndex == 24 || screenIndex == 25 || screenIndex == 26 || screenIndex == 27 || screenIndex == 28 ){
+            if(screenIndex == 25){
+              tzOfSelection = [];
+              timezoneCountry = "None selected";
+              timezoneCity = "None selected";
+            }
+
+            setState(() {
+              screenIndex = 2;
+            });
+            return false;
+          }else{
+            screenIndex = 1;
+            setState(() {
+
+            });
+            return false;
+          }
+        },
+        child: useBluetoothData ? FutureBuilder(
+            future: readOfflineData(),
+            builder: (context, projectSnap){
+              return loaded ? setPage(screenIndex, isWide) : Scaffold(
+                body: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        AppLocalizations.of(context)!.loadingOverBT,
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 36,),
+                      currentBtTimestampCount == -1 ? CircularProgressIndicator(
+                        color: Colors.black,
+                      ) : Column(
+                        children: [
+                          SizedBox(
+                            width: 300,
+                            child: LinearProgressIndicator(
+                              value: BtTimestampCount != 0 ? currentBtTimestampCount/BtTimestampCount : 0,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                            ),
+                          ),
+                          //Text("${currentBtTimestampCount} / ${BtTimestampCount}")
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+        ) :  FutureBuilder(
+          future: futureFunc(),
+          builder: (context, projectSnap){
+            return loadedInternet ? setPage(screenIndex, isWide)  : Scaffold(
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)!.loadingData,
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 36,),
+                    CircularProgressIndicator(
+                      color: Colors.black,
+                    )
+                  ],
+                ),
+              ),
+            );
+          },
+        )
+    );
+  }
+
   Map<String,String> getTZMap(){
     return {
       "Africa/Abidjan":"GMT0",
@@ -8433,87 +8527,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   }
 
 
-  @override
-  Widget build(BuildContext context) {
-    bool isWide = MediaQuery.of(context).orientation != Orientation.landscape;
-    return WillPopScope(
-      onWillPop: () async{
-        if(screenIndex == 1){
-          Navigator.of(context).pop();
-          return false;
-        }
-        else if(screenIndex != 2){
-          screenIndex = 2;
-          setState(() {
-
-          });
-          return false;
-        }else{
-          screenIndex = 1;
-          setState(() {
-
-          });
-          return false;
-        }
-      },
-      child: useBluetoothData ? FutureBuilder(
-          future: readOfflineData(),
-          builder: (context, projectSnap){
-            return loaded ? setPage(screenIndex, isWide) : Scaffold(
-              body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      AppLocalizations.of(context)!.loadingOverBT,
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 36,),
-                    currentBtTimestampCount == -1 ? CircularProgressIndicator(
-                      color: Colors.black,
-                    ) : Column(
-                      children: [
-                        SizedBox(
-                          width: 300,
-                          child: LinearProgressIndicator(
-                            value: BtTimestampCount != 0 ? currentBtTimestampCount/BtTimestampCount : 0,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
-                          ),
-                        ),
-                        //Text("${currentBtTimestampCount} / ${BtTimestampCount}")
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-        ) :  FutureBuilder(
-            future: futureFunc(),
-            builder: (context, projectSnap){
-            return loadedInternet ? setPage(screenIndex, isWide)  : Scaffold(
-              body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      AppLocalizations.of(context)!.loadingData,
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 36,),
-                    CircularProgressIndicator(
-                      color: Colors.black,
-                    )
-                  ],
-                ),
-              ),
-            );
-          },
-        )
-    );
-}
 
 }
 
@@ -8539,17 +8552,12 @@ class Details {
     required this.rating,
   });
 
-
   factory Details.fromJson(Map<String, dynamic> json) => Details(
     key: json["key"].toString(),
     value: json["value"].toString(),
     color: json["color"].toString(),
     rating: json["rating"].toString(),
   );
-}
-
-abstract class Observable{
-
 }
 
 class ChartData {
