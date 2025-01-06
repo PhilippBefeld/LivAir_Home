@@ -66,7 +66,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
 
   var value = 0.0;
   //radon unit,
-  String? unit;
+  String? unit = "Bq/m³";
   String? deviceInternetIP;
   //switch betweem thimgsboard and BT values
   bool useBluetoothData = false;
@@ -264,17 +264,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       );
       useBluetoothData = true;
       try{
-        channel!.sink.add({
-          "cmds": [
-            {
-              "entityType": "DEVICE",
-              "entityId": device.keys.elementAt(0),
-              "scope": "CLIENT_SCOPE",
-              "cmdId": 1,
-              "unsubscribe": true
-            }
-          ]
-        });
+        channel!.sink.close();
       }catch(e){
       }
       setState(() {
@@ -285,17 +275,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     if(!device.values.first.isOnline){
       useBluetoothData = true;
       try{
-        channel!.sink.add({
-          "cmds": [
-            {
-              "entityType": "DEVICE",
-              "entityId": device.keys.elementAt(0),
-              "scope": "CLIENT_SCOPE",
-              "cmdId": 1,
-              "unsubscribe": true
-            }
-          ]
-        });
+        channel!.sink.close();
       }catch(e){
       }
       Fluttertoast.showToast(
@@ -1200,6 +1180,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     radonHistoryTimestamps.sort((a,b) {
       return a.item1.compareTo(b.item1);
     });
+    radonHistoryTimestamps = radonHistoryTimestamps.toSet().toList();
     radonHistoryTimestamps = radonHistoryTimestamps.reversed.toList();
     int startTimeseries =  selectedNumberOfDays == 0 ? radonHistoryTimestamps.last.item1 : requestMsSinceEpoch - (Duration(days: selectedNumberOfDays).inMilliseconds * stepsIntoPast);
     List<ChartData> spots = [];
@@ -1237,13 +1218,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       currentMaxValue = radonValuesTimeseries.reduce(max);
       currentMinValue = radonValuesTimeseries.reduce(min);
     }
+
+
     if(showAllData){
-      if(spots.length == 0){
-        return [
-          ChartData(DateTime.fromMillisecondsSinceEpoch(startTimeseries + (Duration(days: selectedNumberOfDays).inMilliseconds)), null),
-          ChartData(DateTime.fromMillisecondsSinceEpoch(startTimeseries), null)
-        ];
-      }
       List<ChartData> newSpots = [];
       int counter = 0;
       int p = 0;
@@ -1266,17 +1243,20 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         newSpots.add(ChartData(DateTime.fromMillisecondsSinceEpoch(spots[spots.length-1].x.millisecondsSinceEpoch - Duration(minutes: 10).inMilliseconds*p), null));
         p++;
       }
-      newSpots.add(ChartData(DateTime.fromMillisecondsSinceEpoch(requestMsSinceEpoch - (Duration(days: selectedNumberOfDays).inMilliseconds * (stepsIntoPast-1))), null));
       return newSpots.reversed.toList();
     }
+
+
     List<ChartData> newSpots = [];
     int i = 0;
+
     if(spots.isEmpty){
       return [
         ChartData(DateTime.fromMillisecondsSinceEpoch(requestMsSinceEpoch - (Duration(days: selectedNumberOfDays).inMilliseconds * (stepsIntoPast-1))), null),
         ChartData(DateTime.fromMillisecondsSinceEpoch(startTimeseries), null)
       ];
     }
+
     if(selectedNumberOfDays == -2){
       while(i < spots.length-1){
         newSpots.add(spots[i]);
@@ -1315,6 +1295,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     }
     return newSpots.reversed.toList();
   }
+
+
+
 
   List<BarChartGroupData> getCurrentBars(){
     List<BarChartGroupData> bars = [];
@@ -1407,22 +1390,13 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     IconButton(
                       icon: const Icon(Icons.arrow_back, color: Colors.black),
                       onPressed: (){
+                        try{
+                          channel!.sink.close();
+                        }catch(e){
+                        }
+                        Navigator.pop(context);
                         setState(() {
-                          try{
-                            channel!.sink.add({
-                              "cmds": [
-                                {
-                                  "entityType": "DEVICE",
-                                  "entityId": device.keys.elementAt(0),
-                                  "scope": "CLIENT_SCOPE",
-                                  "cmdId": 1,
-                                  "unsubscribe": true
-                                }
-                              ]
-                            });
-                          }catch(e){
-                          }
-                          Navigator.pop(context);
+
                         });
                       },
                     ),
@@ -1456,21 +1430,15 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       firstTry = true;
                       selectedNumberOfDays = 1;
                       useBluetoothData = value;
+                      if(useBluetoothData){
+                        showAllData = false;
+                      }
                       radonHistoryTimestamps = [];
                       try{
-                        channel!.sink.add({
-                          "cmds": [
-                            {
-                              "entityType": "DEVICE",
-                              "entityId": device.keys.elementAt(0),
-                              "scope": "CLIENT_SCOPE",
-                              "cmdId": 1,
-                              "unsubscribe": true
-                            }
-                          ]
-                        });
+                        channel!.sink.close();
                       }catch(e){
                       }
+
                       setState(() {
                       });
                     },
@@ -1496,17 +1464,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   readGraph = false;
                 }
                 try{
-                  channel!.sink.add({
-                    "cmds": [
-                      {
-                        "entityType": "DEVICE",
-                        "entityId": device.keys.elementAt(0),
-                        "scope": "CLIENT_SCOPE",
-                        "cmdId": 1,
-                        "unsubscribe": true
-                      }
-                    ]
-                  });
+                  channel!.sink.close();
                 }catch(e){
                 }
                 setState(() {
@@ -2144,7 +2102,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                   visualDensity: VisualDensity.compact,
                                   onPressed: (){
                                     setState(() {
-                                      if(!changeDiagram && selectedNumberOfDays != 0)showAllData = !showAllData;
+                                      if(!changeDiagram && selectedNumberOfDays != 0 && !useBluetoothData)showAllData = !showAllData;
                                       chartSpots = getCurrentSpots();
                                     });
                                   },
@@ -4125,9 +4083,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                     tzSelected = timezoneCountry+"/"+timezoneCity;
                                     setState(() {
                                     });
-                                  },
-                                  onTap: (){
-                                    print(tzOfSelectionWidgets.length);
                                   },
                                   value: timezoneCity
                               ),
@@ -6282,6 +6237,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
 
   Future<dynamic> readOfflineData() async{
     if(futureFuncRunning)return;
+    currentTZ = await storage.read(key: 'timezone') ?? "";
+    unit = await storage.read(key: 'unit');
     requestMsSinceEpoch = DateTime.now().millisecondsSinceEpoch;
     futureFuncRunning = true;
     radonHistory = [];
@@ -6289,6 +6246,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     currentMinValue = 0;
     currentMaxValue = 0;
     foundAccessPoints = {};
+    bool deviceFound = false;
     if(!useBluetoothData){
       showDialog(context: context, builder: (context) {
         return Scaffold(
@@ -6322,7 +6280,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       }
     }
     FlutterBluePlus.stopScan();
-    bool deviceFound = false;
     subscription = FlutterBluePlus.scanResults.listen((results) async {
       for (ScanResult r in results) {
         if (!deviceFound) {
@@ -6386,6 +6343,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             setState(() {
                               screenIndex = 1;
                             });
+                            Navigator.of(context).pop;
                             if(!hasData){
                               Fluttertoast.showToast(
                                   msg: "Connection Lost"
