@@ -1058,9 +1058,10 @@ class ProfilePageState extends State<ProfilePage>{
               refreshToken = loginResponse.data["refreshToken"];
             }
             dio.options.headers['Authorization'] = "Bearer $token";
+            storage.write(key: 'unit', value: "Bq/m³");
+            unit = "Bq/m³";
             dio.post('https://dashboard.livair.io/api/livAir/units/BqM3');
             setState(() {
-              storage.write(key: 'unit', value: "Bq/m³");
               currentIndex = 0;
               showAppBar = false;
               appBarTitle = "";
@@ -1105,9 +1106,10 @@ class ProfilePageState extends State<ProfilePage>{
               refreshToken = loginResponse.data["refreshToken"];
             }
             dio.options.headers['Authorization'] = "Bearer $token";
+            storage.write(key: 'unit', value: "pCi/L");
+            unit = "pCi/L";
             dio.post('https://dashboard.livair.io/api/livAir/units/pCiL');
             setState(() {
-              storage.write(key: 'unit', value: "pCi/L");
               currentIndex = 0;
               showAppBar = false;
               appBarTitle = "";
@@ -1611,7 +1613,7 @@ class ProfilePageState extends State<ProfilePage>{
     var response;
     try{
       response = await dio. get(
-        'https://dashboard.livair.io/api/livAir/viewers/',
+        'https://dashboard.livair.io/api/livAir/viewers',
       );
       viewerData = response.data;
     }catch(e){
@@ -1764,8 +1766,40 @@ class ProfilePageState extends State<ProfilePage>{
     return FutureBuilder(
       future: getProfileData(),
       builder: (context,snapshot) {
-        return PopScope(
-          canPop: false,
+        return WillPopScope(
+          onWillPop: () async{
+            if(currentIndex == 0) {
+                return true;
+            }else if(currentIndex == 1 || currentIndex == 2 || currentIndex == 5 || currentIndex == 9 || currentIndex == 10){
+              currentIndex = 0;
+              showAppBar = false;
+              appBarTitle = "";
+              setState(() {
+              });
+              return false;
+            }else if(currentIndex == 8 || currentIndex == 11){
+              currentIndex = 1;
+              showAppBar = true;
+              appBarTitle = AppLocalizations.of(context)!.personalDataT;
+              setState(() {
+              });
+              return false;
+            }else if(currentIndex == 3 || currentIndex == 4){
+              currentIndex = 2;
+              appBarTitle = AppLocalizations.of(context)!.generalSettingsT;
+              setState(() {
+              });
+              return false;
+            }else if(currentIndex == 6  || currentIndex == 7){
+              currentIndex = 5;
+              appBarTitle = AppLocalizations.of(context)!.manageUsersT;
+              setState(() {
+              });
+              return false;
+            }
+
+            return false;
+          },
           child: Scaffold(
               appBar: showAppBar ? AppBar(
                 elevation: 0,

@@ -11,6 +11,7 @@ import 'package:dio/dio.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
+import '../components/data/device.dart';
 import '../components/my_device_widget.dart';
 
 class WarningsPage extends StatefulWidget {
@@ -43,10 +44,7 @@ class WarningsPageState extends State<WarningsPage>{
   bool gettingWarnings = false;
 
   //devices and new warnings variables
-  List<String> deviceIds = [];
-  List<String> labels = [];
-  List<bool> areOnline = [];
-  List<String> lastSyncs = [];
+  List<Map<String,Device2>> currentDevices2 = [];
   String selectedDevice = "";
   TextEditingController thresholdController = TextEditingController();
   int selectedHours = 0;
@@ -272,12 +270,18 @@ class WarningsPageState extends State<WarningsPage>{
   }
 
   getAllDevices() async{
-    deviceIds = [];
-    labels = [];
-    areOnline = [];
-    lastSyncs = [];
     WebSocketChannel? channel;
     try {
+      try {
+        final result = await InternetAddress.lookup('example.com');
+        if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+        }
+      } on SocketException catch (_) {
+        Fluttertoast.showToast(
+            msg: AppLocalizations.of(context)!.noInternetT
+        );
+        return;
+      }
       dio.options.headers['content-Type'] = 'application/json';
       dio.options.headers['Accept'] = "application/json";
       dio.options.headers['Authorization'] = "Bearer $token";
@@ -290,91 +294,56 @@ class WarningsPageState extends State<WarningsPage>{
         refreshToken = loginResponse.data["refreshToken"];
       }
       dio.options.headers['Authorization'] = "Bearer $token";
-      channel = WebSocketChannel.connect(
-        Uri.parse(
-            'wss://dashboard.livair.io/api/ws/plugins/telemetry?token=$token'),
-      );
-      channel.sink.add(
-          jsonEncode(
-              {
-                "attrSubCmds": [],
-                "tsSubCmds": [],
-                "historyCmds": [],
-                "entityDataCmds": [
-                  {
-                    "query": {
-                      "entityFilter": {
-                        "type": "entitiesByGroupName",
-                        "resolveMultiple": true,
-                        "groupStateEntity": true,
-                        "stateEntityParamName": null,
-                        "groupType": "DEVICE",
-                        "entityGroupNameFilter": "All"
-                      },
-                      "pageLink": {
-                        "pageSize": 1024,
-                        "page": 0,
-                        "sortOrder": {
-                          "key": {
-                            "type": "ENTITY_FIELD",
-                            "key": "createdTime"
-                          },
-                          "direction": "DESC"
-                        }
-                      },
-                      "entityFields": [
-                        {
-                          "type": "ENTITY_FIELD",
-                          "key": "name"
-                        },
-                        {
-                          "type": "ENTITY_FIELD",
-                          "key": "label"
-                        }
-                      ],
-                      "latestValues": [
-                        {
-                          "type": "ATTRIBUTE",
-                          "key": "lastSync"
-                        },
-                        {
-                          "type": "ATTRIBUTE",
-                          "key": "lastActivityTime"
-                        },
-                        {
-                          "type": "ATTRIBUTE",
-                          "key": "isOnline"
-                        }
-                      ]
-                    },
-                    "cmdId": 1
-                  },
 
-                ],
-                "entityDataUnsubscribeCmds": [],
-                "alarmDataCmds": [],
-                "alarmDataUnsubscribeCmds": [],
-                "entityCountCmds": [],
-                "entityCountUnsubscribeCmds": [],
-                "alarmCountCmds": [],
-                "alarmCountUnsubscribeCmds": []
-              }
-          )
+      String? customerId;
+      Response customerInfoResponse = await dio.get('https://dashboard.livair.io/api/auth/user');
+      customerId = customerInfoResponse.data["customerId"]["id"];
+      var result2 = await dio.get('https://dashboard.livair.io/api/customer/$customerId/devices',
+          queryParameters:
+          {
+            "pageSize": 1000,
+            "page": 0
+          }
       );
-      channel.stream.listen((data) {
-        List<dynamic> deviceData = jsonDecode(data)["data"]["data"];
-        for(var element in deviceData){
-          deviceIds.add(element["entityId"]["id"]);
-          labels.add(element["latest"]["ENTITY_FIELD"]["label"]["value"]);
-          areOnline.add(bool.parse(element["latest"]["ATTRIBUTE"]["isOnline"]["value"]));
-          lastSyncs.add(element["latest"]["ATTRIBUTE"]["lastSync"]["value"]);
+      Map<String,dynamic> map = result2.data;
+      List list = map["data"];
+      for (var element in list) {
+        bool found = false;
+        for( var element2 in currentDevices2){
+          if(element2.keys.first == element["id"]["id"]){
+            found = true;
+          }
         }
-        setState(() {
-          index = 1;
-        });
+        if(!found){
+          var result2 = await dio.get('https://dashboard.livair.io/api/plugins/telemetry/DEVICE/${element["id"]["id"]}/values/timeseries',
+              queryParameters:
+              {
+                "keys": "radon"
+              }
+          );
+          var msSincelastSync = -1;
+          try{
+            msSincelastSync = (DateTime.now().millisecondsSinceEpoch-result2.data["radon"].elementAt(0)["ts"]).toInt();
+          }catch(e){}
+          currentDevices2.add({
+            element["id"]["id"].toString() : Device2(
+              lastSync : msSincelastSync,
+              location : "/",
+              floor : "",
+              locationId : "/",
+              isOnline : element["additionalInfo"]["syncStatus"] == "active" ? true : false,
+              radon : int.parse(result2.data["radon"].elementAt(0)["value"] ?? "0"),
+              label : element["label"],
+              name : element["name"],
+              deviceAdded: 1,
+            )
+          });
+        }
+      }
+      setState(() {
+        index = 1;
       });
-    }catch(e){
-
+    }catch(e){print(e);
     }
   }
 
@@ -430,7 +399,7 @@ class WarningsPageState extends State<WarningsPage>{
 
                 ),
                 const SizedBox(height: 10),
-                Text("${AppLocalizations.of(context)!.selectThresholdDialog2} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"},${AppLocalizations.of(context)!.selectThresholdDialog3}"
+                Text("${AppLocalizations.of(context)!.selectThresholdDialog2}${(unit == "Bq/m³" ? 150 : 150*37)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"},${AppLocalizations.of(context)!.selectThresholdDialog3}"
                 ),
               ],
             ),
@@ -483,19 +452,19 @@ class WarningsPageState extends State<WarningsPage>{
               child: ListView.separated(
                 separatorBuilder: (context, index) => const SizedBox(height: 10,),
                 padding: const EdgeInsets.only(bottom: 10),
-                itemCount: labels.length,
+                itemCount: currentDevices2.length,
                 itemBuilder: (BuildContext context, int deviceIndex) {
                   return MyDeviceWidget(
                     onTap: (){
-                      selectedDevice = deviceIds[deviceIndex];
+                      selectedDevice = currentDevices2[deviceIndex].keys.first;
                       setState(() {
                         index = 2;
                       });
                     },
-                    name: labels[deviceIndex],
-                    isOnline: areOnline[deviceIndex],
-                    radonValue: -1,
-                    lastSync: -1,
+                    name: currentDevices2[deviceIndex].values.first.name,
+                    isOnline: currentDevices2[deviceIndex].values.first.isOnline,
+                    radonValue: currentDevices2[deviceIndex].values.first.radon,
+                    lastSync: currentDevices2[deviceIndex].values.first.lastSync,
                     unit: unit == "Bq/m³" ? "Bq/m³": "pCi/L",
                     isViewer: false,
                   );
@@ -551,7 +520,15 @@ class WarningsPageState extends State<WarningsPage>{
                     });
                   },
                 ),
-                const SizedBox(width: 20,),
+                const SizedBox(width: 24,),
+              ],
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text("H",style: TextStyle(fontSize: 40),),
+                SizedBox(width: 22,),
+                Text("M",style: TextStyle(fontSize: 40),)
               ],
             ),
             Row(

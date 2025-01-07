@@ -99,7 +99,7 @@
     "failedNewLocationM": "Failed to set new location",
     "successNewLocationM": "Successfully set new location",
     "exportDataT": "EXPORT DATA",
-    "exportDialog": "We provide your timeseries data as a txt file.",
+    "exportDialog": "We provide your radon timeseries data as a text file. You can choose between exporting all data and selecting only a certain period.",
     "timeFrame": "Time frame",
     "allData": "All data",
     "custom": "Custom",
@@ -128,7 +128,7 @@
     "removeUser": "Remove user",
     "selectThresholdT": "SELECT THE THRESHOLD",
     "selectThresholdDialog1": "The warning is triggered, when the radon value is higher than your entered value.",
-    "selectThresholdDialog2": "LivAir recommends that the threshold be set at 150",
+    "selectThresholdDialog2": "LivAir recommends that the threshold be set at ",
     "selectThresholdDialog3": " as anything above this number can become a health hazard over time.",
     "selectThreshold": "Select the threshold",
     "selectDurationT": "SELECT THE DURATION",
@@ -290,5 +290,7 @@
     "ipAddress": "IP address",
     "subnetMask": "Subnet mask",
     "gateway": "Gateway",
-    "multiCastAddress": "Multi cast address"
+    "multiCastAddress": "Multi cast address",
+    "createdWarning": "Created warning",
+    "success": "Success"
 }

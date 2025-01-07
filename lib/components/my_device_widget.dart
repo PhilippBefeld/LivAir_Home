@@ -35,7 +35,7 @@ class MyDeviceWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var radonNow = (lastSync>3600000 || lastSync == -1 || lastSync < 0) ? 0 : unit == "Bq/m³" ? radonValue : (radonValue*27);
+    var radonNow = (lastSync>3600000 || lastSync == -1 || lastSync < 0) ? 0 : unit == "Bq/m³" ? radonValue : (radonValue*37);
     return GestureDetector(
       onTap: onTap,
       child: Container(

@@ -704,7 +704,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                       radonHistory = radonValues;
                       radonHistoryTimestamps = [];
                       for (var element in radonHistory) {
-                        Tuple2<int, int> singleTimestamp = Tuple2<int, int>(element['ts'], unit == "Bq/m³" ? int.parse(element['value']) : int.parse(element['value'])*27);
+                        Tuple2<int, int> singleTimestamp = Tuple2<int, int>(element['ts'], unit == "Bq/m³" ? int.parse(element['value']) : int.parse(element['value'])*37);
                         radonHistoryTimestamps.add(singleTimestamp);
                       }
                       radonCurrent = radonHistoryTimestamps.first.item2;
@@ -1364,7 +1364,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               barRods: [
                 BarChartRodData(
                   toY: avgOfArea,
-                  color: avgOfArea > 100 ? avgOfArea > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
+                  color: avgOfArea > (unit == "Bq/m³" ? 100 : 100*37) ? avgOfArea > (unit == "Bq/m³" ? 300 : 300*37) ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
                 )
               ]
             )
@@ -1701,25 +1701,25 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                         Image.asset('lib/images/radonranges_vertical.png', height: 150,),
                         SizedBox(
                           height: 160,
-                          child: radonCurrent <= 100 ? Column(
+                          child: radonCurrent <= (unit == "Bq/m³" ? 100 : 100*37) ? Column(
 
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
-                              SizedBox(height: 148-(48*(radonCurrent/100)),),
+                              SizedBox(height: 148-(48*(radonCurrent/(unit == "Bq/m³" ? 100 : 100*37))),),
                               Image.asset('lib/images/indicator_green.png', height: 10,),
                             ],
-                          ) : radonCurrent <= 300 ? Column(
+                          ) : radonCurrent <= (unit == "Bq/m³" ? 300 : 300*37) ? Column(
 
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
-                              SizedBox(height: 97-(48*((radonCurrent-100)/200)),),
+                              SizedBox(height: 97-(48*((radonCurrent-(unit == "Bq/m³" ? 100 : 100*37))/(unit == "Bq/m³" ? 200 : 200*37))),),
                               Image.asset('lib/images/indicator_yellow.png', height: 10,),
                             ],
-                          ) : radonCurrent <= 450 ? Column(
+                          ) : radonCurrent <= (unit == "Bq/m³" ? 450 : 450*37) ? Column(
 
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
-                              SizedBox(height: 46-(46*((radonCurrent-300)/150)),),
+                              SizedBox(height: 46-(46*((radonCurrent-(unit == "Bq/m³" ? 300 : 300*37))/(unit == "Bq/m³" ? 150 : 150*37))),),
                               Image.asset('lib/images/indicator_red.png', height: 10,),
                             ],
                           ) : Column(
@@ -1749,8 +1749,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                 Text(!useBluetoothData ? radonHistoryTimestamps.isNotEmpty ? "${radonHistoryTimestamps.first.item2} " : "0 " :
                                   "$radonCurrent ",
                                   style: TextStyle(
-                                    color: !useBluetoothData ? (radonHistoryTimestamps.isNotEmpty ? radonHistoryTimestamps.first.item2: 0) > 100 ? (radonHistoryTimestamps.isNotEmpty ? radonHistoryTimestamps.first.item2: 0) > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84) :
-                                    radonCurrent > 100 ? radonCurrent > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84) ,
+                                    color: !useBluetoothData ? (radonHistoryTimestamps.isNotEmpty ? radonHistoryTimestamps.first.item2: 0) > (unit == "Bq/m³" ? 100 : 100*37) ? (radonHistoryTimestamps.isNotEmpty ? radonHistoryTimestamps.first.item2: 0) > (unit == "Bq/m³" ? 300 : 300*37) ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84) :
+                                    radonCurrent > (unit == "Bq/m³" ? 100 : 100*37) ? radonCurrent > (unit == "Bq/m³" ? 300 : 300*37) ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84) ,
                                     fontSize: 62,
                                     fontWeight: FontWeight.w600
                                   ),
@@ -1971,7 +1971,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                       ),
                                       Text("$currentMinValue ",
                                         style: TextStyle(
-                                            color: currentMinValue > 100 ? currentMinValue > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
+                                            color: currentMinValue > (unit == "Bq/m³" ? 100 : 100*37) ? currentMinValue > (unit == "Bq/m³" ? 300 : 300*37) ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
                                             fontSize: 42,
                                             fontWeight: FontWeight.w600
                                         ),
@@ -1996,7 +1996,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                       ),
                                       Text("$currentAvgValue ",
                                         style: TextStyle(
-                                            color: currentAvgValue > 100 ? currentAvgValue > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
+                                            color: currentAvgValue > (unit == "Bq/m³" ? 100 : 37) ? currentAvgValue > (unit == "Bq/m³" ? 300 : 300*37) ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
                                             fontSize: 42,
                                             fontWeight: FontWeight.w600
                                         ),
@@ -2021,7 +2021,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                       ),
                                       Text("$currentMaxValue",
                                         style: TextStyle(
-                                            color: currentMaxValue > 100 ? currentMaxValue > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
+                                            color: currentMaxValue > (unit == "Bq/m³" ? 100 : 100*37) ? currentMaxValue > (unit == "Bq/m³" ? 300 : 300*37) ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
                                             fontSize: 42,
                                             fontWeight: FontWeight.w600
                                         ),
@@ -2047,7 +2047,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                       ),
                                       Text("$radonDaily ",
                                         style: TextStyle(
-                                            color: radonDaily > 100 ? radonDaily > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
+                                            color: radonDaily > (unit == "Bq/m³" ? 100 : 100*37) ? radonDaily > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
                                             fontSize: 42,
                                             fontWeight: FontWeight.w600
                                         ),
@@ -2232,7 +2232,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                       return BarTooltipItem(
                                           barChartSpotString(groupIndex+1, rod.toY),
                                           TextStyle(
-                                            color: rod.toY > 100 ? rod.toY > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
+                                            color: rod.toY > (unit == "Bq/m³" ? 100 : 100*37) ? rod.toY > (unit == "Bq/m³" ? 300 : 300*37) ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
                                             fontWeight: FontWeight.bold,
                                             fontSize: 14,
                                       ));
@@ -2623,7 +2623,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                   return BarTooltipItem(
                                       barChartSpotString(groupIndex+1, rod.toY),
                                       TextStyle(
-                                        color: rod.toY > 100 ? rod.toY > 300 ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
+                                        color: rod.toY > (unit == "Bq/m³" ? 100 : 100*37) ? rod.toY > (unit == "Bq/m³" ? 300 : 300*37) ? const Color(0xfffd4c56) : const Color(0xfffdca03) : const Color(0xff0ace84),
                                         fontWeight: FontWeight.bold,
                                         fontSize: 14,
                                       ));
@@ -2727,14 +2727,14 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         borderGradient: LinearGradient(
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
-            colors: currentMaxValue>300 ? [
-              Color(0xff0ace84).withOpacity(0.5),
-              Color(0xff0ace84).withOpacity(0.5),
-              Color(0xfffdca03).withOpacity(0.5),
-              Color(0xfffdca03).withOpacity(0.5),
-              Color(0xfffd4c56).withOpacity(0.5),
-              Color(0xfffd4c56).withOpacity(0.5),
-            ] : currentMaxValue>100 ?[
+            colors: currentMaxValue>(unit == "Bq/m³" ? 300 : 300*37) ? [
+              Color(0xff0ace84),
+              Color(0xff0ace84),
+              Color(0xfffdca03),
+              Color(0xfffdca03),
+              Color(0xfffd4c56),
+              Color(0xfffd4c56),
+            ] : currentMaxValue>(unit == "Bq/m³" ? 100 : 100*37) ?[
               Color(0xff0ace84),
               Color(0xff0ace84),
               Color(0xfffdca03),
@@ -2743,21 +2743,21 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               Color(0xff0ace84),
               Color(0xff0ace84),
             ],
-            stops: currentMaxValue>300 ?[0, 100<currentMaxValue ? 90.0/currentMaxValue : 1.0, 100<currentMaxValue ? 110.0/currentMaxValue : 1.0, 300<currentMaxValue ? 290/currentMaxValue : 1.0, 300<currentMaxValue ? 310/currentMaxValue : 3.00,1.0]
-                : currentMaxValue>100 ?[0, 100<currentMaxValue ? 90.0/currentMaxValue : 1.0, 100<currentMaxValue ? 110.0/currentMaxValue : 1.0, 300<currentMaxValue ? 290/currentMaxValue : 1.0]
+            stops: currentMaxValue>(unit == "Bq/m³" ?300 : 300*37) ?[0, (unit == "Bq/m³" ? 100 : 100*37) <currentMaxValue ? (unit == "Bq/m³" ? 90.0 : 90.0*37)/currentMaxValue : 1.0, (unit == "Bq/m³" ? 100 : 100*37)<currentMaxValue ? (unit == "Bq/m³" ? 110.0 : 110.0*37)/currentMaxValue : 1.0, (unit == "Bq/m³" ? 300 : 300*37)<currentMaxValue ? (unit == "Bq/m³" ? 290 : 290*37)/currentMaxValue : 1.0, (unit == "Bq/m³" ? 300 : 300*37)<currentMaxValue ? (unit == "Bq/m³" ? 310 : 310*37)/currentMaxValue : 3.00,1.0]
+                : currentMaxValue>(unit == "Bq/m³" ? 100 : 100*37) ?[0, (unit == "Bq/m³" ? 100 : 100*37) <currentMaxValue ? (unit == "Bq/m³" ? 90.0 : 90.0*37)/currentMaxValue : 1.0, (unit == "Bq/m³" ? 100 : 100*37)<currentMaxValue ? (unit == "Bq/m³" ? 110.0 : 110.0*37)/currentMaxValue : 1.0, (unit == "Bq/m³" ? 300 : 300*37)<currentMaxValue ? (unit == "Bq/m³" ? 290 : 290*37)/currentMaxValue : 1.0]
                 :[0,1.0]
         ),
         gradient: LinearGradient(
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
-            colors: currentMaxValue>300 ? [
+            colors: currentMaxValue>(unit == "Bq/m³" ?300 : 300*37) ? [
               Color(0xff0ace84).withOpacity(0.5),
               Color(0xff0ace84).withOpacity(0.5),
               Color(0xfffdca03).withOpacity(0.5),
               Color(0xfffdca03).withOpacity(0.5),
               Color(0xfffd4c56).withOpacity(0.5),
               Color(0xfffd4c56).withOpacity(0.5),
-            ] : currentMaxValue>100 ?[
+            ] : currentMaxValue>(unit == "Bq/m³" ? 100 : 100*37) ?[
               Color(0xff0ace84).withOpacity(0.5),
               Color(0xff0ace84).withOpacity(0.5),
               Color(0xfffdca03).withOpacity(0.5),
@@ -2766,8 +2766,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               Color(0xff0ace84).withOpacity(0.5),
               Color(0xff0ace84).withOpacity(0.5),
             ],
-            stops: currentMaxValue>300 ?[0, 100<currentMaxValue ? 90.0/currentMaxValue : 1.0, 100<currentMaxValue ? 110.0/currentMaxValue : 1.0, 300<currentMaxValue ? 290/currentMaxValue : 1.0, 300<currentMaxValue ? 310/currentMaxValue : 3.00,1.0]
-                : currentMaxValue>100 ?[0, 100<currentMaxValue ? 90.0/currentMaxValue : 1.0, 100<currentMaxValue ? 110.0/currentMaxValue : 1.0, 300<currentMaxValue ? 290/currentMaxValue : 1.0]
+            stops: currentMaxValue>(unit == "Bq/m³" ?300 : 300*37) ?[0, (unit == "Bq/m³" ? 100 : 100*37) <currentMaxValue ? (unit == "Bq/m³" ? 90.0 : 90.0*37)/currentMaxValue : 1.0, (unit == "Bq/m³" ? 100 : 100*37)<currentMaxValue ? (unit == "Bq/m³" ? 110.0 : 110.0*37)/currentMaxValue : 1.0, (unit == "Bq/m³" ? 300 : 300*37)<currentMaxValue ? (unit == "Bq/m³" ? 290 : 290*37)/currentMaxValue : 1.0, (unit == "Bq/m³" ? 300 : 300*37)<currentMaxValue ? (unit == "Bq/m³" ? 310 : 310*37)/currentMaxValue : 3.00,1.0]
+                : currentMaxValue>(unit == "Bq/m³" ? 100 : 100*37) ?[0, (unit == "Bq/m³" ? 100 : 100*37) <currentMaxValue ? (unit == "Bq/m³" ? 90.0 : 90.0*37)/currentMaxValue : 1.0, (unit == "Bq/m³" ? 100 : 100*37)<currentMaxValue ? (unit == "Bq/m³" ? 110.0 : 110.0*37)/currentMaxValue : 1.0, (unit == "Bq/m³" ? 300 : 300*37)<currentMaxValue ? (unit == "Bq/m³" ? 290 : 290*37)/currentMaxValue : 1.0]
                 :[0,1.0]
         ),
       )
@@ -6419,7 +6419,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                               int day = int.parse(dateString.split(".")[2]);
                               int hour = int.parse(timestamp.split(" ")[1].split(",")[0]);
                               int radon = int.parse(timestamp.split(" ")[1].split(",")[1]);
-                              Tuple2<int,int> singleTimestamp = Tuple2<int,int> (DateTime(year,month,day,hour).millisecondsSinceEpoch, unit == "Bq/m³" ? radon : radon*27);
+                              Tuple2<int,int> singleTimestamp = Tuple2<int,int> (DateTime(year,month,day,hour).millisecondsSinceEpoch, unit == "Bq/m³" ? radon : radon*37);
                               radonHistoryTimestamps.add(singleTimestamp);
                             }catch(e){
                             }
@@ -6717,6 +6717,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
 
 
   dataExportScreen(){
+    DateTime now = new DateTime.now();
+    DateTime date = new DateTime(now.year, now.month, now.day);
+    customTimeseriesStart = date;
+    customTimeseriesEnd = now;
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
@@ -6923,10 +6927,16 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     final path = await _localPath;
     File file = File('$path/Device_details.txt');
     file.writeAsString("\ndevice name   timestamp   radon");
-    for (var element in radonHistoryTimestamps) {
-      if(DateTime.fromMillisecondsSinceEpoch(element.item1).compareTo(customTimeseriesStart) >= 0){
-        if(DateTime.fromMillisecondsSinceEpoch(element.item1).compareTo(customTimeseriesEnd) <= 0){
-          await file.writeAsString("\n${device.values.first.name}   ${DateFormat('yyyy-MM-dd hh:mm').format(DateTime.fromMillisecondsSinceEpoch(element.item1))}   ${element.item2}",mode: FileMode.append);
+    if(customTimeseriesSelected == false){
+      for(var element in radonHistoryTimestamps){
+        await file.writeAsString("\n${device.values.first.name}   ${DateFormat('yyyy-MM-dd hh:mm').format(DateTime.fromMillisecondsSinceEpoch(element.item1))}   ${element.item2}",mode: FileMode.append);
+      }
+    }else{
+      for (var element in radonHistoryTimestamps) {
+        if(DateTime.fromMillisecondsSinceEpoch(element.item1).compareTo(customTimeseriesStart) >= 0){
+          if(DateTime.fromMillisecondsSinceEpoch(element.item1).compareTo(customTimeseriesEnd) <= 0){
+            await file.writeAsString("\n${device.values.first.name}   ${DateFormat('yyyy-MM-dd hh:mm').format(DateTime.fromMillisecondsSinceEpoch(element.item1))}   ${element.item2}",mode: FileMode.append);
+          }
         }
       }
     }
@@ -6935,6 +6945,10 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     if(result.status == ShareResultStatus.success){
       Fluttertoast.showToast(
           msg: AppLocalizations.of(context)!.successExportShareM
+      );
+    }else{
+      Fluttertoast.showToast(
+          msg: "Error"
       );
     }
   }
@@ -7497,7 +7511,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
 
                 ),
                 const SizedBox(height: 10),
-                Text("${AppLocalizations.of(context)!.selectThresholdDialog2} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"},${AppLocalizations.of(context)!.selectThresholdDialog3}"
+                Text("${AppLocalizations.of(context)!.selectThresholdDialog2}${unit == "Bq/m³" ? 150 : 150*37} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"},${AppLocalizations.of(context)!.selectThresholdDialog3}"
                 ),
               ],
             ),
@@ -7566,6 +7580,14 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 const SizedBox(width: 20,),
               ],
             ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text("H",style: TextStyle(fontSize: 40),),
+                SizedBox(width: 22,),
+                Text("M",style: TextStyle(fontSize: 40),)
+              ],
+            ),
             const SizedBox(height: 20),
             Row(
               children: [
@@ -7613,7 +7635,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         refreshToken = loginResponse.data["refreshToken"];
       }
       dio.options.headers['Authorization'] = "Bearer $token";
-      dio.post(
+      await dio.post(
         "https://dashboard.livair.io/api/livAir/warning",
         data: jsonEncode(
             {
@@ -7622,6 +7644,21 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
               "radonAlarmDuration": selectedHours*60+selectedMinutes
             }
         ),
+      );
+      AlertDialog alert = AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(AppLocalizations.of(context)!.createdWarning,style: TextStyle(fontSize: 18),),
+          ],
+        ),
+      );
+      showDialog(
+        context: context,
+        builder: (BuildContext context){
+          return alert;
+        },
       );
     }catch(e){
       Fluttertoast.showToast(

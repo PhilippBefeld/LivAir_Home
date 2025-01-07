@@ -99,7 +99,7 @@
     "failedNewLocationM": "Fehler: Gerätestandort nicht geändert",
     "successNewLocationM": "Gerätestandort erfolgreich geändert",
     "exportDataT": "DATEN EXPORTIEREN",
-    "exportDialog": "Wir stellen Ihre Radonwerte als Textdatei zur Verfügung.",
+    "exportDialog": "Wir stellen Ihre Radonwerte als Textdatei zur Verfügung. Sie können alle Daten auf einmal exportieren oder auch nur einen eingeschränkten Zeitraum",
     "timeFrame": "Zeitrahmen",
     "allData": "Alle Daten",
     "custom": "Benutzerdefiniert",
@@ -128,7 +128,7 @@
     "removeUser": "Mitbenutzer entfernen",
     "selectThresholdT": "OBERGRENZE WÄHLEN",
     "selectThresholdDialog1": "Die Warnung wird ausgelöst, wenn der Radonwert die Grenze überschreitet.",
-    "selectThresholdDialog2": "LivAir empfiehlt eine Grenze bei 150",
+    "selectThresholdDialog2": "LivAir empfiehlt eine Grenze bei ",
     "selectThresholdDialog3": " da alles darüber Gesundheitsgefährdend sein kann.",
     "selectThreshold": "Obergrenze festlegen",
     "selectDurationT": "DAUER WÄHLEN",
@@ -290,5 +290,7 @@
     "ipAddress": "IP Adresse",
     "subnetMask": "Subnetzmaske",
     "gateway": "Gateway",
-    "multiCastAddress": "Multicast-Adresse"
+    "multiCastAddress": "Multicast-Adresse",
+    "createdWarning": "Warnung erstellt",
+    "success": "Erfolg"
 }
