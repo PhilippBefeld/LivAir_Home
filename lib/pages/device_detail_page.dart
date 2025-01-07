@@ -110,6 +110,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   bool firstTry = true;
   int requestMsSinceEpoch = 0;
   bool transmitionMethodSettings = false;
+  int btTriesDone = 0;
 
   //deviceInfoScreen
   String firmwareVersion = "";
@@ -1180,6 +1181,15 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     radonHistoryTimestamps.sort((a,b) {
       return a.item1.compareTo(b.item1);
     });
+    Set<int> seen = {};
+    radonHistoryTimestamps = radonHistoryTimestamps.where((tuple) {
+      if (seen.contains(tuple.item1)) {
+        return false;
+      } else {
+        seen.add(tuple.item1);
+        return true;
+      }
+    }).toList();
     radonHistoryTimestamps = radonHistoryTimestamps.toSet().toList();
     radonHistoryTimestamps = radonHistoryTimestamps.reversed.toList();
     int startTimeseries =  selectedNumberOfDays == 0 ? radonHistoryTimestamps.last.item1 : requestMsSinceEpoch - (Duration(days: selectedNumberOfDays).inMilliseconds * stepsIntoPast);
@@ -1205,7 +1215,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       int counter = 0;
       while(counter<spots.length-2){
         if(spots[counter].x == spots[counter+1].x){
-          spots[counter+1] = ChartData(spots[counter+1].x.add(const Duration(minutes: 30)),spots[counter+1].y);
+          print("hello");
+          spots[counter+1] = ChartData(spots[counter+1].x.subtract(const Duration(minutes: 30)),spots[counter+1].y);
         }
         counter++;
       }
@@ -1267,7 +1278,13 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       }
       newSpots.add(spots[i]);
     }else{
+      spots.forEach((e){
+        try{
+          print(e.x.millisecondsSinceEpoch);
+        }catch(e){
 
+        }
+      });
       int k = 0;
       int step = Duration(minutes: 10).inMilliseconds * (selectedNumberOfDays == 1 ? 6 : selectedNumberOfDays == 2 ? 12 : selectedNumberOfDays == 7 ? 36 : selectedNumberOfDays == 30 ? 144 : 144);
       double currentSum = 0;
@@ -6352,7 +6369,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           }
                       ).listen((data) async{
                         String message = utf8.decode(data).trim();
-                        //logger.d(utf8.decode(data));
+                        logger.d(utf8.decode(data));
                         if(message == "" && !loginSuccessful){
                         }
                         if(message == 'LOGIN OK'){
@@ -6425,6 +6442,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             loaded = true;
                             BtTimestampCount = -1;
                             currentBtTimestampCount = -1;
+                            btTriesDone = 0;
                             setState(() {
                               screenIndex = 1;
                             });
