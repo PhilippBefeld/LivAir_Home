@@ -35,7 +35,9 @@ class MyDeviceWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
     var radonNow = (lastSync>3600000 || lastSync == -1 || lastSync < 0) ? 0 : unit == "Bq/m³" ? radonValue : (radonValue*37);
+    print(radonNow < (unit == "Bq/m³" ? 300 : 300*37));
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -82,7 +84,7 @@ class MyDeviceWidget extends StatelessWidget {
                           text: TextSpan(
                               text: radonNow != 0 ? radonNow.toString()  : "-",
                               style: TextStyle(
-                                  color: radonNow == 0 ? Colors.black : radonNow < (unit == "Bq/m³" ? 100 : 100*37) ? radonNow < (unit == "Bq/m³" ? 300 : 300*37) ? const Color(0xff0ace84) : const Color(0xfffdca03) : const Color(0xfffd4c56),
+                                  color: radonNow == 0 ? Colors.black : radonNow < (unit == "Bq/m³" ? 300 : 300*37) ? radonNow < (unit == "Bq/m³" ? 100 : 100*37) ? const Color(0xff0ace84) : const Color(0xfffdca03) : const Color(0xfffd4c56),
                                   fontSize: 20,
                                   fontWeight: FontWeight.w600
                               ),
