@@ -53,6 +53,7 @@ class ProfilePageState extends State<ProfilePage>{
   //Change password variables
   TextEditingController oldPasswordController = TextEditingController();
   TextEditingController newPasswordController = TextEditingController();
+  bool showPassword = false;
 
   ProfilePageState(this.token, this.refreshToken);
 
@@ -152,7 +153,7 @@ class ProfilePageState extends State<ProfilePage>{
                     child: TextField(
                       textAlign: TextAlign.start,
                       controller: oldPasswordController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         enabledBorder: OutlineInputBorder(
                           borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
                         ),
@@ -161,7 +162,17 @@ class ProfilePageState extends State<ProfilePage>{
                         ),
                         fillColor: Colors.white,
                         filled: true,
+                        suffixIcon: IconButton(
+                            onPressed: (){
+                              showPassword = !showPassword;
+                              setState(() {
+
+                              });
+                            },
+                            icon:  Icon(!showPassword ? Icons.visibility : Icons.visibility_off)
+                        )
                       ),
+                      obscureText: !showPassword,
                     ),
                   ),
                 ],
@@ -174,7 +185,7 @@ class ProfilePageState extends State<ProfilePage>{
                     child: TextField(
                       textAlign: TextAlign.start,
                       controller: newPasswordController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         enabledBorder: OutlineInputBorder(
                           borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
                         ),
@@ -183,7 +194,17 @@ class ProfilePageState extends State<ProfilePage>{
                         ),
                         fillColor: Colors.white,
                         filled: true,
+                        suffixIcon: IconButton(
+                            onPressed: (){
+                              showPassword = !showPassword;
+                              setState(() {
+
+                              });
+                            },
+                            icon:  Icon(!showPassword ? Icons.visibility : Icons.visibility_off)
+                        )
                       ),
+                      obscureText: !showPassword,
                       onChanged: (string)async{
                         passwordContainsSpecial();
                         setState(() {

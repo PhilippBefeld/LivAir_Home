@@ -343,7 +343,7 @@ class WarningsPageState extends State<WarningsPage>{
       setState(() {
         index = 1;
       });
-    }catch(e){print(e);
+    }catch(e){
     }
   }
 
@@ -461,7 +461,7 @@ class WarningsPageState extends State<WarningsPage>{
                         index = 2;
                       });
                     },
-                    name: currentDevices2[deviceIndex].values.first.name,
+                    name: currentDevices2[deviceIndex].values.first.label ?? currentDevices2[deviceIndex].keys.first,
                     isOnline: currentDevices2[deviceIndex].values.first.isOnline,
                     radonValue: currentDevices2[deviceIndex].values.first.radon,
                     lastSync: currentDevices2[deviceIndex].values.first.lastSync,

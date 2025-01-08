@@ -80,9 +80,9 @@ class MyDeviceWidget extends StatelessWidget {
                     children: [
                       RichText(
                           text: TextSpan(
-                              text: radonNow.toString(),
+                              text: radonNow != 0 ? radonNow.toString()  : "-",
                               style: TextStyle(
-                                  color: radonNow < 100 ? radonNow < 300 ? const Color(0xff0ace84) : const Color(0xfffdca03) : const Color(0xfffd4c56),
+                                  color: radonNow == 0 ? Colors.black : radonNow < (unit == "Bq/m³" ? 100 : 100*37) ? radonNow < (unit == "Bq/m³" ? 300 : 300*37) ? const Color(0xff0ace84) : const Color(0xfffdca03) : const Color(0xfffd4c56),
                                   fontSize: 20,
                                   fontWeight: FontWeight.w600
                               ),

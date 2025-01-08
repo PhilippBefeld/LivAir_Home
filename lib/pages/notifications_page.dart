@@ -75,12 +75,9 @@ class NotificationsPageState extends State<NotificationsPage>{
         }
         await getAllDevices();
       }catch(e){
-        print(e);
       }
     }on DioError catch(e){
-      print(e.response);
     }on Error catch(e){
-      print(e);
     }
   }
 
@@ -144,7 +141,6 @@ class NotificationsPageState extends State<NotificationsPage>{
           )
       );
       channel.stream.listen((data) async {
-        print(jsonDecode(data));
         List<dynamic> deviceData = jsonDecode(data)["data"]["data"];
         for(var element in deviceData){
           deviceIds.add(element["entityId"]["id"]);
@@ -158,7 +154,6 @@ class NotificationsPageState extends State<NotificationsPage>{
         notificationsLoaded = false;
       });
     }catch(e){
-      print(e);
     }
   }
 
@@ -287,7 +282,6 @@ class NotificationsPageState extends State<NotificationsPage>{
                   }
                   Map<String,dynamic> notificationList = notifications.elementAt(index);
                   Map<String,dynamic> notification = jsonDecode(notificationList["value"]);
-
                   return Container(
                     height: 120,
                     color: selectedNotifications.contains(index) ? const Color(0xffb0bec5) : Colors.white,
@@ -308,7 +302,7 @@ class NotificationsPageState extends State<NotificationsPage>{
                           Row(
                             children: [
                               Flexible(
-                                  child: Text("${notification["body"]}", style: const TextStyle(color: Colors.black),
+                                  child: Text(notification["body"].contains(".") ? notification["body"] : "${notification["body"]}.", style: const TextStyle(color: Colors.black),
                                     maxLines: 2,
                                   )
                               ),
@@ -354,9 +348,7 @@ class NotificationsPageState extends State<NotificationsPage>{
         },
       );
     }on DioException catch(e){
-      print(e.response);
     }on Error catch(e){
-      print(e);
     }
   }
 

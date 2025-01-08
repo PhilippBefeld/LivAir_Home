@@ -111,6 +111,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   int requestMsSinceEpoch = 0;
   bool transmitionMethodSettings = false;
   int btTriesDone = 0;
+  bool showPassword = false;
 
   //deviceInfoScreen
   String firmwareVersion = "";
@@ -586,7 +587,14 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 if(radonData!=null)radonValue = radonData[0][1];
               }catch(e){
               }
-
+              try{
+                var locationData = telData["location"];
+                if(locationData!=null) {
+                  device.values.first.location = locationData[0][1];
+                  deviceLocationController.text =  device.values.first.location;
+                }
+          }catch(e){
+              }
               try{
                 var dLedFBdata = telData["current_fw_version"];
                 if(dLedFBdata!=null)firmwareVersion = dLedFBdata[0][1];
@@ -1178,6 +1186,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   }
 
   List<ChartData> getCurrentSpots(){
+    currentMinValue = 0;
     radonHistoryTimestamps.sort((a,b) {
       return a.item1.compareTo(b.item1);
     });
@@ -1215,7 +1224,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       int counter = 0;
       while(counter<spots.length-2){
         if(spots[counter].x == spots[counter+1].x){
-          print("hello");
           spots[counter+1] = ChartData(spots[counter+1].x.subtract(const Duration(minutes: 30)),spots[counter+1].y);
         }
         counter++;
@@ -1280,7 +1288,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     }else{
       spots.forEach((e){
         try{
-          print(e.x.millisecondsSinceEpoch);
         }catch(e){
 
         }
@@ -6023,7 +6030,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
             const SizedBox(height: 36,),
             TextField(
               controller: wifiPasswordController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 enabledBorder: OutlineInputBorder(
                   borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
                 ),
@@ -6032,8 +6039,17 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                 ),
                 fillColor: Colors.white,
                 filled: true,
+                suffixIcon: IconButton(
+                    onPressed: (){
+                      showPassword = !showPassword;
+                      setState(() {
+
+                      });
+                    },
+                    icon:  Icon(!showPassword ? Icons.visibility : Icons.visibility_off)
+                )
               ),
-              obscureText: true,
+              obscureText: !showPassword,
             ),
             const SizedBox(height: 36,),
             Row(
@@ -6369,7 +6385,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           }
                       ).listen((data) async{
                         String message = utf8.decode(data).trim();
-                        logger.d(utf8.decode(data));
+                        //logger.d(utf8.decode(data));
                         if(message == "" && !loginSuccessful){
                         }
                         if(message == 'LOGIN OK'){

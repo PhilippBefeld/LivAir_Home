@@ -45,6 +45,7 @@ class SignUpPageState extends State<SignUpPage>{
   bool agreedToNews = false;
   bool emailCorrect = false;
   bool passwordCorrect = false;
+  bool showPassword = false;
 
 
 
@@ -312,7 +313,11 @@ class SignUpPageState extends State<SignUpPage>{
                           ],
                         ),
                         const SizedBox(height: 12,),
-                        Text(AppLocalizations.of(context)!.password,style: TextStyle(fontSize: 12),),
+                        Row(
+                          children: [
+                            Text(AppLocalizations.of(context)!.password,style: TextStyle(fontSize: 12),),
+                          ],
+                        ),
                         const SizedBox(height: 5,),
                         Row(
                           children: [
@@ -330,14 +335,22 @@ class SignUpPageState extends State<SignUpPage>{
                                   filled: true,
                                   hintText: AppLocalizations.of(context)!.yourPassword,
                                   hintStyle: TextStyle(color: Color(0xff90a4ae),fontSize: 14),
+                                  suffixIcon: IconButton(
+                                      onPressed: (){
+                                        showPassword = !showPassword;
+                                        setState(() {
+
+                                        });
+                                      },
+                                      icon:  Icon(!showPassword ? Icons.visibility : Icons.visibility_off)
+                                  )
                                 ),
                                 onChanged: (string)async{
                                   passwordContainsSpecial();
                                   setState(() {
-
                                   });
                                 },
-                                obscureText: true,
+                                obscureText: !showPassword,
                               ),
                             ),
                           ],
@@ -367,13 +380,47 @@ class SignUpPageState extends State<SignUpPage>{
                             ],
                         ),
                         const SizedBox(height: 12,),
-                        MyTextField(
-                          onChanged: null,
-                          controller: confirmPasswordController,
-                          hintText: AppLocalizations.of(context)!.confirmYourPassword,
-                          obscureText: true,
-                          initialValue: confirmPasswordController.text,
-                          label: AppLocalizations.of(context)!.confirmPassword,
+                        Row(
+                          children: [
+                            Text(AppLocalizations.of(context)!.confirmPassword,style: TextStyle(fontSize: 12),),
+                          ],
+                        ),
+                        const SizedBox(height: 5,),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: confirmPasswordController,
+                                decoration: InputDecoration(
+                                    enabledBorder: OutlineInputBorder(
+                                      borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderSide: BorderSide(width: 2,color: Color(0xffeceff1)),
+                                    ),
+                                    fillColor: Colors.white,
+                                    filled: true,
+                                    hintText: AppLocalizations.of(context)!.confirmYourPassword,
+                                    hintStyle: TextStyle(color: Color(0xff90a4ae),fontSize: 14),
+                                    suffixIcon: IconButton(
+                                        onPressed: (){
+                                          showPassword = !showPassword;
+                                          setState(() {
+
+                                          });
+                                        },
+                                        icon:  Icon(!showPassword ? Icons.visibility : Icons.visibility_off)
+                                    )
+                                ),
+                                onChanged: (string)async{
+                                  passwordContainsSpecial();
+                                  setState(() {
+                                  });
+                                },
+                                obscureText: !showPassword,
+                              ),
+                            ),
+                          ],
                         ),
                         ListTileTheme(
                           horizontalTitleGap: 0,

@@ -43,7 +43,6 @@ class DevicePageState extends State<DevicePage> {
 
   DevicePageState(this.token, this.refreshToken);
   DeviceResponse pagingInfo = DeviceResponse(0,0);
-  List<Map<String,dynamic>> currentDevices = [];
   List<Map<String,Device2>> currentDevices2 = [];
   List<String> currentRadonValues = [];
   bool searchedAdditionalDevices = false;
@@ -56,6 +55,10 @@ class DevicePageState extends State<DevicePage> {
   //Screen control variables
   int screenIndex = 0;
   bool firstTry = true;
+  bool refreshing = false;
+
+  //misc
+  bool showPassword = false;
 
   //addDevice variables
   StreamSubscription<List<ScanResult>>? subscription;
@@ -80,11 +83,11 @@ class DevicePageState extends State<DevicePage> {
 
   Future<dynamic> getAllDevices() async{
     if(!firstTry)return;
+    firstTry = false;
     searchedAdditionalDevices = false;
     unit = await storage.read(key: 'unit');
     currentDevices2 = [];
     isBtAvailable = [];
-    firstTry = false;
     try{
       try {
         final result = await InternetAddress.lookup('example.com');
@@ -198,6 +201,24 @@ class DevicePageState extends State<DevicePage> {
               });
             }
           }
+          List<String> deviceIDOrder = [];
+          try{
+            String? deviceIDOrderString = await storage.read(key: "deviceIDOrder");
+            deviceIDOrder = deviceIDOrderString!.split("|%");
+          }catch(e){}
+          deviceIDOrder.forEach((id){
+            currentDevices2.forEach((device){
+              if(device.keys.first == id){
+                int idIndex = deviceIDOrder.indexWhere((_id){
+                  return _id == id;
+                });
+                final Map<String, Device2> item = currentDevices2.removeAt(currentDevices2.indexWhere((device){
+                  return device.keys.first == id;
+                }));
+                currentDevices2.insert(idIndex, item);
+              }
+            });
+          });
           setState(() {
 
           });
@@ -532,7 +553,7 @@ class DevicePageState extends State<DevicePage> {
             const SizedBox(height: 36,),
             TextField(
               controller: wifiPasswordController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 enabledBorder: OutlineInputBorder(
                   borderSide: BorderSide(width: 2,color: Colors.black),
                 ),
@@ -541,8 +562,17 @@ class DevicePageState extends State<DevicePage> {
                 ),
                 fillColor: Colors.white,
                 filled: true,
+                suffixIcon: IconButton(
+                    onPressed: (){
+                      showPassword = !showPassword;
+                      setState(() {
+
+                      });
+                    },
+                    icon:  Icon(!showPassword ? Icons.visibility : Icons.visibility_off)
+                )
               ),
-              obscureText: true,
+              obscureText: !showPassword,
             ),
             const SizedBox(height: 36,),
             Row(
@@ -1195,6 +1225,7 @@ class DevicePageState extends State<DevicePage> {
               actions: [
                 IconButton(
                     onPressed: () async{
+                      if(refreshing)return;
                       try {
                         final result = await InternetAddress.lookup('example.com');
                         if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
@@ -1205,9 +1236,15 @@ class DevicePageState extends State<DevicePage> {
                         );
                         return;
                       }
+                      currentDevices2 = [];
+                      try{
+                        channel!.sink.close();
+                      }catch(e){}
+                      refreshing = true;
                       setState(() {
                         channel = null;
                         firstTry = true;
+                        Timer(Duration(seconds: 3), () => ( refreshing = false));
                       });
                     },
                     icon: const Icon(MaterialSymbols.refresh,color: Color(0xff0099f0),)
@@ -1245,17 +1282,34 @@ class DevicePageState extends State<DevicePage> {
                       Expanded(
                         child: RefreshIndicator(
                           onRefresh: () async{
+                            if(refreshing)return;
+                            try {
+                              final result = await InternetAddress.lookup('example.com');
+                              if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
+                              }
+                            } on SocketException catch (_) {
+                              Fluttertoast.showToast(
+                                  msg: AppLocalizations.of(context)!.noInternetT
+                              );
+                              return;
+                            }
+                            currentDevices2 = [];
+                            try{
+                              channel!.sink.close();
+                            }catch(e){}
+                            refreshing = true;
                             setState(() {
                               channel = null;
                               firstTry = true;
+                              Timer(Duration(seconds: 3), () => ( refreshing = false));
                             });
                           },
-                          child: ListView.separated(
-                            separatorBuilder: (context, index) => const SizedBox(height: 0,),
+                          child: ReorderableListView.builder(
                             padding: const EdgeInsets.only(bottom: 10),
                             itemCount: currentDevices2.length,
                             itemBuilder: (BuildContext context, int index) {
                               return MyDeviceWidget(
+                                key: Key('$index'),
                                 onTap: () async{
                                   showDeviceDetails(currentDevices2[index]);
                                 },
@@ -1267,6 +1321,24 @@ class DevicePageState extends State<DevicePage> {
                                 isViewer: currentDevices2[index].values.elementAt(0).floor == "viewer" ? true : false,
                                 isBtAvailable: currentDevices2[index].values.elementAt(0).isBtAvailable,
                               );
+                            },
+                            onReorder: (int oldIndex, int newIndex) async{
+                              if (oldIndex < newIndex) {
+                                newIndex -= 1;
+                              }
+                              final Map<String, Device2> item = currentDevices2.removeAt(oldIndex);
+                              currentDevices2.insert(newIndex, item);
+                              String deviceIDOrder = "";
+                              currentDevices2.forEach((device){
+                                if(deviceIDOrder == ""){
+                                  deviceIDOrder += device.keys.first.toString();
+                                }else{
+                                  deviceIDOrder += "|%${device.keys.first.toString()}";
+                                }
+                              });
+                              await storage.write(key: "deviceIDOrder", value: deviceIDOrder);
+                              setState(() {
+                              });
                             },
                           ),
                         ),
