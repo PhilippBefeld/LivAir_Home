@@ -284,9 +284,13 @@ class DevicePageState extends State<DevicePage> {
           transitionDuration: Duration.zero,
           reverseTransitionDuration: Duration.zero
         )
-    ).then((_) => setState(() {
+    ).then((_){
+      currentDevices2 = [];
       firstTry = true;
-    }));
+      setState(() {
+
+      });
+    });
   }
 
 

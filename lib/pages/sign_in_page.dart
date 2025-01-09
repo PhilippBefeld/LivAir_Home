@@ -243,9 +243,9 @@ class SignInPageState extends State<SignInPage> {
       }
       if(await storage.containsKey(key: "language")){
         if(await storage.read(key: "language") != "english"){
-          MVP.of(context)!.setLocale(const Locale.fromSubtags(languageCode: 'de'));
+          LivAirHome.of(context)!.setLocale(const Locale.fromSubtags(languageCode: 'de'));
         }else{
-          MVP.of(context)!.setLocale(const Locale.fromSubtags(languageCode: 'en'));
+          LivAirHome.of(context)!.setLocale(const Locale.fromSubtags(languageCode: 'en'));
         }
       }
       if(await storage.containsKey(key: "autoSignIn")){

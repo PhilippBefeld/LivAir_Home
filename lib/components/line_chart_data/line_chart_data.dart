@@ -1,8 +1,10 @@
+import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 
 class MyLineChartData {
 
-  String convertMsToDateString(int ms,int days){
+  String convertMsToDateString(int ms,int days,context){
+    Intl.defaultLocale = Localizations.localeOf(context).languageCode;
     DateTime dateTime = DateTime.fromMillisecondsSinceEpoch(ms);
     if(days == 1){
       return "${dateTime.hour.toString().padLeft(2,"0")}:${dateTime.minute.toString().padLeft(2,"0")}";

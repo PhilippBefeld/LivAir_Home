@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:livair_home/pages/device_page.dart';
 import 'package:livair_home/pages/sign_in_page.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'l10n/l10n.dart';
@@ -10,19 +9,19 @@ import 'l10n/l10n.dart';
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
 
-  runApp(MVP()); // Wrap your app
+  runApp(LivAirHome()); // Wrap your app
 }
 
-class MVP extends StatefulWidget {
+class LivAirHome extends StatefulWidget {
 
   @override
-  MVPState createState() => MVPState();
+  LivAirHomeState createState() => LivAirHomeState();
 
-  static MVPState? of(BuildContext context) => context.findAncestorStateOfType<MVPState>();
+  static LivAirHomeState? of(BuildContext context) => context.findAncestorStateOfType<LivAirHomeState>();
 }
 
 
-class MVPState extends State<MVP>{
+class LivAirHomeState extends State<LivAirHome>{
 
   Locale _locale = const Locale('en');
 

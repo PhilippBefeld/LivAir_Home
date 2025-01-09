@@ -249,7 +249,7 @@ class ProfilePageState extends State<ProfilePage>{
                       updatePassword();
                     },
                     style: OutlinedButton.styleFrom(minimumSize: const Size(80, 50),side: const BorderSide(color: Color(0xff0099f0))),
-                    child: Text(AppLocalizations.of(context)!.changePassword,)
+                    child: Text(AppLocalizations.of(context)!.changePassword,style: TextStyle(color:  Color(0xff0099f0)),)
                 ),
               ),
             ],
@@ -974,7 +974,7 @@ class ProfilePageState extends State<ProfilePage>{
               await dio.post('https://dashboard.livair.io/api/livAir/language/english');
               storage.write(key: "language", value: "english");
               setState(() {
-                MVP.of(context)!.setLocale(const Locale.fromSubtags(languageCode: 'en'));
+                LivAirHome.of(context)!.setLocale(const Locale.fromSubtags(languageCode: 'en'));
                 language = "english";
                 currentIndex = 0;
                 showAppBar = false;
@@ -1025,7 +1025,7 @@ class ProfilePageState extends State<ProfilePage>{
             await dio.post('https://dashboard.livair.io/api/livAir/language/german');
             storage.write(key: "language", value: "german");
             setState(() {
-              MVP.of(context)!.setLocale(const Locale.fromSubtags(languageCode: 'de'));
+              LivAirHome.of(context)!.setLocale(const Locale.fromSubtags(languageCode: 'de'));
               language = "german";
               currentIndex = 0;
               showAppBar = false;

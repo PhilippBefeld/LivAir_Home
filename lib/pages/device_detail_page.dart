@@ -1243,10 +1243,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       List<ChartData> newSpots = [];
       int counter = 0;
       int p = 0;
-      while(spots[counter].x.millisecondsSinceEpoch <= (requestMsSinceEpoch - Duration(minutes: 11).inMilliseconds - Duration(minutes: 10).inMilliseconds*p)){
-        newSpots.add(ChartData(DateTime.fromMillisecondsSinceEpoch(spots[counter].x.millisecondsSinceEpoch - Duration(minutes: 10).inMilliseconds*p), null));
-        p++;
-      }
+
       for (var spot in spots) {
         newSpots.add(spot);
         if(spots.length>counter+1){
@@ -1262,6 +1259,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         newSpots.add(ChartData(DateTime.fromMillisecondsSinceEpoch(spots[spots.length-1].x.millisecondsSinceEpoch - Duration(minutes: 10).inMilliseconds*p), null));
         p++;
       }
+      newSpots.add(ChartData(DateTime.fromMillisecondsSinceEpoch(requestMsSinceEpoch - (Duration(days: selectedNumberOfDays).inMilliseconds * (stepsIntoPast-1))), null));
       return newSpots.reversed.toList();
     }
 
@@ -1927,6 +1925,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                   setState((){
                                     stepsIntoPast = 1;
                                     selectedNumberOfDays = 0;
+                                    changeDiagram = false;
                                     showAllData = false;
                                     chartSpots = getCurrentSpots();
                                     chartBars = getCurrentBars();
@@ -2114,11 +2113,12 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                               IconButton(
                                   visualDensity: VisualDensity.compact,
                                   onPressed: (){
+                                    if(selectedNumberOfDays == 0)return;
                                     setState(() {
                                       changeDiagram = !changeDiagram;
                                     });
                                   },
-                                  icon: Icon(!changeDiagram ? Icons.bar_chart : Icons.show_chart ,color: const Color(0xff0099F0),),
+                                  icon: Icon(!changeDiagram ? Icons.bar_chart : Icons.show_chart ,color: selectedNumberOfDays == 0 ? Colors.grey : const Color(0xff0099F0),),
                                 tooltip: AppLocalizations.of(context)!.diagramType,
                               ),
                               const SizedBox(width: 5,),
@@ -2218,7 +2218,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                     SizedBox(
                       width: MediaQuery.of(context).size.width,
                       child: AspectRatio(
-                        aspectRatio: 2.1,
+                        aspectRatio: changeDiagram && selectedNumberOfDays != 0 ? 1.7 : 2.0,
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(0, 0, 30, 0),
                           child: changeDiagram && selectedNumberOfDays != 0 ?
@@ -2256,14 +2256,15 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                                         getTitlesWidget: (value, meta) {
                                           return bottomTitleWidgets(value, meta);
                                         },
-                                        reservedSize: 56,
+                                        reservedSize: 76,
                                       ),
                                       drawBelowEverything: true,
                                     ),
                                     leftTitles: const AxisTitles(
                                       sideTitles: SideTitles(
                                           showTitles: true,
-                                          reservedSize: 50
+                                          reservedSize: 50,
+                                          maxIncluded: false
                                       ),
                                     )
                                 ),
@@ -2286,7 +2287,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                           ) : SfCartesianChart(
                             plotAreaBorderWidth: 0,
                             primaryXAxis: DateTimeAxis(
-                              dateFormat: selectedNumberOfDays == 1 ? DateFormat.Hm() : selectedNumberOfDays == 2 ? DateFormat("EEE\nHH:mm") : selectedNumberOfDays == 7 ? DateFormat("d MMM\nHH:mm") : selectedNumberOfDays == 30 ? DateFormat("d MMM") : DateFormat("d MMM yy"),
+                              dateFormat: selectedNumberOfDays == 1 ? DateFormat.Hm(Localizations.localeOf(context).languageCode) : selectedNumberOfDays == 2 ? DateFormat("EEE\nHH:mm",Localizations.localeOf(context).languageCode) : selectedNumberOfDays == 7 ? DateFormat("d MMM\nHH:mm",Localizations.localeOf(context).languageCode) : selectedNumberOfDays == 30 ? DateFormat("d MMM",Localizations.localeOf(context).languageCode) : DateFormat("d MMM yy",Localizations.localeOf(context).languageCode),
                               intervalType: selectedNumberOfDays == 1 ? DateTimeIntervalType.hours : selectedNumberOfDays == 2 ? DateTimeIntervalType.hours : DateTimeIntervalType.days,
                               interval: selectedNumberOfDays == 1 ? 6 : selectedNumberOfDays == 2 ? 12 : selectedNumberOfDays == 7 ? 7/5 : selectedNumberOfDays == 30 ? 6 : (Duration(milliseconds: DateTime.now().millisecondsSinceEpoch - radonHistoryTimestamps.last.item1 ).inDays.toDouble()/4) != 0 ? (Duration(milliseconds: DateTime.now().millisecondsSinceEpoch - radonHistoryTimestamps.last.item1).inDays.toDouble()/4) : null,
                             ),
@@ -2491,6 +2492,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             setState((){
                               stepsIntoPast = 1;
                               selectedNumberOfDays = 0;
+                              changeDiagram = false;
                               showAllData = false;
                               chartSpots = getCurrentSpots();
                               chartBars = getCurrentBars();
@@ -2587,7 +2589,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                             changeDiagram = !changeDiagram;
                           });
                         },
-                        icon: Icon(!changeDiagram ? Icons.bar_chart : Icons.query_stats ,color: const Color(0xff0099F0),)
+                        icon: Icon(!changeDiagram ? Icons.bar_chart : Icons.query_stats ,color: selectedNumberOfDays == 0 ? Colors.grey : const Color(0xff0099F0),)
                     ),
                     const SizedBox(width: 10,),
                     IconButton(
@@ -2677,7 +2679,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
                   ) : SfCartesianChart(
                     plotAreaBorderWidth: 0,
                     primaryXAxis: DateTimeAxis(
-                      dateFormat: selectedNumberOfDays == 1 ? DateFormat.Hm() : selectedNumberOfDays == 2 ? DateFormat("EEE\nHH:mm") : selectedNumberOfDays == 7 ? DateFormat("d MMM") : selectedNumberOfDays == 30 ? DateFormat("d MMM") : DateFormat("d MMM yy"),
+                      dateFormat: selectedNumberOfDays == 1 ? DateFormat.Hm(Localizations.localeOf(context).languageCode) : selectedNumberOfDays == 2 ? DateFormat("EEE\nHH:mm",Localizations.localeOf(context).languageCode) : selectedNumberOfDays == 7 ? DateFormat("d MMM",Localizations.localeOf(context).languageCode) : selectedNumberOfDays == 30 ? DateFormat("d MMM",Localizations.localeOf(context).languageCode) : DateFormat("d MMM yy",Localizations.localeOf(context).languageCode),
                       intervalType: selectedNumberOfDays == 1 ? DateTimeIntervalType.hours : selectedNumberOfDays == 2 ? DateTimeIntervalType.hours : DateTimeIntervalType.days,
                       interval: selectedNumberOfDays == 1 ? 6 : selectedNumberOfDays == 2 ? 12 : selectedNumberOfDays == 7 ? 7/5 : selectedNumberOfDays == 30 ? 6 : (Duration(milliseconds: DateTime.now().millisecondsSinceEpoch - radonHistoryTimestamps.last.item1).inDays.toDouble()/4),
                     ),
@@ -2723,6 +2725,7 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         emptyPointSettings: EmptyPointSettings(
           mode: EmptyPointMode.gap
         ),
+        animationDuration: 0,
         dataSource: chartSpots,
         xValueMapper: (ChartData spot, _) => spot.x,
         yValueMapper: (ChartData spot, _) => spot.y,
@@ -2804,9 +2807,9 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
             Column(
               children: [
                 Text(
-                  "${MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value*6)*3600000).toInt(), selectedNumberOfDays)}\n"
-                      "${MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value*6)*3600000).toInt(), 71)}\n"
-                      "${MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value*6)*3600000).toInt(), 72)}",
+                  "${MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value*6)*3600000).toInt(), selectedNumberOfDays,context)}\n"
+                      "${MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value*6)*3600000).toInt(), 71,context)}\n"
+                      "${MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value*6)*3600000).toInt(), 72,context)}",
                   style: style,
                   textAlign:  TextAlign.center,
                 ),
@@ -2821,21 +2824,21 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       return SideTitleWidget(
         axisSide: meta.axisSide,
         space: 16,
-        child: Text(MyLineChartData().convertMsToDateString(requestMsSinceEpoch-Duration(milliseconds: requestMsSinceEpoch-radonHistoryTimestamps.last.item1).inMilliseconds+(value*60000).toInt(), selectedNumberOfDays) , style: style, textAlign:  TextAlign.center,),
+        child: Text(MyLineChartData().convertMsToDateString(requestMsSinceEpoch-Duration(milliseconds: requestMsSinceEpoch-radonHistoryTimestamps.last.item1).inMilliseconds+(value*60000).toInt(), selectedNumberOfDays,context) , style: style, textAlign:  TextAlign.center,),
       );
     }
     if(selectedNumberOfDays == 1){
       return SideTitleWidget(
         axisSide: meta.axisSide,
         space: 16,
-        child: Text(MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value)*3600000).toInt(), selectedNumberOfDays) , style: style, textAlign:  TextAlign.center,),
+        child: Text(MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value)*3600000).toInt(), selectedNumberOfDays,context) , style: style, textAlign:  TextAlign.center,),
       );
     }
     if(selectedNumberOfDays == 2){
       return SideTitleWidget(
         axisSide: meta.axisSide,
         space: 16,
-        child: Text(MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value*2)*3600000).toInt(), 21) , style: style, textAlign:  TextAlign.center,),
+        child: Text(MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value*2)*3600000).toInt(), 21,context) , style: style, textAlign:  TextAlign.center,),
       );
     }
     if(selectedNumberOfDays == 7){
@@ -2844,8 +2847,8 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
         space: 16,
         child: Column(
           children: [
-            Text(MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value*(changeDiagram ? 6 : 1))*3600000).toInt(), selectedNumberOfDays) , style: style, textAlign:  TextAlign.center,),
-            Text(MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value*(changeDiagram ? 6 : 1))*3600000).toInt(), 71) , style: style, textAlign:  TextAlign.center,),
+            Text(MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value*(changeDiagram ? 6 : 1))*3600000).toInt(), selectedNumberOfDays,context) , style: style, textAlign:  TextAlign.center,),
+            Text(MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value*(changeDiagram ? 6 : 1))*3600000).toInt(), 71,context) , style: style, textAlign:  TextAlign.center,),
           ],
         ),
       );
@@ -2854,13 +2857,13 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       return SideTitleWidget(
         axisSide: meta.axisSide,
         space: 16,
-        child: Text(MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value*24)*3600000).toInt(), selectedNumberOfDays) , style: style, textAlign:  TextAlign.center,),
+        child: Text(MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((Duration(days: selectedNumberOfDays).inMilliseconds)-(value*24)*3600000).toInt(), selectedNumberOfDays,context) , style: style, textAlign:  TextAlign.center,),
       );
     }
     return SideTitleWidget(
       axisSide: meta.axisSide,
       space: 16,
-      child: Text(MyLineChartData().convertMsToDateString(requestMsSinceEpoch-(selectedNumberOfDays == 0 ? Duration(milliseconds: requestMsSinceEpoch-radonHistoryTimestamps.last.item1).inMilliseconds : (Duration(days: selectedNumberOfDays).inMilliseconds)-(value)*3600000).toInt(), selectedNumberOfDays) , style: style, textAlign:  TextAlign.center,),
+      child: Text(MyLineChartData().convertMsToDateString(requestMsSinceEpoch-(selectedNumberOfDays == 0 ? Duration(milliseconds: requestMsSinceEpoch-radonHistoryTimestamps.last.item1).inMilliseconds : (Duration(days: selectedNumberOfDays).inMilliseconds)-(value)*3600000).toInt(), selectedNumberOfDays,context) , style: style, textAlign:  TextAlign.center,),
     );
   }
 
@@ -2873,36 +2876,36 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
       );
       if(selectedNumberOfDays == 0){
         return LineTooltipItem(
-          '${MyLineChartData().convertMsToDateString(requestMsSinceEpoch-Duration(milliseconds: requestMsSinceEpoch-radonHistoryTimestamps.last.item1).inMilliseconds , selectedNumberOfDays)}, ${touchedSpot.y.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}',
+          '${MyLineChartData().convertMsToDateString(requestMsSinceEpoch-Duration(milliseconds: requestMsSinceEpoch-radonHistoryTimestamps.last.item1).inMilliseconds , selectedNumberOfDays,context)}, ${touchedSpot.y.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}',
           textStyle,
         );
       }
       if(selectedNumberOfDays == 1){
         return LineTooltipItem(
-          '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((48-touchedSpot.x)*0.5*3600000)).toInt(), selectedNumberOfDays)}, ${touchedSpot.y.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}',
+          '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((48-touchedSpot.x)*0.5*3600000)).toInt(), selectedNumberOfDays,context)}, ${touchedSpot.y.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}',
           textStyle,
         );
       }
       if(selectedNumberOfDays == 2){
         return LineTooltipItem(
-          '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((96-touchedSpot.x)*0.5*3600000)).toInt(), selectedNumberOfDays)}, ${touchedSpot.y.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}',
+          '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((96-touchedSpot.x)*0.5*3600000)).toInt(), selectedNumberOfDays,context)}, ${touchedSpot.y.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}',
           textStyle,
         );
       }
       if(selectedNumberOfDays == 7){
         return LineTooltipItem(
-          '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((168-touchedSpot.x)*1*3600000)).toInt(), 73)}, ${touchedSpot.y.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}',
+          '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((168-touchedSpot.x)*1*3600000)).toInt(), 73,context)}, ${touchedSpot.y.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}',
           textStyle,
         );
       }
       if(selectedNumberOfDays == 30){
         return LineTooltipItem(
-          '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((120-touchedSpot.x)*6*3600000)).toInt(), selectedNumberOfDays)}, ${touchedSpot.y.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}',
+          '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((120-touchedSpot.x)*6*3600000)).toInt(), selectedNumberOfDays,context)}, ${touchedSpot.y.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}',
           textStyle,
         );
       }
       return LineTooltipItem(
-        '${MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((selectedNumberOfDays == 0 ? Duration(milliseconds: requestMsSinceEpoch-radonHistoryTimestamps.last.item1).inMilliseconds : Duration(days: selectedNumberOfDays).inMilliseconds) -touchedSpot.x*3600000).toInt(), selectedNumberOfDays)}, ${touchedSpot.y.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}',
+        '${MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((selectedNumberOfDays == 0 ? Duration(milliseconds: requestMsSinceEpoch-radonHistoryTimestamps.last.item1).inMilliseconds : Duration(days: selectedNumberOfDays).inMilliseconds) -touchedSpot.x*3600000).toInt(), selectedNumberOfDays,context)}, ${touchedSpot.y.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}',
         textStyle,
       );
     }).toList();
@@ -2912,21 +2915,21 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   String barChartSpotString (int touchedBar, double touchedBarValue){
 
     if(selectedNumberOfDays == 0){
-      return '${MyLineChartData().convertMsToDateString(requestMsSinceEpoch-Duration(milliseconds: requestMsSinceEpoch-radonHistoryTimestamps.last.item1).inMilliseconds , selectedNumberOfDays)}, ${touchedBarValue.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}';
+      return '${MyLineChartData().convertMsToDateString(requestMsSinceEpoch-Duration(milliseconds: requestMsSinceEpoch-radonHistoryTimestamps.last.item1).inMilliseconds , selectedNumberOfDays,context)}, ${touchedBarValue.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}';
     }
     if(selectedNumberOfDays == 1){
-      return '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((25-touchedBar)*3600000)).toInt(), 2)}, ${touchedBarValue.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}';
+      return '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((25-touchedBar)*3600000)).toInt(), 2,context)}, ${touchedBarValue.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}';
     }
     if(selectedNumberOfDays == 2){
-      return '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((25-touchedBar)*2*3600000)).toInt(), 2)}, ${touchedBarValue.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}';
+      return '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((25-touchedBar)*2*3600000)).toInt(), 2,context)}, ${touchedBarValue.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}';
     }
     if(selectedNumberOfDays == 7){
-      return '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((29-touchedBar)*6*3600000)).toInt(), 2)}, ${touchedBarValue.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}';
+      return '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((29-touchedBar)*6*3600000)).toInt(), 2,context)}, ${touchedBarValue.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}';
     }
     if(selectedNumberOfDays == 30){
-      return '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((31-touchedBar)*24*3600000)).toInt(), 2)}, ${touchedBarValue.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}';
+      return '${MyLineChartData().convertMsToDateString((requestMsSinceEpoch-((31-touchedBar)*24*3600000)).toInt(), 2,context)}, ${touchedBarValue.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}';
     }
-    return '${MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((selectedNumberOfDays == 0 ? Duration(milliseconds: requestMsSinceEpoch-radonHistoryTimestamps.last.item1).inMilliseconds : Duration(days: selectedNumberOfDays).inMilliseconds) -touchedBar*3600000).toInt(), selectedNumberOfDays)}, ${touchedBarValue.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}';
+    return '${MyLineChartData().convertMsToDateString(requestMsSinceEpoch-((selectedNumberOfDays == 0 ? Duration(milliseconds: requestMsSinceEpoch-radonHistoryTimestamps.last.item1).inMilliseconds : Duration(days: selectedNumberOfDays).inMilliseconds) -touchedBar*3600000).toInt(), selectedNumberOfDays,context)}, ${touchedBarValue.toStringAsFixed(2)} ${unit == "Bq/m³" ? "Bq/m³": "pCi/L"}';
   }
 
   deviceSettingsScreen(){
