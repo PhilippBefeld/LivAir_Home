@@ -6947,11 +6947,11 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
     File file = File('$path/Device_details.txt');
     file.writeAsString("\ndevice name   timestamp   radon");
     if(customTimeseriesSelected == false){
-      for(var element in radonHistoryTimestamps){
+      for(var element in radonHistoryTimestamps.reversed){
         await file.writeAsString("\n${device.values.first.name}   ${DateFormat('yyyy-MM-dd hh:mm').format(DateTime.fromMillisecondsSinceEpoch(element.item1))}   ${element.item2}",mode: FileMode.append);
       }
     }else{
-      for (var element in radonHistoryTimestamps) {
+      for (var element in radonHistoryTimestamps.reversed) {
         if(DateTime.fromMillisecondsSinceEpoch(element.item1).compareTo(customTimeseriesStart) >= 0){
           if(DateTime.fromMillisecondsSinceEpoch(element.item1).compareTo(customTimeseriesEnd) <= 0){
             await file.writeAsString("\n${device.values.first.name}   ${DateFormat('yyyy-MM-dd hh:mm').format(DateTime.fromMillisecondsSinceEpoch(element.item1))}   ${element.item2}",mode: FileMode.append);
