@@ -17,7 +17,6 @@ import 'package:tuple/tuple.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:logger/logger.dart';
 import 'package:dio/dio.dart';
 import 'dart:convert';
 import 'package:intl/intl.dart';
@@ -47,7 +46,6 @@ class DeviceDetailPageState extends State<DeviceDetailPage>{
   String refreshToken;
 
   final Dio dio = Dio();
-  final logger = Logger();
   final location = Location();
 
   final Map<String,Device2> device;

@@ -292,5 +292,6 @@
     "gateway": "Gateway",
     "multiCastAddress": "Multicast-Adresse",
     "createdWarning": "Warnung erstellt",
-    "success": "Erfolg"
+    "success": "Erfolg",
+    "deviceReset": "Gerät zurücksetzen"
 }

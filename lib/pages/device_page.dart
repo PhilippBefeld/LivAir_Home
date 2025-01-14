@@ -82,6 +82,7 @@ class DevicePageState extends State<DevicePage> {
   Barcode? result;
 
   Future<dynamic> getAllDevices() async{
+
     if(!firstTry)return;
     firstTry = false;
     searchedAdditionalDevices = false;
@@ -268,7 +269,9 @@ class DevicePageState extends State<DevicePage> {
         }catch(e){
         }
       }
+      setState(() {
 
+      });
     }catch(e){
       Fluttertoast.showToast(
           msg: "Failed to receive data"

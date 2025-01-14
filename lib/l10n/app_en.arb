@@ -292,5 +292,6 @@
     "gateway": "Gateway",
     "multiCastAddress": "Multi cast address",
     "createdWarning": "Created warning",
-    "success": "Success"
+    "success": "Success",
+    "deviceReset": "Reset Device"
 }
